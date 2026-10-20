@@ -1,0 +1,21 @@
+# editor working data
+history/
+exports/
+assets/
+archive/
+trash/
+.claude/
+
+# private-folder tooling (never part of the public version)
+publish.ps1
+
+# editor / OS / tool clutter
+.Rhistory
+.Rproj.user/
+.DS_Store
+Thumbs.db
+
+# your own figures (research content). Remove the next line to publish them, or keep it and put
+# shareable figures in examples/
+*.json
+!examples/*.json
