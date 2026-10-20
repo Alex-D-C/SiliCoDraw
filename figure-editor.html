@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Figure Editor</title>
+<title>SiliCoDraw</title>
 <style>
 :root{--bg:#f4f5f7;--panel:#fff;--ink:#111827;--muted:#6b7280;--faint:#9ca3af;--line:#e5e7eb;--accent:#2563eb;--accent-soft:#e8efff;--accent-line:#c7d7fe;--hover:#f3f4f6;--r:8px;--ease:cubic-bezier(.2,.8,.2,1)}
 *{box-sizing:border-box}
@@ -141,7 +141,7 @@ kbd{font:11px/1 ui-monospace,Consolas,monospace;background:var(--hover);border:1
 </head>
 <body>
 <header>
-  <div class="brand"><div class="logo"></div><span style="font-weight:600">Figure Editor</span></div>
+  <div class="brand"><div class="logo"></div><span style="font-weight:600">SiliCoDraw</span></div>
   <select id="fileSel" title="Switch figure"></select>
   <button id="bFileMenu" data-pop title="New, duplicate, rename, version history…">File<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg></button>
   <button id="bArchive" class="ib" data-pop title="Archived figures"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="5" rx="1.5"/><path d="M5 9v9a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9M10 13h4"/></svg></button>
@@ -554,7 +554,7 @@ function template(){
 const FILE=(()=>{const f=new URLSearchParams(location.search).get('file')||'figure.json';return /^[\w.\-]+\.json$/.test(f)?f:'figure.json'})();
 const MAIN=FILE==='figure.json',BASE=FILE.replace(/\.json$/,'');
 const KEY='figEditor.scene.v1'+(MAIN?'':':'+FILE);
-document.title=`${BASE} · Figure Editor`;
+document.title=`${BASE} · SiliCoDraw`;
 let scene,sel=new Set(),hist=[],fut=[],lastSaved,zoom=1,snap=false,guides=true,drag=null,clip=null,showNotes=false,showComments=true,placing=false;
 const GRID=10,svg=$('#svg');
 const SCENE_VERSION=4;
@@ -570,7 +570,7 @@ const uid=()=>'o'+Date.now().toString(36)+Math.floor(Math.random()*1e4).toString
 /* file sync: when served by serve.ps1 the figure lives in figure.json next to this page (Claude can edit it; changes show up live) */
 const FILE_SYNC=location.protocol.startsWith('http');
 let fileText=null,pushTimer,serverOk=FILE_SYNC;
-function setStatus(state,msg){const s=$('#status');s.className='st-'+state;s.textContent=msg;s.title={saved:`Saved to ${FILE} in the figure folder`,saving:'Saving…',offline:'The editor server is not running: changes are kept in this browser and saved to the file as soon as it is back (run Start Figure Editor.bat)',local:'Opened directly from disk: changes are only kept in this browser'}[state]}
+function setStatus(state,msg){const s=$('#status');s.className='st-'+state;s.textContent=msg;s.title={saved:`Saved to ${FILE} in the figure folder`,saving:'Saving…',offline:'The editor server is not running: changes are kept in this browser and saved to the file as soon as it is back (run Start SiliCoDraw.bat)',local:'Opened directly from disk: changes are only kept in this browser'}[state]}
 async function readFile(){try{const r=await fetch(FILE,{cache:'no-store'});setServer(true);return r.ok?await r.text():null}catch(e){setServer(false);return null}}
 function setServer(ok){if(ok===serverOk)return;serverOk=ok;if(ok){if(lastSaved!==fileText)pushFile();else setStatus('saved','Saved')}else setStatus('offline','Server offline')}
 // if the page is closed or reloaded while a save is still pending, send it right away
@@ -1007,17 +1007,17 @@ const openFile=n=>{location.href=n==='figure.json'?location.pathname:`${location
 async function listFiles(scope){try{const r=await fetch('api/files'+(scope?'?scope='+scope:''),{cache:'no-store'});return r.ok?await r.json():null}catch(e){return null}}
 async function flushSave(){commit();clearTimeout(pushTimer);try{await fetch(FILE,{method:'POST',body:lastSaved});fileText=lastSaved}catch(e){}}
 async function moveFile(name,from,to){const r=await fetch(`api/move?file=${encodeURIComponent(name)}&from=${from}&to=${to}`,{method:'POST'});
-  if(r.status===404)alert('The running editor server is older than this editor and does not know how to move files.\nStop it and start it again (Start Figure Editor.bat), then try again.');return r.ok}
+  if(r.status===404)alert('The running editor server is older than this editor and does not know how to move files.\nStop it and start it again (Start SiliCoDraw.bat), then try again.');return r.ok}
 // after archiving or trashing the open figure, go to another active figure (or a fresh figure.json if none is left)
 async function openNext(){const fs=(await listFiles())||[];const next=fs.find(f=>f.name!==FILE);openFile(next?next.name:'figure.json')}
 async function fillFileSel(){const s=$('#fileSel'),fs=FILE_SYNC?await listFiles():null;
   const names=fs?fs.map(x=>x.name):[];if(!names.includes(FILE))names.push(FILE);
   s.innerHTML=names.sort().map(n=>`<option value="${esc(n)}"${n===FILE?' selected':''}>${esc(n.replace(/\.json$/,''))}</option>`).join('');s.disabled=!fs}
 $('#fileSel').onchange=e=>openFile(e.target.value);
-async function askNewName(title,def){const fs=await listFiles();if(!fs){alert('The editor server is not running (start it with Start Figure Editor.bat).');return null}
+async function askNewName(title,def){const fs=await listFiles();if(!fs){alert('The editor server is not running (start it with Start SiliCoDraw.bat).');return null}
   const n=cleanName(await askText(title,def));if(!n)return null;if(fs.some(x=>x.name.toLowerCase()===n.toLowerCase())){alert(`“${n}” already exists. Pick another name.`);return null}return n}
 const menuActs={
-  async new(){const fs=await listFiles();if(!fs){alert('The editor server is not running (start it with Start Figure Editor.bat).');return}
+  async new(){const fs=await listFiles();if(!fs){alert('The editor server is not running (start it with Start SiliCoDraw.bat).');return}
     const box=modal(`<h2>New figure</h2><div class="row"><span>Name</span><input id="nfName" type="text" value="new-figure"></div>
       <div class="row"><span>Start from</span><select id="nfTpl"><option value="blank">Blank canvas (1600 × 900)</option><option value="sketch">Sketch my idea first, then let my AI build it</option><option value="abstract">Graphical abstract (portrait, 900 × 1200)</option><option value="workflow">Workflow: 3 steps with arrows</option><option value="poster">Example poster (four-panel layout)</option><option value="ex:examples/workflow.json">Example: three-step workflow</option>${fs.map(x=>`<option value="copy:${esc(x.name)}">Copy of ${esc(x.name.replace(/\.json$/,''))}</option>`).join('')}</select></div>
       <div class="btns"><button class="primary" id="nfGo">Create</button><button id="nfClose">Cancel</button></div><p id="nfMsg" class="muted"></p>`);

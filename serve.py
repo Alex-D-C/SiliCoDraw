@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Figure Editor server (cross-platform twin of serve.ps1).
+"""SiliCoDraw server (cross-platform twin of serve.ps1).
 
     python3 serve.py              -> http://localhost:8770/
     python3 serve.py --port 9000
@@ -155,7 +155,7 @@ def main():
         print(f'Could not start on port {a.port}: {e}\nIf the editor is already running, just open http://localhost:{a.port}/')
         sys.exit(1)
     url = f'http://localhost:{a.port}/'
-    print(f'Figure Editor is running at {url}  (Ctrl+C to stop)')
+    print(f'SiliCoDraw is running at {url}  (Ctrl+C to stop)')
     if not a.no_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

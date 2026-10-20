@@ -1,7 +1,7 @@
-# Figure Editor — guide for AI assistants
+# SiliCoDraw — guide for AI assistants
 
-You are working in a self-contained scientific figure editor (poster figures, graphical abstracts,
-workflow diagrams). Everything lives in this folder; there is no build step and no dependencies.
+You are working in SiliCoDraw, a self-contained scientific figure editor (poster figures, graphical
+abstracts, workflow diagrams) made for co-designing figures with an AI assistant. Everything lives in this folder; there is no build step and no dependencies.
 
 ## Start it
 
@@ -9,7 +9,7 @@ workflow diagrams). Everything lives in this folder; there is no build step and 
 python3 serve.py            # macOS / Linux / Windows with Python  → http://localhost:8770/
 ```
 Windows without Python: `powershell -NoProfile -ExecutionPolicy Bypass -File serve.ps1`
-(or the user double-clicks `Start Figure Editor.bat`).
+(or the user double-clicks `Start SiliCoDraw.bat`).
 
 Open `http://localhost:8770/` for `figure.json`, or `http://localhost:8770/?file=<name>.json` for any
 other figure in this folder. A name that does not exist yet starts a blank figure.

@@ -1,10 +1,12 @@
-# Figure Editor
+# SiliCoDraw
+
+**Draw scientific figures in silico, together with your AI assistant.**
 
 A small, local, open editor for scientific figures: poster figures, graphical abstracts, workflow
 diagrams. One HTML file plus a tiny server. Your figures are plain JSON files in this folder, so an
 AI coding assistant can draw and revise them with you, and you can drag things around by hand.
 
-![The editor: icon library on the left, the figure in the middle, properties on the right](docs/editor.jpg)
+![SiliCoDraw: icon library on the left, the figure in the middle, properties on the right](docs/editor.jpg)
 
 - Vector output: export **SVG** (opens in any vector editor or slide software) or print-ready **PNG**
   at any size and dpi (tagged so it prints at the right physical size).
@@ -20,7 +22,7 @@ A figure made from the built-in parts in a few minutes (`examples/workflow.json`
 
 ## Quick start
 
-**Windows:** double-click `Start Figure Editor.bat`. (Nothing to install; uses Python if you have it,
+**Windows:** double-click `Start SiliCoDraw.bat`. (Nothing to install; uses Python if you have it,
 otherwise the built-in PowerShell server.)
 
 **macOS / Linux:** `python3 serve.py` (or `sh start.sh`). Python 3 is all you need; no packages.
@@ -33,7 +35,7 @@ Works in any current browser (Chrome, Edge, Firefox, Safari); touchscreens are s
 If you use an AI coding assistant that can run commands (Claude Code, Codex, Cursor or Copilot in
 agent mode), paste this and you are done:
 
-> Set up https://github.com/AlexDoesStuff-openaccess/openaccessfiguremaker for me: clone it (or
+> Set up https://github.com/Alex-D-C/SiliCoDraw for me: clone it (or
 > download and unzip the ZIP from the Code button), open the folder, read AGENTS.md, start the figure
 > editor and open it in my browser.
 

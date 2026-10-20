@@ -1,4 +1,4 @@
-# Figure editor server: http://localhost:<port>/
+# SiliCoDraw server: http://localhost:<port>/
 #  - serves the editor and the figure files in this folder
 #  - saves figures (POST <name>.json); before overwriting, keeps a snapshot in history\<name>\ (at most every 5 minutes)
 #  - writes exports (POST exports/<name>.png|svg)
@@ -12,7 +12,7 @@ try { $l.Start() } catch {
   Write-Host "Could not start on port ${port}: it is probably already running (then just use http://localhost:$port/)."
   Start-Sleep -Seconds 5; exit 1
 }
-Write-Host "Figure Editor is running at http://localhost:$port/  (close this window to stop it)"
+Write-Host "SiliCoDraw is running at http://localhost:$port/  (close this window to stop it)"
 $types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp' }
 
 function Send-Json($ctx, $obj) {
