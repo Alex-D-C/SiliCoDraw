@@ -69,6 +69,8 @@ comments, and exports PNG/SVG into `exports/`. See `AGENTS.md` for everything it
   idea with a pen and place text notes, then press **Build it with my AI** — it saves a snapshot and
   gives you a ready-made request to paste into your assistant, which turns the sketch into a figure.
 - **Export**: PNG with print width + dpi (optionally transparent) or SVG, written to `exports/`.
+- New figures start with a small grey "Made with SiliCoDraw" line in the bottom-left corner. It is an
+  ordinary text element: move it, edit it, or delete it.
 
 ## Managing figures: active, archived, trash
 

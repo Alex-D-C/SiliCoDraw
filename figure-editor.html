@@ -246,6 +246,9 @@ const DEF={
   arrow:{x1:0,y1:0,x2:120,y2:0,bend:0,color:'#374151',width:3,head:'end',dash:false}
 };
 const COMMON=[['x','num',1],['y','num',1],['s','num',.05,'scale'],['r','num',1,'rotate'],['op','range',[0,1,.05],'opacity'],['flip','bool',0,'flip horizontally']];
+// every new figure starts with a small grey credit line in the bottom-left corner; it is an ordinary text element (move or delete it)
+const CREDIT='Made with SiliCoDraw · github.com/Alex-D-C/SiliCoDraw';
+const creditObj=(w,h)=>({id:'credit',type:'text',x:24,y:h-18,s:1,r:0,...JSON.parse(JSON.stringify(DEF.text)),text:CREDIT,size:12,color:'#9ca3af',anchor:'start',name:'credit'});
 const SHAPES=[['ellipse','Ellipse'],['circle','Circle'],['rect','Rectangle'],['triangle','Triangle'],['diamond','Diamond'],['hexagon','Hexagon'],['line','Line']];
 const SCHEMA={
   text:[['text','area'],['size','num',1],['weight','seg',[['300','<span style="font-weight:300" title="Light">Aa</span>'],['400','<span style="font-weight:400" title="Regular">Aa</span>'],['600','<span style="font-weight:600" title="Semibold">Aa</span>'],['700','<span style="font-weight:700" title="Bold">Aa</span>']]],['anchor','seg',[['start','<svg viewBox="0 0 24 24"><path d="M4 6h16M4 12h10M4 18h14"/></svg>'],['middle','<svg viewBox="0 0 24 24"><path d="M4 6h16M7 12h10M5 18h14"/></svg>'],['end','<svg viewBox="0 0 24 24"><path d="M4 6h16M10 12h10M6 18h14"/></svg>']],'align'],['italic','bool'],['color','color'],['boxW','num',10,'wrap width'],['font','sel',FONTS]],
@@ -562,7 +565,7 @@ const SCENE_VERSION=4;
 // and turn "Comment: ..." text boxes into comment pins
 function migrate(old){old.version=SCENE_VERSION;return old}
 try{const s=localStorage.getItem(KEY);if(s)scene=JSON.parse(s)}catch(e){}
-if(!scene||!Array.isArray(scene.objects))scene={version:SCENE_VERSION,w:1600,h:900,bg:'#ffffff',objects:[]};
+if(!scene||!Array.isArray(scene.objects))scene={version:SCENE_VERSION,w:1600,h:900,bg:'#ffffff',objects:[creditObj(1600,900)]};
 else if(MAIN&&(scene.version||1)<SCENE_VERSION){scene=migrate(scene);try{localStorage.setItem(KEY,JSON.stringify(scene))}catch(e){}}
 lastSaved=JSON.stringify(scene);
 const get=id=>scene.objects.find(o=>o.id===id);
@@ -621,7 +624,7 @@ function drawOverlay(){
     s+=`<g pointer-events="none"><rect x="${x}" y="${y}" width="${w}" height="${20*k}" rx="${6*k}" fill="#111827" fill-opacity=".85"/><text x="${b.x+b.w/2}" y="${y+14*k}" font-family="${FONT}" font-size="${11.5*k}" fill="#fff" text-anchor="middle">${txt}</text></g>`}}
   if(sel.size>1){const b=selBox();if(b){s+=`<rect x="${b.x-6*k}" y="${b.y-6*k}" width="${b.w+12*k}" height="${b.h+12*k}" fill="none" stroke="#2563eb" stroke-width="${k}" pointer-events="none"/>`;
     s+=`<rect data-h="gscale" x="${b.x+b.w+6*k-6*k}" y="${b.y+b.h+6*k-6*k}" width="${12*k}" height="${12*k}" rx="${2.5*k}" fill="#fff" stroke="#2563eb" stroke-width="${2*k}" style="cursor:nwse-resize"/>`}}
-  if(!scene.objects.some(o=>o.type!=='comment')&&!drag)s+=`<g pointer-events="none" font-family="${FONT}" fill="#9ca3af" text-anchor="middle"><text x="${scene.w/2}" y="${scene.h/2-14*k}" font-size="${22*k}">Drag items from the left panel onto the canvas</text><text x="${scene.w/2}" y="${scene.h/2+20*k}" font-size="${15*k}">Double-click text to edit it · right-click for more · press ? for shortcuts</text></g>`;
+  if(!scene.objects.some(o=>o.type!=='comment'&&o.name!=='credit')&&!drag)s+=`<g pointer-events="none" font-family="${FONT}" fill="#9ca3af" text-anchor="middle"><text x="${scene.w/2}" y="${scene.h/2-14*k}" font-size="${22*k}">Drag items from the left panel onto the canvas</text><text x="${scene.w/2}" y="${scene.h/2+20*k}" font-size="${15*k}">Double-click text to edit it · right-click for more · press ? for shortcuts</text></g>`;
   if(sel.size===1){const o=get([...sel][0]);
     if(o&&o.type==='comment'){}
     else if(o&&o.type==='arrow'){const g=arrowGeom(o),bx=.25*o.x1+.5*g.cx+.25*o.x2,by=.25*o.y1+.5*g.cy+.25*o.y2;
@@ -1043,10 +1046,11 @@ const menuActs={
 };
 function newTemplate(kind){
   const s={version:SCENE_VERSION,w:1600,h:900,bg:'#ffffff',objects:[]};let n=0;const o=(type,p)=>{const x={id:'o'+(++n),type,x:0,y:0,s:1,r:0,...JSON.parse(JSON.stringify(DEF[type])),...p};s.objects.push(x);return x};
-  if(kind==='poster')return template();
-  if(kind==='sketch'){o('sketch',{});s.sketching=true;return s}
+  if(kind==='poster'){const t=template();t.objects.push(creditObj(t.w,t.h));return t}
+  if(kind==='sketch'){o('sketch',{});s.objects.push(creditObj(s.w,s.h));s.sketching=true;return s}
   if(kind==='abstract'){s.w=900;s.h=1200;o('text',{x:450,y:70,text:'Title of the study',size:34,weight:'700'});o('box',{x:450,y:620,w:820,h:960,rx:20,fill:'#f4f6fb',stroke:'#dfe4ee'});o('text',{x:450,y:1180,text:'Author · Institution · Year',size:14,color:'#6b7280'})}
   if(kind==='workflow'){['Step 1','Step 2','Step 3'].forEach((t,i)=>{const x=300+i*500;o('box',{x,y:450,w:380,h:420,rx:18,fill:['#f4f6fb','#f6f9f3','#fdf4ee'][i],stroke:['#dfe4ee','#dfe8d8','#f0dcc8'][i]});o('chip',{x:x-150,y:270,text:String(i+1),fill:'#1f2937',size:18});o('text',{x:x-120,y:277,text:t,size:22,weight:'700',anchor:'start'});o('text',{x,y:610,text:'What happens in this step',size:17,color:'#374151'});if(i<2)o('arrow',{x1:x+200,y1:450,x2:x+300,y2:450,color:'#a3acbd',width:6})})}
+  s.objects.push(creditObj(s.w,s.h));
   return s;
 }
 function openPop(m,btn){const r=btn.getBoundingClientRect();m.style.left=r.left+'px';m.style.top=(r.bottom+4)+'px';document.querySelectorAll('.pop.open').forEach(x=>{if(x!==m)x.classList.remove('open')});m.classList.toggle('open')}
