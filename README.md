@@ -28,6 +28,18 @@ otherwise the built-in PowerShell server.)
 Then the editor opens at <http://localhost:8770/>. Keep the server window open while you work.
 Works in any current browser (Chrome, Edge, Firefox, Safari); touchscreens are supported.
 
+## Quickest start: hand the link to your AI
+
+If you use an AI coding assistant that can run commands (Claude Code, Codex, Cursor or Copilot in
+agent mode), paste this and you are done:
+
+> Set up https://github.com/AlexDoesStuff-openaccess/openaccessfiguremaker for me: clone it (or
+> download and unzip the ZIP from the Code button), open the folder, read AGENTS.md, start the figure
+> editor and open it in my browser.
+
+Chat-only assistants cannot run anything on your computer; download the ZIP yourself and open the
+folder in a coding assistant.
+
 ## Use it with an AI assistant
 
 Open this folder in **Claude Code**, **Cursor**, **Codex**, **Copilot** or any assistant that reads
