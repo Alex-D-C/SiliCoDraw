@@ -22,6 +22,7 @@
   {"id": "o13i", "type": "icon", "x": 1300, "y": 430, "s": 1.3, "r": 0, "kind": "chart", "size": 100, "c1": "#6f86c8", "c2": "#e3955a", "label": "", "labelSize": 14},
   {"id": "o14", "type": "text", "x": 1300, "y": 600, "s": 1, "r": 0, "text": "Statistics and figures", "size": 17, "weight": "400", "italic": false, "color": "#374151", "anchor": "middle", "font": "Helvetica, Arial, sans-serif", "boxW": 0},
   {"id": "o15", "type": "text", "x": 800, "y": 90, "s": 1, "r": 0, "text": "A three-step workflow", "size": 34, "weight": "700", "italic": false, "color": "#1f2328", "anchor": "middle", "font": "Helvetica, Arial, sans-serif", "boxW": 0},
-  {"id": "o16", "type": "text", "x": 800, "y": 135, "s": 1, "r": 0, "text": "Example figure: File ▾ → New figure → “Example: three-step workflow”. Then drag items in from the Add panel.", "size": 15, "weight": "400", "italic": false, "color": "#6b7280", "anchor": "middle", "font": "Helvetica, Arial, sans-serif", "boxW": 0}
+  {"id": "o16", "type": "text", "x": 800, "y": 135, "s": 1, "r": 0, "text": "Example figure: File ▾ → New figure → “Example: three-step workflow”. Then drag items in from the Add panel.", "size": 15, "weight": "400", "italic": false, "color": "#6b7280", "anchor": "middle", "font": "Helvetica, Arial, sans-serif", "boxW": 0},
+  {"id": "credit", "type": "text", "x": 24, "y": 882, "s": 1, "r": 0, "text": "Made with SiliCoDraw · github.com/Alex-D-C/SiliCoDraw", "size": 12, "weight": "400", "italic": false, "color": "#9ca3af", "anchor": "start", "font": "Helvetica, Arial, sans-serif", "boxW": 0, "name": "credit"}
  ]
 }

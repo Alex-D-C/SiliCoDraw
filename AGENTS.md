@@ -24,7 +24,7 @@ other figure in this folder. A name that does not exist yet starts a blank figur
 | `history/<name>/` | automatic snapshots of a figure (at most one per 5 min, newest 60) |
 | `exports/` | PNG / SVG exports written by the editor |
 | `assets/` | images the user inserted (referenced as `assets/<file>` from the figure) |
-| `examples/` | example figures to copy from |
+| `examples/` | example figures to copy from (pathway, gantt, maths, data, icons, icon-library, workflow); they appear in File ▾ → New figure; `api/files?scope=examples` lists them |
 
 ## How to change a figure
 
@@ -38,8 +38,9 @@ Two ways; both are picked up by an open editor within ~1.5 s (it polls the file)
    `fig.selected()`, `fig.comments()`, `fig.reply(id, text, resolve)`, `fig.template()`.
    Helpers you may call: `bbox(id)` (rendered bounds), `render()`, `commit()` (push to undo + save).
 
-Exports: in the page, `await svgString({transparent})` returns a standalone SVG; the Export dialog
-writes PNG/SVG into `exports/`; you can POST bytes to `exports/<name>.png|svg` yourself.
+Exports: in the page, `await svgString({transparent})` returns a standalone SVG and
+`await exportPptx()` returns `{blob}` for a PowerPoint slide with editable objects; the Export dialog
+writes PNG/SVG/PPTX into `exports/`; you can POST bytes to `exports/<name>.png|svg|pptx` yourself.
 
 ## Figure file format
 
@@ -58,8 +59,18 @@ Defaults for every type are in `DEF` in figure-editor.html; the editable fields 
 | `chip` | pill label: `text`, `size`, `fill`, `color` |
 | `shape` | `kind` ellipse/circle/rect/triangle/diamond/hexagon/line, `w`, `h`, `fill`, `stroke`, `sw`, `rx`, `dash` |
 | `box` | rounded panel: `w`, `h`, `rx`, `fill`, `stroke`, `sw`, `dash` |
-| `arrow` | `x1,y1,x2,y2` (absolute), `bend`, `color`, `width`, `head` end/both/none, `dash` |
-| `icon` | `kind` (see `ICONS`: cell, cells, neuron, mito, protein, receptor, antibody, bacterium, virus, chromosome, brain, heart, drop, mouse, human, fish, tube, flask, wellplate, pipette, syringe, microscope, laptop, chart, clock, magnifier, bolt, gear), `size`, `c1`, `c2`, `label` |
+| `arrow` | `x1,y1,x2,y2` (absolute), `route` line/elbowH/elbowV, `bend` (line only), `head` and `tail` markers: arrow/open/bar (inhibition ⊣)/circle/diamond/none, `style` solid/dashed/dotted, `color`, `width`, `label` (text at the midpoint), `labelSize`. Older `head: end/both` + `dash` still load. |
+| `fplot` | function plot: `fns` (one expression of x per line, e.g. `sin(x)`, `a*exp(-b*x)`, `f(x) = x^2 - 2`; `#hex` sets the colour), `params` (`a=1, b=0.5`), `xmin`, `xmax`, `ymin`/`ymax` (blank = auto), `w`, `h`, `axes` origin/box/none, `grid`, `legend`, `xlabel`, `ylabel`, `labelSize`, `sw`, `color`, `color2`. Parser: + − × ÷ ^, implicit multiplication, pi, e, sin cos tan asin acos atan sinh cosh tanh exp ln log log10 log2 sqrt cbrt abs floor ceil round sign min max pow atan2. |
+| `geom` | live geometry: `kind` polygon/path/angle, `pts` `[[x,y],…]` in element coordinates (dragged by handles), `showAngles` (arcs + degrees, right-angle marker), `showSides` (lengths), `showArea`, `unit` (px per unit), `suffix`, `decimals`, `fill`, `stroke`, `sw`, `labelSize`, `color` |
+| `vec` | vector from the origin: `vx`, `vy` (units), `unit` (px per unit), `label`, `showComp`, `showAxes`, `showValues` (components, magnitude, angle), `decimals`, `color` |
+| `ucircle` | unit circle: `theta` (°), `rad` (radius px), `showSin`, `showCos`, `showTan`, `decimals`, `color` |
+| `mgrid`, `numline` | coordinate grid (`w`, `h`, `step`, `axes`, `labels`); number line (`min`, `max`, `step`, `len`, `marks` lines `name: value`) |
+| `gantt` | a whole Gantt chart; origin = top-left. `title`, `titleSize`, `titleStyle` bold/normal/italic, `cols` (`Nov\|Dec\|Jan…`), `colW`, `halves` (half-column dividers), `snap` (drag step in column units), `labelW` (label column), `rowH`, `barH`, `rx`, `labelSize`, `labelPos` left/bar, `colLabelSize`, `msSize`, `legend`, `legendSize`, `zebra`, `color`, `lineColor`, `today` (column units, red dashed line). Lists, one entry per line: `tasks` = `label\|start\|end\|phase[\|opacity]` (times in column units: 0 = start of first column, 1 = its end, 0.5 = half); `phases` = `key\|#fill\|legend label[\|flags[\|#stroke]]` (flags: `dashed`, `hidden` = not in the legend); `milestones` = `at\|row\|label` (row 1-based; `at` = a time, or `start`/`end` = attached to that row's bar so it moves with it); `deps` = `fromRow>toRow`. `labelPos` left/before/after/bar decides where task labels sit (before/after/bar travel with the bar). Users drag bars/ends/milestones on the canvas; you just edit the lists. |
+| `icon` | `kind`: one of ~280 flat icons in `ICONS` (cells & molecules, anatomy, organisms, chemistry, lab, medicine, mind & behaviour, statistics, AI & computing, mathematics, physics, engineering, energy & electronics, transport, earth & climate, ecology & agriculture, society & economics, food & sport, history & humanities, symbols; grouped in `ICON_GROUPS`; `Object.keys(ICONS)` lists them, e.g. cell, neuron, mito, receptor, antibody, bacterium, virus, lungs, liver, fly, yeast, molecule, atom, beaker, flask, pipette, microscope, stethoscope, scatter, boxplot, heatmap, neuralnet, robot, sigma, matrix, magnet, bulb, wrench, car, satellite, volcano, wheat, solarpanel, survey, coin, headmind, apple, galaxy, scroll, target, warning), `size`, `c1` (main colour), `c2` (accent), `label`. New icon: add `ICONS.key={n,t,c:[c1,c2],d:(a,b,o)=>svg}` drawn in a 100×100 box centred on 0 and list the key in `ICON_GROUPS`. |
+| `formula` | a LaTeX formula typeset to vector paths: `tex` (LaTeX, e.g. `\frac{dN}{dt} = rN`), `size` (font size px), `color`, `display` (true = large Σ ∫). The editor typesets it with MathJax (CDN, first use needs internet) and stores the paths in `paths`/`vb`; just set `tex` and let the page render. Users edit it with the formula builder (double-click). |
+| `plot` | a small chart from typed values: `kind` bar/line/scatter/box/pie, `data` (one line per item: bars `label: value ± err`, box `label: raw values`, line/scatter `name: x,y x,y …` or `name: y y y`, pie `label: value`; `#hex` at the end sets the colour), `w`, `h` (plot area), `color`, `color2`, `xlabel`, `ylabel`, `labelSize`, `ymin`/`ymax` (blank = auto), `axes`, `legend` |
+| `elem` | periodic-table tile: `symbol`, `number`, `mass`, `name`, `size`, `fill`, `stroke`, `color` |
+| `scalebar` | microscopy scale bar: `len` (px), `label` (e.g. `50 µm`), `thick`, `size`, `color`, `pos` above/below |
 | `image` | `src` (`assets/...` or data URL), `w`, `h`, `rounded`, `border` |
 | `legend` | `items` lines `kind|color|label` (kind circle/up/down/line/check/cross), `dir` v/h, `size` |
 | `funnel` | `stages` lines `label|count|color|height`, `wTop`, `wBottom`, `band`, `gap`, `countAt` band/after, `topCount` |

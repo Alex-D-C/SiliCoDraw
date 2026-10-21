@@ -8,8 +8,8 @@
 What it does:
   * serves figure-editor.html and the files in this folder
   * saves figures   (POST <name>.json), keeping a snapshot in history/<name>/ at most every 5 minutes
-  * writes exports  (POST exports/<name>.png|svg) and inserted images (POST assets/<name>.png|jpg|svg|...)
-  * api/files, api/history?file=..., api/rename?from=...&to=...   for the editor's File menu
+  * writes exports  (POST exports/<name>.png|svg|pptx) and inserted images (POST assets/<name>.png|jpg|svg|...)
+  * api/files, api/history?file=..., api/rename, api/move, api/delete   for the editor's File menu
 No dependencies beyond the Python 3 standard library.
 """
 import argparse, glob, json, os, re, shutil, sys, threading, time, urllib.parse, webbrowser
@@ -18,11 +18,12 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 NAME_RE = re.compile(r'^[\w.\-]+\.json$')
-FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp)$')
+FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx)$')
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
          '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
          '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
-         '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8'}
+         '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
+         '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'}
 SNAPSHOT_EVERY = 300   # seconds
 KEEP_SNAPSHOTS = 60
 
@@ -77,9 +78,9 @@ class Handler(BaseHTTPRequestHandler):
     # --- GET: editor, figure files, api ---
     def do_GET(self):
         path, q = self._parts()
-        if path == 'api/files':   # ?scope=active (root, default) | archive | trash
+        if path == 'api/files':   # ?scope=active (root, default) | archive | trash | examples
             scope = q.get('scope', [''])[0]
-            d = os.path.join(ROOT, scope) if scope in ('archive', 'trash') else ROOT
+            d = os.path.join(ROOT, scope) if scope in ('archive', 'trash', 'examples') else ROOT
             return self._json(entries(sorted(glob.glob(os.path.join(d, '*.json')))))
         if path == 'api/history':
             name = q.get('file', [''])[0]

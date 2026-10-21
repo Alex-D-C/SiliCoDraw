@@ -1,8 +1,8 @@
 # SiliCoDraw server: http://localhost:<port>/
 #  - serves the editor and the figure files in this folder
 #  - saves figures (POST <name>.json); before overwriting, keeps a snapshot in history\<name>\ (at most every 5 minutes)
-#  - writes exports (POST exports/<name>.png|svg)
-#  - api/files, api/history?file=..., api/rename?from=...&to=... for the editor's file menu
+#  - writes exports (POST exports/<name>.png|svg|pptx)
+#  - api/files, api/history?file=..., api/rename, api/move, api/delete for the editor's file menu
 param([int]$port = 8770)
 $root = $PSScriptRoot
 $nameRe = '^[\w.\-]+\.json$'
@@ -13,16 +13,18 @@ try { $l.Start() } catch {
   Start-Sleep -Seconds 5; exit 1
 }
 Write-Host "SiliCoDraw is running at http://localhost:$port/  (close this window to stop it)"
-$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp' }
+$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation' }
 
-function Send-Json($ctx, $obj) {
-  # an empty list must become "[]" (ConvertTo-Json gives nothing for an empty array in PowerShell 5.1)
-  $json = if ($null -eq $obj -or @($obj).Count -eq 0) { '[]' } else { ConvertTo-Json -InputObject @($obj) -Depth 4 -Compress }
+function Send-Raw($ctx, $json) {
   $b = [Text.Encoding]::UTF8.GetBytes($json)
   $ctx.Response.ContentType = 'application/json; charset=utf-8'
   $ctx.Response.Headers.Add('Cache-Control','no-store')
   $ctx.Response.ContentLength64 = $b.Length
   $ctx.Response.OutputStream.Write($b, 0, $b.Length)
+}
+function Send-Json($ctx, $obj) {
+  # an empty list must become "[]" (ConvertTo-Json gives nothing for an empty array in PowerShell 5.1)
+  Send-Raw $ctx $(if ($null -eq $obj -or @($obj).Count -eq 0) { '[]' } else { ConvertTo-Json -InputObject @($obj) -Depth 4 -Compress })
 }
 function Get-HistoryDir($name) { Join-Path $root ('history\' + [IO.Path]::GetFileNameWithoutExtension($name)) }
 function Get-Entries($files) {
@@ -38,9 +40,9 @@ while ($l.IsListening) {
     $full = [IO.Path]::GetFullPath((Join-Path $root $path))
 
     if ($path -eq 'api/files') {
-      # ?scope=active (root, default) | archive | trash
+      # ?scope=active (root, default) | archive | trash | examples
       $scope = $req.QueryString['scope']
-      $dir = if ($scope -eq 'archive' -or $scope -eq 'trash') { Join-Path $root $scope } else { $root }
+      $dir = if ($scope -eq 'archive' -or $scope -eq 'trash' -or $scope -eq 'examples') { Join-Path $root $scope } else { $root }
       $list = if (Test-Path $dir) { Get-ChildItem -Path $dir -Filter *.json -File | Sort-Object Name } else { @() }
       Send-Json $ctx (Get-Entries $list)
     } elseif ($req.HttpMethod -eq 'POST' -and $path -eq 'api/move') {
@@ -85,7 +87,7 @@ while ($l.IsListening) {
       $reader = New-Object IO.StreamReader($req.InputStream, [Text.Encoding]::UTF8)
       [IO.File]::WriteAllText($full, $reader.ReadToEnd(), (New-Object Text.UTF8Encoding $false))
       $ctx.Response.StatusCode = 204
-    } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp)$') {
+    } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx)$') {
       # exports (PNG/SVG) and inserted images (assets) are written as files into their folder
       New-Item -ItemType Directory -Force (Join-Path $root $Matches[1]) | Out-Null
       $ms = New-Object IO.MemoryStream
