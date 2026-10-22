@@ -4,6 +4,7 @@ exports/
 assets/
 archive/
 trash/
+updates/
 .claude/
 
 # private-folder tooling (never part of the public version)
