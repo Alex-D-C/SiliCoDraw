@@ -18,23 +18,19 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 </tr>
 <tr>
 <td><img src="docs/example-signalling.png" alt="A ligand drawn from SMILES binding a GPCR in a bendable lipid bilayer, a kinase cascade and a bar chart"><br><sub><b>Signalling at a membrane</b>: the ligand is drawn from its SMILES, the bilayer bends and stretches with draggable points, the receptor and cascade are library icons, the chart is typed values.</sub></td>
-<td><img src="docs/example-ageing.png" alt="Four-panel workflow of a C. elegans lifespan study with Kaplan-Meier curves and hallmark icons"><br><sub><b>Workflow figures</b>: panels with letters, a petri-dish element, Kaplan–Meier curves and the hallmarks-of-ageing icons.</sub></td>
-</tr>
-<tr>
 <td><img src="docs/example-immunology.png" alt="Adaptive immune response from vaccine antigen to antibodies, with labelled arrows"><br><sub><b>Immunology schematics</b>: immune-cell icons, antigen presentation, cytokine labels on arrows, an inhibition arrow for neutralisation, a legend.</sub></td>
-<td><img src="docs/example-chemistry.png" alt="Drug structures laid out from SMILES and a Fischer esterification scheme"><br><sub><b>Chemistry</b>: structures typed as SMILES and laid out automatically, a reaction scheme with a labelled arrow, a periodic-table tile.</sub></td>
 </tr>
 <tr>
+<td><img src="docs/example-chemistry.png" alt="Drug structures laid out from SMILES and a Fischer esterification scheme"><br><sub><b>Chemistry</b>: structures typed as SMILES and laid out automatically, a reaction scheme with a labelled arrow, a periodic-table tile.</sub></td>
 <td><img src="docs/example-maths.png" alt="Function plots, a triangle with live angles, a vector, a unit circle and typeset formulas"><br><sub><b>Working mathematics</b>: typed functions are plotted, shapes report their angles and lengths while you drag their corners, formulas are typeset from LaTeX.</sub></td>
+</tr>
+<tr>
 <td><img src="docs/example-data.png" alt="Bar, box, line, scatter and pie charts drawn from typed values"><br><sub><b>Charts from typed values</b>: bars with error bars, box plots from raw numbers, lines, scatter, pie; plus a periodic-table tile and a scale bar.</sub></td>
+<td><img src="docs/example-workflow.png" alt="A three-step workflow figure with numbered panels and arrows"><br><sub><b>Workflow figures</b>: numbered panels, library icons and arrows, made from the built-in parts in a few minutes (`examples/workflow.json`).</sub></td>
 </tr>
 </table>
 
 ![72 of the ~930 icons](docs/example-icons.png)
-
-A figure made from the built-in parts in a few minutes (`examples/workflow.json`):
-
-![Example: a three-step workflow figure](docs/example-workflow.png)
 
 All of these are in `examples/` and open from **File ▾ → New figure → Example: …**, so you can take
 them apart.
@@ -214,7 +210,7 @@ serve.py / serve.ps1 the server (same API; PowerShell one needs no Python on Win
 update.py / update.ps1   the updater (see "Keeping it up to date")
 Start SiliCoDraw.bat / .command, start.sh, Update SiliCoDraw.bat / .command, update.sh   launchers
 figure.json, *.json  your figures (one file each)
-examples/            example figures: signalling, ageing-workflow, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow
+examples/            example figures: signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow
 docs/                the pictures in this README
 history/             automatic snapshots      exports/   PNG, SVG, PPTX      assets/   inserted images + my-icons.json (your own icons)
 ```

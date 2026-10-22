@@ -25,7 +25,7 @@ other figure in this folder. A name that does not exist yet starts a blank figur
 | `history/<name>/` | automatic snapshots of a figure (at most one per 5 min, newest 60) |
 | `exports/` | PNG / SVG exports written by the editor |
 | `assets/` | images the user inserted (referenced as `assets/<file>` from the figure) |
-| `examples/` | example figures to copy from (signalling, ageing-workflow, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow); they appear in File ▾ → New figure; `api/files?scope=examples` lists them |
+| `examples/` | example figures to copy from (signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow); they appear in File ▾ → New figure; `api/files?scope=examples` lists them |
 
 ## How to change a figure
 
