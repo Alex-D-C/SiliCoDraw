@@ -17,6 +17,14 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 <td width="50%"><img src="docs/example-gantt.png" alt="A project Gantt chart"><br><sub><b>Gantt charts</b> as one editable element: drag a bar sideways to shift it, up or down to change its row, drag its ends to resize; milestones stay attached.</sub></td>
 </tr>
 <tr>
+<td><img src="docs/example-signalling.png" alt="A ligand drawn from SMILES binding a GPCR in a bendable lipid bilayer, a kinase cascade and a bar chart"><br><sub><b>Signalling at a membrane</b>: the ligand is drawn from its SMILES, the bilayer bends and stretches with draggable points, the receptor and cascade are library icons, the chart is typed values.</sub></td>
+<td><img src="docs/example-ageing.png" alt="Four-panel workflow of a C. elegans lifespan study with Kaplan-Meier curves and hallmark icons"><br><sub><b>Workflow figures</b>: panels with letters, a petri-dish element, Kaplan–Meier curves and the hallmarks-of-ageing icons.</sub></td>
+</tr>
+<tr>
+<td><img src="docs/example-immunology.png" alt="Adaptive immune response from vaccine antigen to antibodies, with labelled arrows"><br><sub><b>Immunology schematics</b>: immune-cell icons, antigen presentation, cytokine labels on arrows, an inhibition arrow for neutralisation, a legend.</sub></td>
+<td><img src="docs/example-chemistry.png" alt="Drug structures laid out from SMILES and a Fischer esterification scheme"><br><sub><b>Chemistry</b>: structures typed as SMILES and laid out automatically, a reaction scheme with a labelled arrow, a periodic-table tile.</sub></td>
+</tr>
+<tr>
 <td><img src="docs/example-maths.png" alt="Function plots, a triangle with live angles, a vector, a unit circle and typeset formulas"><br><sub><b>Working mathematics</b>: typed functions are plotted, shapes report their angles and lengths while you drag their corners, formulas are typeset from LaTeX.</sub></td>
 <td><img src="docs/example-data.png" alt="Bar, box, line, scatter and pie charts drawn from typed values"><br><sub><b>Charts from typed values</b>: bars with error bars, box plots from raw numbers, lines, scatter, pie; plus a periodic-table tile and a scale bar.</sub></td>
 </tr>
@@ -122,6 +130,17 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   line.
 - **Gantt charts**: tasks, phases, milestones and dependencies as short lists; bars are dragged in
   time and across rows, resized at the ends, and milestones can be attached to a bar's start or end.
+- **Bendable membranes and filaments**: a lipid bilayer drawn along a curve with draggable points.
+  Drag an end to make it longer (lipids are added by themselves), drag a middle point to bend it, add
+  points for more bends, or close the loop for a vesicle or a cell outline with a filled inside. The
+  same element draws monolayers, bead filaments (actin-like) and tubes (microtubule-like).
+- **Chemical structures**: a skeletal-formula editor. Type a SMILES string (`CCCC(=O)O`, `c1ccccc1`,
+  caffeine, glucose…) and it is laid out: rings as regular polygons, fused rings, zigzag chains,
+  substituents pointing outwards, heteroatoms labelled with their hydrogens, charges, double and
+  triple bonds. Then build by hand: click an atom and blue dots show where a bond can go, click one
+  to grow a carbon, type a letter to change the element (C N O S P F B I, L = Cl, R = Br), 1/2/3 for
+  the bond order, W and D for wedge and hashed bonds, + and − for charges, Del to remove. Drag atoms
+  to tidy (they snap to 30° and the bond length). Templates for common molecules are in the panel.
 - A periodic-table tile, a microscopy scale bar, a funnel diagram, a Kaplan–Meier-style sketch, a QR
   code, legends, label chips.
 - **Editable icons**: right-click an icon → *Convert to editable parts* turns it into plain shapes you
@@ -195,7 +214,7 @@ serve.py / serve.ps1 the server (same API; PowerShell one needs no Python on Win
 update.py / update.ps1   the updater (see "Keeping it up to date")
 Start SiliCoDraw.bat / .command, start.sh, Update SiliCoDraw.bat / .command, update.sh   launchers
 figure.json, *.json  your figures (one file each)
-examples/            example figures: pathway, gantt, maths, data, icons, icon-library, workflow
+examples/            example figures: signalling, ageing-workflow, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow
 docs/                the pictures in this README
 history/             automatic snapshots      exports/   PNG, SVG, PPTX      assets/   inserted images + my-icons.json (your own icons)
 ```
