@@ -9,7 +9,7 @@ abstracts, workflow diagrams) made for co-designing figures with an AI assistant
 python3 serve.py            # macOS / Linux / Windows with Python  → http://localhost:8770/
 ```
 Windows without Python: `powershell -NoProfile -ExecutionPolicy Bypass -File serve.ps1`
-(or the user double-clicks `Start SiliCoDraw.bat`).
+(or the user double-clicks `Start SiliCoDraw.bat`; macOS: `sh start.sh` or `Start SiliCoDraw.command`).
 
 Open `http://localhost:8770/` for `figure.json`, or `http://localhost:8770/?file=<name>.json` for any
 other figure in this folder. A name that does not exist yet starts a blank figure.
@@ -20,6 +20,7 @@ other figure in this folder. A name that does not exist yet starts a blank figur
 |---|---|
 | `figure-editor.html` | the whole editor (vanilla JS, single file) |
 | `serve.py` / `serve.ps1` | tiny file server with the save / history / export API (identical behaviour) |
+| `update.py` / `update.ps1` | public release only: fetches the current version from GitHub and replaces the software files; never figures, `history/`, `exports/`, `assets/`, `archive/`, `trash/` (launchers `Update SiliCoDraw.bat` / `.command`, `update.sh`) |
 | `*.json` (root) | one figure per file; `figure.json` is the default |
 | `history/<name>/` | automatic snapshots of a figure (at most one per 5 min, newest 60) |
 | `exports/` | PNG / SVG exports written by the editor |
@@ -41,6 +42,8 @@ Two ways; both are picked up by an open editor within ~1.5 s (it polls the file)
 Exports: in the page, `await svgString({transparent})` returns a standalone SVG and
 `await exportPptx()` returns `{blob}` for a PowerPoint slide with editable objects; the Export dialog
 writes PNG/SVG/PPTX into `exports/`; you can POST bytes to `exports/<name>.png|svg|pptx` yourself.
+Several figures at once: File ▾ → "Export several figures…" (`batchExportDialog()`): PNG/SVG per
+figure, or one `.pptx` with a slide per figure (`pptxSetup` + `pptxAddScene` per rendered scene).
 
 ## Figure file format
 
@@ -66,12 +69,15 @@ Defaults for every type are in `DEF` in figure-editor.html; the editable fields 
 | `ucircle` | unit circle: `theta` (°), `rad` (radius px), `showSin`, `showCos`, `showTan`, `decimals`, `color` |
 | `mgrid`, `numline` | coordinate grid (`w`, `h`, `step`, `axes`, `labels`); number line (`min`, `max`, `step`, `len`, `marks` lines `name: value`) |
 | `gantt` | a whole Gantt chart; origin = top-left. `title`, `titleSize`, `titleStyle` bold/normal/italic, `cols` (`Nov\|Dec\|Jan…`), `colW`, `halves` (half-column dividers), `snap` (drag step in column units), `labelW` (label column), `rowH`, `barH`, `rx`, `labelSize`, `labelPos` left/bar, `colLabelSize`, `msSize`, `legend`, `legendSize`, `zebra`, `color`, `lineColor`, `today` (column units, red dashed line). Lists, one entry per line: `tasks` = `label\|start\|end\|phase[\|opacity]` (times in column units: 0 = start of first column, 1 = its end, 0.5 = half); `phases` = `key\|#fill\|legend label[\|flags[\|#stroke]]` (flags: `dashed`, `hidden` = not in the legend); `milestones` = `at\|row\|label` (row 1-based; `at` = a time, or `start`/`end` = attached to that row's bar so it moves with it); `deps` = `fromRow>toRow`. `labelPos` left/before/after/bar decides where task labels sit (before/after/bar travel with the bar). Users drag bars/ends/milestones on the canvas; you just edit the lists. |
-| `icon` | `kind`: one of ~280 flat icons in `ICONS` (cells & molecules, anatomy, organisms, chemistry, lab, medicine, mind & behaviour, statistics, AI & computing, mathematics, physics, engineering, energy & electronics, transport, earth & climate, ecology & agriculture, society & economics, food & sport, history & humanities, symbols; grouped in `ICON_GROUPS`; `Object.keys(ICONS)` lists them, e.g. cell, neuron, mito, receptor, antibody, bacterium, virus, lungs, liver, fly, yeast, molecule, atom, beaker, flask, pipette, microscope, stethoscope, scatter, boxplot, heatmap, neuralnet, robot, sigma, matrix, magnet, bulb, wrench, car, satellite, volcano, wheat, solarpanel, survey, coin, headmind, apple, galaxy, scroll, target, warning), `size`, `c1` (main colour), `c2` (accent), `label`. New icon: add `ICONS.key={n,t,c:[c1,c2],d:(a,b,o)=>svg}` drawn in a 100×100 box centred on 0 and list the key in `ICON_GROUPS`. |
+| `icon` | `kind`: one of ~640 flat icons in `ICONS` (cells & tissues, molecules & genetics, ageing & hallmarks, immunology & infection, anatomy, organisms, chemistry, lab, techniques & assays, medicine, mind & behaviour, statistics, AI & computing, mathematics, physics, engineering, energy & electronics, transport, earth & climate, ecology & agriculture, society & economics, food & sport, history & humanities, symbols; grouped in `ICON_GROUPS`; `Object.keys(ICONS)` lists them, e.g. cell, neuron, mito, receptor, gpcr, kinase, antibody, tcell, macrophage, bacterium, phage, virus, lungs, liver, colon, mouse, nematode, killifish, fly, yeast, molecule, atom, beaker, flask, pipette, microscope, westernblot, elisa, patchclamp, stethoscope, elder, scatter, boxplot, heatmap, neuralnet, robot, sigma, matrix, magnet, bulb, wrench, car, satellite, volcano, wheat, solarpanel, survey, coin, headmind, apple, galaxy, scroll, target, warning), `size`, `c1` (main colour), `c2` (accent), `label`. New icon: add `ICONS.key={n,t,c:[c1,c2],d:(a,b,o)=>svg}` drawn in a 100×100 box centred on 0 and list the key in `ICON_GROUPS`. |
 | `formula` | a LaTeX formula typeset to vector paths: `tex` (LaTeX, e.g. `\frac{dN}{dt} = rN`), `size` (font size px), `color`, `display` (true = large Σ ∫). The editor typesets it with MathJax (CDN, first use needs internet) and stores the paths in `paths`/`vb`; just set `tex` and let the page render. Users edit it with the formula builder (double-click). |
 | `plot` | a small chart from typed values: `kind` bar/line/scatter/box/pie, `data` (one line per item: bars `label: value ± err`, box `label: raw values`, line/scatter `name: x,y x,y …` or `name: y y y`, pie `label: value`; `#hex` at the end sets the colour), `w`, `h` (plot area), `color`, `color2`, `xlabel`, `ylabel`, `labelSize`, `ymin`/`ymax` (blank = auto), `axes`, `legend` |
 | `elem` | periodic-table tile: `symbol`, `number`, `mass`, `name`, `size`, `fill`, `stroke`, `color` |
 | `scalebar` | microscopy scale bar: `len` (px), `label` (e.g. `50 µm`), `thick`, `size`, `color`, `pos` above/below |
 | `image` | `src` (`assets/...` or data URL), `w`, `h`, `rounded`, `border` |
+| `path` | one editable shape: `d` (SVG path data in element coordinates), `ox`/`oy` (offset so the anchor is the shape's centre), `fill`, `stroke`, `sw`, `dash`. Right-click an icon (or any composite element) → **Convert to editable parts** turns it into independent `path`/`text` elements (not grouped, so each part is selected and moved on its own); the user then recolours, moves or deletes them and box-selects them to fuse. |
+| `custom` | one element holding raw SVG: `svg` (fragment in element coordinates), `w`, `h`. Right-click several selected elements → **Fuse into one element** produces it (keeps figures fast); **Convert to editable parts** splits it again. Exports as a picture in PPTX. |
+| user icons | **Fuse & save as icon** stores an edited icon in the user's own library as `bird2`, `bird3`… (`ICONS[key].user === true`; the library's `bird` is untouched). Definitions `{n, t, svg, k, c, from}` live in `assets/my-icons.json` (never replaced by the updater; written through `POST assets/my-icons.json`) and are embedded as `scene.icons` in every figure that uses them, so a figure renders anywhere. They appear under "My icons" in the Add panel; ✕ on an item removes it from the library (figures that still use it keep their copy). |
 | `legend` | `items` lines `kind|color|label` (kind circle/up/down/line/check/cross), `dir` v/h, `size` |
 | `funnel` | `stages` lines `label|count|color|height`, `wTop`, `wBottom`, `band`, `gap`, `countAt` band/after, `topCount` |
 | `qr` | `url` (QR is regenerated when it changes), `size` |

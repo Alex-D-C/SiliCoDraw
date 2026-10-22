@@ -20,7 +20,7 @@ function Send-Raw($ctx, $json) {
   $ctx.Response.ContentType = 'application/json; charset=utf-8'
   $ctx.Response.Headers.Add('Cache-Control','no-store')
   $ctx.Response.ContentLength64 = $b.Length
-  $ctx.Response.OutputStream.Write($b, 0, $b.Length)
+  if ($ctx.Request.HttpMethod -ne 'HEAD') { $ctx.Response.OutputStream.Write($b, 0, $b.Length) }   # a HEAD probe (e.g. from a launcher) gets headers only
 }
 function Send-Json($ctx, $obj) {
   # an empty list must become "[]" (ConvertTo-Json gives nothing for an empty array in PowerShell 5.1)
@@ -87,8 +87,8 @@ while ($l.IsListening) {
       $reader = New-Object IO.StreamReader($req.InputStream, [Text.Encoding]::UTF8)
       [IO.File]::WriteAllText($full, $reader.ReadToEnd(), (New-Object Text.UTF8Encoding $false))
       $ctx.Response.StatusCode = 204
-    } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx)$') {
-      # exports (PNG/SVG) and inserted images (assets) are written as files into their folder
+    } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|json)$') {
+      # exports (PNG/SVG/PPTX), inserted images and the user's own icon library (assets/my-icons.json) are written as files into their folder
       New-Item -ItemType Directory -Force (Join-Path $root $Matches[1]) | Out-Null
       $ms = New-Object IO.MemoryStream
       $req.InputStream.CopyTo($ms)
@@ -100,7 +100,7 @@ while ($l.IsListening) {
       $ctx.Response.ContentType = if ($types[$ext]) { $types[$ext] } else { 'application/octet-stream' }
       $ctx.Response.Headers.Add('Cache-Control','no-store')
       $ctx.Response.ContentLength64 = $bytes.Length
-      $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length)
+      if ($req.HttpMethod -ne 'HEAD') { $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length) }
     } else { $ctx.Response.StatusCode = 404 }
   } catch {
     Write-Host "Request failed: $($_.Exception.Message)"

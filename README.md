@@ -22,7 +22,7 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 </tr>
 </table>
 
-![72 of the ~280 icons](docs/example-icons.png)
+![72 of the ~640 icons](docs/example-icons.png)
 
 A figure made from the built-in parts in a few minutes (`examples/workflow.json`):
 
@@ -33,14 +33,30 @@ them apart.
 
 ## Quick start
 
-**Windows:** double-click `Start SiliCoDraw.bat`. (Nothing to install; uses Python if you have it,
-otherwise the built-in PowerShell server.)
+Get the folder: green **Code** button → *Download ZIP* and unzip it (or `git clone`). Nothing to
+install: the editor is one HTML file plus a small server that needs only Python 3, and Windows works
+even without Python.
 
-**macOS / Linux:** `python3 serve.py` (or `sh start.sh`). Python 3 is all you need; no packages.
+| | Start it |
+|---|---|
+| **Windows** | double-click `Start SiliCoDraw.bat` (uses Python if you have it, otherwise the built-in PowerShell server) |
+| **macOS** | run `sh start.sh` in Terminal the first time (it also makes the double-click launchers executable); after that, double-click `Start SiliCoDraw.command` (if macOS says it cannot be opened, right-click it → *Open* once) |
+| **Linux** | `sh start.sh` (or `python3 serve.py`) |
 
-Then the editor opens at <http://localhost:8770/>. Keep the server window open while you work.
-Works in any current browser (Chrome, Edge, Firefox, Safari); touchscreens are supported (one finger
-moves, two fingers zoom and pan, tap a text twice to edit it, press and hold for the menu).
+The editor opens at <http://localhost:8770/> in your browser. Keep the server window open while you
+work; close it to stop. Works in any current browser (Chrome, Edge, Firefox, Safari); on a Mac the
+shortcuts use ⌘ where this README says Ctrl. Touchscreens are supported (one finger moves, two
+fingers zoom and pan, tap a text twice to edit it, press and hold for the menu).
+
+## Keeping it up to date
+
+Run the updater in the folder: `Update SiliCoDraw.bat` (Windows), `Update SiliCoDraw.command`
+(macOS), `sh update.sh` (Linux / macOS) or `python3 update.py` anywhere. It downloads the current
+version of this repository and replaces only the software files (editor, servers, launchers, docs,
+examples). Your figures, `history/`, `exports/`, `assets/`, `archive/` and `trash/` are never touched and
+nothing is deleted; replaced files are kept in `updates/backup-<date>/` for a while. `python3 update.py
+--check` only lists what would change. If you cloned with git, `git pull` does the same. Restart the
+server afterwards.
 
 ## Quickest start: hand the link to your AI
 
@@ -72,12 +88,26 @@ format, every element type and the review loop.
 
 ## Features
 
-**A library that covers most fields.** About 280 flat, recolourable icons in 20 groups: cells &
-molecules, anatomy, organisms, chemistry, lab equipment, medicine & clinical, mind & behaviour,
-statistics & data, AI & computing, mathematics, physics, engineering & materials, energy &
-electronics, transport & aerospace, earth & climate, ecology & agriculture, society & economics,
-food & sport, history & humanities, symbols. Every icon has a main and an accent colour you can
-change. Search all 300+ items by name or keyword, jump to a group with the chips, collapse groups,
+**A library that covers most fields.** About 640 flat, recolourable icons in 24 groups: cells &
+tissues (organelles, cell types, bacteria, viruses, cell processes such as phagocytosis, endocytosis,
+differentiation, migration, angiogenesis and metastasis, the cell cycle and spindle), molecules &
+genetics (receptors, kinases, DNA replication, repair and transcription factors, CRISPR, RNAi,
+vectors, small molecules), ageing & hallmarks (plus sarcopenia, osteoporosis, healthspan, senolytics,
+reprogramming, parabiosis), immunology & infection (immune cells, antibodies, antigen presentation,
+complement, pathogens from coronavirus to helminths, antibiotics and resistance), anatomy (organs and
+their functional units: alveoli, nephron, villi, islets, blood–brain barrier, retina, cochlea…),
+organisms (from nematode and killifish to naked mole-rat, bat, whale and Arabidopsis), chemistry
+(benzene, amino acid, polymer, titration, distillation, electrolysis…), lab equipment, techniques &
+assays (western blot, ELISA, qPCR, patch clamp, optogenetics, nanopore, single-cell droplets,
+behavioural mazes, organ-on-a-chip, xenografts, cohorts and randomisation…), medicine & clinical
+(imaging, vaccines, devices, risk factors), mind & behaviour, statistics & data (volcano, Manhattan,
+UMAP, ROC, forest and epidemic curves), AI & computing (transformer attention, GPU, qubit, confusion
+matrix…), mathematics, physics (particles, projectile, double slit, fission…), engineering &
+materials (graphene, nanotube, lattice, gears, robot arm…), energy & electronics, transport &
+aerospace, earth & climate (carbon and water cycles, hurricane, global warming…), ecology &
+agriculture, society & economics (scientist, doctor, family, poster, peer review, open access…),
+food, sport & nutrition, history & humanities, symbols. Every icon has a main and an accent colour you
+can change. Search all 900 items by name or keyword, jump to a group with the chips, collapse groups,
 and the things you used recently stay at the top. Missing something? Ask your assistant to draw it;
 an icon is ten lines of SVG and `AGENTS.md` explains the format.
 
@@ -94,6 +124,11 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   time and across rows, resized at the ends, and milestones can be attached to a bar's start or end.
 - A periodic-table tile, a microscopy scale bar, a funnel diagram, a Kaplan–Meier-style sketch, a QR
   code, legends, label chips.
+- **Editable icons**: right-click an icon → *Convert to editable parts* turns it into plain shapes you
+  can recolour, move, resize or delete. Select them and choose *Fuse & save as icon* when you are done:
+  the result becomes one light element again and joins the Add panel as *bird2*, *bird3*… under
+  **My icons** (the built-in icon is untouched; ✕ on an item removes it). Your icons are kept in
+  `assets/my-icons.json`, which updates never touch, and are embedded in the figures that use them.
 
 **Arrows for pathways.** Arrow, open, inhibitor ⊣, circle and diamond ends at either end, straight,
 curved or elbow routing, solid, dashed or dotted, and an optional label on the line.
@@ -112,7 +147,9 @@ while you watch.
 
 **Export for print and slides.** PNG at any physical width and dpi (tagged so Word and PowerPoint
 place it at the right size), optionally transparent; SVG; and a PowerPoint slide in which text,
-shapes, chips, arrows, funnels and legends stay native editable objects.
+shapes, chips, arrows, funnels and legends stay native editable objects. **Several figures at once**:
+tick them in a list with thumbnails and get one file each, or one PowerPoint deck with a slide per
+figure.
 
 ## Working in the editor
 
@@ -120,7 +157,8 @@ shapes, chips, arrows, funnels and legends stay native editable objects.
   title to collapse it; items you used recently stay at the top. Click or drag items onto the page.
   Drop or paste image files to insert them.
 - Double-click text to edit it in place; double-click a formula for the builder. Right-click for the
-  menu. `?` shows all shortcuts.
+  menu (it also has *Convert to editable parts* for icons and *Fuse into one element* for a
+  selection). `?` shows all shortcuts.
 - Text boxes: drag the side handles to set the width; the text re-wraps, the font size stays.
 - `Ctrl+G` groups, `Ctrl+D` duplicates, `Ctrl+S` saves now (it also saves automatically),
   `Space`+drag pans, `Ctrl`+wheel / pinch zooms, `Shift+1` fits the page.
@@ -130,7 +168,8 @@ shapes, chips, arrows, funnels and legends stay native editable objects.
 - **Sketch mode** (pencil button, or File ▾ → New figure → "Sketch my idea first"): draw a rough idea
   with a pen and place text notes, then press **Build it with my AI**.
 - **Export**: PNG with print width + dpi (optionally transparent), SVG, or a PowerPoint `.pptx`, all
-  written to `exports/`.
+  written to `exports/`. **File ▾ → Export several figures…** (or "Several figures…" in the Export
+  dialog) exports a selection of figures in one go, or builds one PowerPoint with a slide per figure.
 - New figures start with a small grey "Made with SiliCoDraw" line in the bottom-left corner. It is an
   ordinary text element: move it, edit it, or delete it.
 
@@ -153,10 +192,12 @@ plain file move, so you can also do it in your file manager while the editor is 
 ```
 figure-editor.html   the editor
 serve.py / serve.ps1 the server (same API; PowerShell one needs no Python on Windows)
+update.py / update.ps1   the updater (see "Keeping it up to date")
+Start SiliCoDraw.bat / .command, start.sh, Update SiliCoDraw.bat / .command, update.sh   launchers
 figure.json, *.json  your figures (one file each)
 examples/            example figures: pathway, gantt, maths, data, icons, icon-library, workflow
 docs/                the pictures in this README
-history/             automatic snapshots      exports/   PNG, SVG, PPTX      assets/   inserted images
+history/             automatic snapshots      exports/   PNG, SVG, PPTX      assets/   inserted images + my-icons.json (your own icons)
 ```
 
 ## Privacy and network
