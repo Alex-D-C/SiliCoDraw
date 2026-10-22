@@ -38,6 +38,11 @@ while ($l.IsListening) {
     $path = [Uri]::UnescapeDataString($req.Url.AbsolutePath.TrimStart('/'))
     if ($path -eq '') { $path = 'figure-editor.html' }
     $full = [IO.Path]::GetFullPath((Join-Path $root $path))
+    # writes are accepted from the editor (same origin) and from local tools, never from a web page on another site
+    # (a browser marks such requests with Sec-Fetch-Site: cross-site and an Origin that is not localhost)
+    $origin = $req.Headers['Origin']; $site = $req.Headers['Sec-Fetch-Site']
+    $foreign = ($site -eq 'cross-site') -or ($origin -and ($origin -notmatch '^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$') -and ($origin -ne ('http://' + $req.Headers['Host'])))
+    if ($req.HttpMethod -eq 'POST' -and $foreign) { $ctx.Response.StatusCode = 403; $ctx.Response.Close(); continue }
 
     if ($path -eq 'api/files') {
       # ?scope=active (root, default) | archive | trash | examples

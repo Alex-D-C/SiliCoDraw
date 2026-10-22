@@ -98,6 +98,12 @@ class Handler(BaseHTTPRequestHandler):
     # --- POST: save figure, rename, exports / assets ---
     def do_POST(self):
         path, q = self._parts()
+        # writes are accepted from the editor (same origin) and from local tools, never from a web page on another
+        # site: a browser marks such a request with Sec-Fetch-Site: cross-site and an Origin that is not this server
+        origin, site, host = self.headers.get('Origin') or '', self.headers.get('Sec-Fetch-Site') or '', self.headers.get('Host') or ''
+        local = re.match(r'^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$', origin) or origin == 'http://' + host
+        if site == 'cross-site' or (origin and not local):
+            return self._send(403, b'forbidden: writes from another site are not accepted')
         if path == 'api/move':   # between active (root), archive/ and trash/
             name, frm, to = q.get('file', [''])[0], q.get('from', [''])[0], q.get('to', [''])[0]
             d_from = os.path.join(ROOT, frm) if frm in ('archive', 'trash') else ROOT
