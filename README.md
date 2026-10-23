@@ -13,15 +13,15 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 
 <table>
 <tr>
-<td width="50%"><img src="docs/example-pathway.png" alt="A receptor signalling pathway with activation and inhibition arrows"><br><sub><b>Pathway figures</b> from the icon library and the new arrows: activation, inhibition ⊣, dashed feedback, elbow connectors, labels on arrows.</sub></td>
+<td width="50%"><img src="docs/example-pathway.png" alt="A receptor signaling pathway with activation and inhibition arrows"><br><sub><b>Pathway figures</b> from the icon library and the new arrows: activation, inhibition ⊣, dashed feedback, elbow connectors, labels on arrows.</sub></td>
 <td width="50%"><img src="docs/example-gantt.png" alt="A project Gantt chart"><br><sub><b>Gantt charts</b> as one editable element: drag a bar sideways to shift it, up or down to change its row, drag its ends to resize; milestones stay attached.</sub></td>
 </tr>
 <tr>
-<td><img src="docs/example-signalling.png" alt="A ligand drawn from SMILES binding a GPCR in a bendable lipid bilayer, a kinase cascade and a bar chart"><br><sub><b>Signalling at a membrane</b>: the ligand is drawn from its SMILES, the bilayer bends and stretches with draggable points, the receptor and cascade are library icons, the chart is typed values.</sub></td>
-<td><img src="docs/example-immunology.png" alt="Adaptive immune response from vaccine antigen to antibodies, with labelled arrows"><br><sub><b>Immunology schematics</b>: immune-cell icons, antigen presentation, cytokine labels on arrows, an inhibition arrow for neutralisation, a legend.</sub></td>
+<td><img src="docs/example-signalling.png" alt="A ligand drawn from SMILES binding a GPCR in a bendable lipid bilayer, a kinase cascade and a bar chart"><br><sub><b>Signaling at a membrane</b>: the ligand is drawn from its SMILES, the bilayer bends and stretches with draggable points, the receptor and cascade are library icons, the chart is typed values.</sub></td>
+<td><img src="docs/example-immunology.png" alt="Adaptive immune response from vaccine antigen to antibodies, with labeled arrows"><br><sub><b>Immunology schematics</b>: immune-cell icons, antigen presentation, cytokine labels on arrows, an inhibition arrow for neutralization, a legend.</sub></td>
 </tr>
 <tr>
-<td><img src="docs/example-chemistry.png" alt="Drug structures laid out from SMILES and a Fischer esterification scheme"><br><sub><b>Chemistry</b>: structures typed as SMILES and laid out automatically, a reaction scheme with a labelled arrow, a periodic-table tile.</sub></td>
+<td><img src="docs/example-chemistry.png" alt="Drug structures laid out from SMILES and a Fischer esterification scheme"><br><sub><b>Chemistry</b>: structures typed as SMILES and laid out automatically, a reaction scheme with a labeled arrow, a periodic-table tile.</sub></td>
 <td><img src="docs/example-maths.png" alt="Function plots, a triangle with live angles, a vector, a unit circle and typeset formulas"><br><sub><b>Working mathematics</b>: typed functions are plotted, shapes report their angles and lengths while you drag their corners, formulas are typeset from LaTeX.</sub></td>
 </tr>
 <tr>
@@ -92,25 +92,25 @@ format, every element type and the review loop.
 
 ## Features
 
-**A library that covers most fields.** About 1200 flat, recolourable icons in 24 groups: cells &
+**A library that covers most fields.** About 1200 flat, recolorable icons in 24 groups: cells &
 tissues (organelles, cell types, bacteria, viruses, cell processes such as phagocytosis, endocytosis,
 differentiation, migration, angiogenesis and metastasis, the cell cycle and spindle), molecules &
 genetics (receptors, kinases, DNA replication, repair and transcription factors, CRISPR, RNAi,
-vectors, small molecules), ageing & hallmarks (plus sarcopenia, osteoporosis, healthspan, senolytics,
+vectors, small molecules), aging & hallmarks (plus sarcopenia, osteoporosis, healthspan, senolytics,
 reprogramming, parabiosis), immunology & infection (immune cells, antibodies, antigen presentation,
 complement, pathogens from coronavirus to helminths, antibiotics and resistance), anatomy (organs and
 their functional units: alveoli, nephron, villi, islets, blood–brain barrier, retina, cochlea…),
 organisms (from nematode and killifish to naked mole-rat, bat, whale and Arabidopsis), chemistry
 (benzene, amino acid, polymer, titration, distillation, electrolysis…), lab equipment, techniques &
 assays (western blot, ELISA, qPCR, patch clamp, optogenetics, nanopore, single-cell droplets,
-behavioural mazes, organ-on-a-chip, xenografts, cohorts and randomisation…), medicine & clinical
-(imaging, vaccines, devices, risk factors), mind & behaviour, statistics & data (volcano, Manhattan,
+behavioral mazes, organ-on-a-chip, xenografts, cohorts and randomization…), medicine & clinical
+(imaging, vaccines, devices, risk factors), mind & behavior, statistics & data (volcano, Manhattan,
 UMAP, ROC, forest and epidemic curves), AI & computing (transformer attention, GPU, qubit, confusion
 matrix…), mathematics, physics (particles, projectile, double slit, fission…), engineering &
 materials (graphene, nanotube, lattice, gears, robot arm…), energy & electronics, transport &
 aerospace, earth & climate (carbon and water cycles, hurricane, global warming…), ecology &
 agriculture, society & economics (scientist, doctor, family, poster, peer review, open access…),
-food, sport & nutrition, history & humanities, symbols. Every icon has a main and an accent colour you
+food, sport & nutrition, history & humanities, symbols. Every icon has a main and an accent color you
 can change. Search all 1850 items by name or keyword, jump to a group with the chips, collapse groups,
 and the things you used recently stay at the top. Missing something? Ask your assistant to draw it;
 an icon is ten lines of SVG and `AGENTS.md` explains the format.
@@ -132,7 +132,7 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   same element draws monolayers, bead filaments (actin-like) and tubes (microtubule-like).
 - **Chemical structures**: a skeletal-formula editor. Type a SMILES string (`CCCC(=O)O`, `c1ccccc1`,
   caffeine, glucose…) and it is laid out: rings as regular polygons, fused rings, zigzag chains,
-  substituents pointing outwards, heteroatoms labelled with their hydrogens, charges, double and
+  substituents pointing outwards, heteroatoms labeled with their hydrogens, charges, double and
   triple bonds. Then build by hand: click an atom and blue dots show where a bond can go, click one
   to grow a carbon, type a letter to change the element (C N O S P F B I, L = Cl, R = Br), 1/2/3 for
   the bond order, W and D for wedge and hashed bonds, + and − for charges, Del to remove. Drag atoms
@@ -140,7 +140,7 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
 - A periodic-table tile, a microscopy scale bar, a funnel diagram, a Kaplan–Meier-style sketch, a QR
   code, legends, label chips.
 - **Editable icons**: right-click an icon → *Convert to editable parts* turns it into plain shapes you
-  can recolour, move, resize or delete. Select them and choose *Fuse & save as icon* when you are done:
+  can recolor, move, resize or delete. Select them and choose *Fuse & save as icon* when you are done:
   the result becomes one light element again and joins the Add panel as *bird2*, *bird3*… under
   **My icons** (the built-in icon is untouched; ✕ on an item removes it). Your icons are kept in
   `assets/my-icons.json`, which updates never touch, and are embedded in the figures that use them.
@@ -150,7 +150,7 @@ curved or elbow routing, solid, dashed or dotted, and an optional label on the l
 
 **Editing that stays out of the way.** Smart alignment guides and snapping, groups, align and
 distribute, layers with lock and hide, right-click menu, in-place text editing, text boxes that
-re-wrap when resized, a figure-wide colour palette with "replace a colour everywhere", templates,
+re-wrap when resized, a figure-wide color palette with "replace a color everywhere", templates,
 resizable side panels, keyboard shortcuts (`?` shows them), unlimited undo, automatic version history,
 archive and trash for finished or abandoned figures.
 
@@ -185,7 +185,7 @@ figure.
 - **Export**: PNG with print width + dpi (optionally transparent), SVG, or a PowerPoint `.pptx`, all
   written to `exports/`. **File ▾ → Export several figures…** (or "Several figures…" in the Export
   dialog) exports a selection of figures in one go, or builds one PowerPoint with a slide per figure.
-- New figures start with a small grey "Made with SiliCoDraw" line in the bottom-left corner. It is an
+- New figures start with a small gray "Made with SiliCoDraw" line in the bottom-left corner. It is an
   ordinary text element: move it, edit it, or delete it.
 
 ## Managing figures: active, archived, trash
