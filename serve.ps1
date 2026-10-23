@@ -99,6 +99,8 @@ while ($l.IsListening) {
       $req.InputStream.CopyTo($ms)
       [IO.File]::WriteAllBytes($full, $ms.ToArray())
       $ctx.Response.StatusCode = 204
+    } elseif ($req.HttpMethod -eq 'POST') {
+      $ctx.Response.StatusCode = 405   # nothing else can be written to
     } elseif ($full.StartsWith($root) -and (Test-Path $full -PathType Leaf)) {
       $bytes = [IO.File]::ReadAllBytes($full)
       $ext = [IO.Path]::GetExtension($full).ToLower()

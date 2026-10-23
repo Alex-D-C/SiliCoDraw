@@ -30,7 +30,7 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 </tr>
 </table>
 
-![72 of the ~930 icons](docs/example-icons.png)
+![72 of the ~1200 icons](docs/example-icons.png)
 
 All of these are in `examples/` and open from **File ▾ → New figure → Example: …**, so you can take
 them apart.
@@ -92,7 +92,7 @@ format, every element type and the review loop.
 
 ## Features
 
-**A library that covers most fields.** About 930 flat, recolourable icons in 24 groups: cells &
+**A library that covers most fields.** About 1200 flat, recolourable icons in 24 groups: cells &
 tissues (organelles, cell types, bacteria, viruses, cell processes such as phagocytosis, endocytosis,
 differentiation, migration, angiogenesis and metastasis, the cell cycle and spindle), molecules &
 genetics (receptors, kinases, DNA replication, repair and transcription factors, CRISPR, RNAi,
@@ -111,7 +111,7 @@ materials (graphene, nanotube, lattice, gears, robot arm…), energy & electroni
 aerospace, earth & climate (carbon and water cycles, hurricane, global warming…), ecology &
 agriculture, society & economics (scientist, doctor, family, poster, peer review, open access…),
 food, sport & nutrition, history & humanities, symbols. Every icon has a main and an accent colour you
-can change. Search all 1400 items by name or keyword, jump to a group with the chips, collapse groups,
+can change. Search all 1850 items by name or keyword, jump to a group with the chips, collapse groups,
 and the things you used recently stay at the top. Missing something? Ask your assistant to draw it;
 an icon is ten lines of SVG and `AGENTS.md` explains the format.
 
