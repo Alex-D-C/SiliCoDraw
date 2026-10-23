@@ -44,7 +44,7 @@ even without Python.
 | | Start it |
 |---|---|
 | **Windows** | double-click `Start SiliCoDraw.bat` (uses Python if you have it, otherwise the built-in PowerShell server) |
-| **macOS** | run `sh start.sh` in Terminal the first time (it also makes the double-click launchers executable); after that, double-click `Start SiliCoDraw.command` (if macOS says it cannot be opened, right-click it → *Open* once) |
+| **macOS** | run `sh start.sh` in Terminal the first time (it makes the double-click launchers executable and clears the download "quarantine" flag); after that, double-click `Start SiliCoDraw.command`. If macOS still says the file cannot be opened / "Apple could not verify" it (it is not from the App Store, so Gatekeeper blocks it once): System Settings → Privacy & Security → **Open Anyway**, or in Terminal `xattr -dr com.apple.quarantine <the SiliCoDraw folder>` |
 | **Linux** | `sh start.sh` (or `python3 serve.py`) |
 
 The editor opens at <http://localhost:8770/> in your browser. Keep the server window open while you
