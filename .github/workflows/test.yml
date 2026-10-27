@@ -1,0 +1,30 @@
+# Runs after every upload to GitHub: installs and starts SiliCoDraw on real macOS, Linux and Windows machines.
+# Results: the repository's "Actions" tab (a green check mark next to the latest commit = all good).
+name: install-and-start
+on:
+  push:
+  workflow_dispatch:
+jobs:
+  mac-linux:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test (installer, first start, server, updater)
+        run: sh tests/smoke.sh
+      - name: The one-line installer exactly as written in the README
+        if: github.ref == 'refs/heads/main'
+        run: |
+          export SILICODRAW_DIR="$RUNNER_TEMP/oneliner/SiliCoDraw" SILICODRAW_NO_START=1
+          curl -fsSL https://raw.githubusercontent.com/Alex-D-C/SiliCoDraw/main/install.sh | sh
+          test -f "$SILICODRAW_DIR/figure-editor.html"
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Smoke test (built-in PowerShell server, updater)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\smoke.ps1
