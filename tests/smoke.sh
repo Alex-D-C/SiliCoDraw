@@ -73,7 +73,7 @@ if [ "${SILICODRAW_TEST_ONLINE:-1}" != 0 ] || [ -n "${SILICODRAW_TEST_ZIP:-}" ];
   else bad "installer failed"; fi
 fi
 if [ "${SILICODRAW_TEST_ONLINE:-1}" != 0 ]; then
-  if "$PY" "$ROOT/update.py" --check --yes </dev/null >"$TMP/upd.log" 2>&1; then ok "updater --check"; else bad "updater --check: $(tail -5 "$TMP/upd.log")"; fi
+  if "$PY" "$ROOT/update.py" --check --yes --force </dev/null >"$TMP/upd.log" 2>&1; then ok "updater --check"; else bad "updater --check: $(tail -5 "$TMP/upd.log")"; fi
 fi
 
 [ $FAIL = 0 ] && echo "All checks passed." || echo "Some checks FAILED."

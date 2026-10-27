@@ -258,6 +258,7 @@ def run(a, st):
     say('  folder: %s' % ROOT)
     say('  source: https://github.com/%s (%s)' % (a.repo, a.branch))
     if os.path.isdir(os.path.join(ROOT, '.git')) and not a.force:
+        st['result'] = 'not started'
         raise Stop('This folder is a git clone: update it with "git pull" instead (or run again with --force).')
     if not a.check:
         say(NOTICE)

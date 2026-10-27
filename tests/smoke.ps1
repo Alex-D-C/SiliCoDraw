@@ -35,7 +35,7 @@ try {
   Remove-Item "$root\history\zz-smoke" -Recurse -Force -ErrorAction SilentlyContinue
 }
 if (-not $Offline) {
-  $out = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\update.ps1" -Check -Yes 2>&1 | Out-String
+  $out = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\update.ps1" -Check -Yes -Force 2>&1 | Out-String
   if ($LASTEXITCODE -eq 0) { Ok 'updater -Check' } else { Bad "updater -Check: $out" }
 }
 if ($fail) { Write-Host 'Some checks FAILED.' } else { Write-Host 'All checks passed.' }
