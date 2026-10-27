@@ -12,11 +12,14 @@ What it does:
   * api/files, api/history?file=..., api/rename, api/move, api/delete   for the editor's File menu
 No dependencies beyond the Python 3 standard library.
 """
-import argparse, glob, json, os, re, shutil, sys, threading, time, urllib.parse, webbrowser
+import sys
+if sys.version_info < (3, 7):
+    sys.exit('SiliCoDraw needs Python 3.7 or newer (this is %d.%d). Get it from https://www.python.org/downloads/' % sys.version_info[:2])
+import argparse, glob, json, os, re, shutil, threading, time, urllib.parse, urllib.request, webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
-ROOT = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))   # realpath: a folder reached through a symlink still works
 NAME_RE = re.compile(r'^[\w.\-]+\.json$')
 FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|json)$')   # exports, inserted images, the user's icon library
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
@@ -25,6 +28,7 @@ TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 
          '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
          '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'}
 SNAPSHOT_EVERY = 300   # seconds
+ANY_HOST = False       # True when started with --host other than 127.0.0.1 (reachable from the network on purpose)
 KEEP_SNAPSHOTS = 60
 
 
@@ -75,8 +79,19 @@ class Handler(BaseHTTPRequestHandler):
     def _body(self):
         return self.rfile.read(int(self.headers.get('Content-Length') or 0))
 
+    def _host_ok(self):
+        """Only requests addressed to this computer by name: a page on another site that points its own domain name at
+        127.0.0.1 (DNS rebinding) sends its own name in Host and is refused, so it can neither read nor write figures."""
+        if ANY_HOST:
+            return True
+        h = (self.headers.get('Host') or '').strip().lower()
+        name = h.split(']')[0] + ']' if h.startswith('[') else h.rsplit(':', 1)[0]
+        return name in ('', 'localhost', '127.0.0.1', '[::1]')
+
     # --- GET: editor, figure files, api ---
     def do_GET(self):
+        if not self._host_ok():
+            return self._send(403, b'forbidden: unknown host name')
         path, q = self._parts()
         if path == 'api/files':   # ?scope=active (root, default) | archive | trash | examples
             scope = q.get('scope', [''])[0]
@@ -89,7 +104,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._json(entries(sorted(glob.glob(os.path.join(d, '*.json')), key=os.path.getmtime, reverse=True)))
             return self._json([])
         full = os.path.realpath(os.path.join(ROOT, path))
-        if full.startswith(ROOT) and os.path.isfile(full):
+        if full.startswith(ROOT + os.sep) and os.path.isfile(full):
             with open(full, 'rb') as f:
                 data = f.read()
             return self._send(200, data, TYPES.get(os.path.splitext(full)[1].lower(), 'application/octet-stream'))
@@ -97,6 +112,8 @@ class Handler(BaseHTTPRequestHandler):
 
     # --- POST: save figure, rename, exports / assets ---
     def do_POST(self):
+        if not self._host_ok():
+            return self._send(403, b'forbidden: unknown host name')
         path, q = self._parts()
         # writes are accepted from the editor (same origin) and from local tools, never from a web page on another
         # site: a browser marks such a request with Sec-Fetch-Site: cross-site and an Origin that is not this server
@@ -156,13 +173,28 @@ def main():
     ap.add_argument('--host', default='127.0.0.1', help='127.0.0.1 (this computer only, default) or 0.0.0.0 (your whole network)')
     ap.add_argument('--no-browser', action='store_true', help='do not open the editor in a browser')
     a = ap.parse_args()
+    global ANY_HOST
+    ANY_HOST = a.host not in ('127.0.0.1', 'localhost', '::1')
+    url = f'http://localhost:{a.port}/'
     try:
         srv = ThreadingHTTPServer((a.host, a.port), Handler)
     except OSError as e:
-        print(f'Could not start on port {a.port}: {e}\nIf the editor is already running, just open http://localhost:{a.port}/')
+        # started twice (e.g. the launcher double-clicked again): if SiliCoDraw already answers there, just show it
+        try:
+            with urllib.request.urlopen(url + 'api/files', timeout=3) as r:
+                running = r.status == 200
+        except Exception:
+            running = False
+        if running:
+            print(f'SiliCoDraw is already running at {url}' + ('' if a.no_browser else ' (opening it in your browser)'))
+            if not a.no_browser:
+                webbrowser.open(url)
+            sys.exit(0)
+        print(f'Could not start on port {a.port}: {e}\nAnother program uses this port. Close it, or start SiliCoDraw on another port:'
+              f'\n  python3 serve.py --port {a.port + 1}')
         sys.exit(1)
-    url = f'http://localhost:{a.port}/'
-    print(f'SiliCoDraw is running at {url}  (Ctrl+C to stop)')
+    print(f'SiliCoDraw is running at {url}\n'
+          'Leave this window open while you work (you can minimize it). To quit SiliCoDraw, close this window.', flush=True)
     if not a.no_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:

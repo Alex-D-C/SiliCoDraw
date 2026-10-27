@@ -35,32 +35,128 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 All of these are in `examples/` and open from **File ▾ → New figure → Example: …**, so you can take
 them apart.
 
-## Quick start
+## Install and start
 
-Get the folder: green **Code** button → *Download ZIP* and unzip it (or `git clone`). Nothing to
-install: the editor is one HTML file plus a small server that needs only Python 3, and Windows works
-even without Python.
+SiliCoDraw runs on your own computer and opens in your web browser. It is free, and it does not need
+an account.
 
-| | Start it |
+### Mac
+
+**The easy way: one line in Terminal (about one minute).**
+
+1. Open **Terminal**: press **⌘ Command + Space**, type `Terminal` and press **Return**.
+2. Copy this line, paste it into the Terminal window (**⌘ V**) and press **Return**:
+
+   ```bash
+   curl -fsSL https://raw.githubusercontent.com/Alex-D-C/SiliCoDraw/main/install.sh | sh
+   ```
+
+3. SiliCoDraw is downloaded into a folder called **SiliCoDraw** in your home folder, and the editor
+   opens in your browser. That folder is also where your figures are saved.
+4. Leave the Terminal window open while you work (you can minimize it). To quit SiliCoDraw, close it
+   (if macOS asks whether to terminate the running process, click **Terminate**).
+
+**Next time**, start it like any app: press **⌘ Command + Space**, type `SiliCoDraw` and press
+**Return**. You can also double-click **Start SiliCoDraw.command** in the SiliCoDraw folder.
+
+**If Terminal says that SiliCoDraw needs Python 3**, a window also asks to install the "command line
+developer tools". Click **Install**, wait until it says the software was installed (5 to 20 minutes),
+then paste the same line into Terminal again. If no such window appears, install Python 3 from
+[python.org/downloads](https://www.python.org/downloads/) and paste the line again.
+
+**If a window asks whether Terminal may access a folder**, click **Allow**.
+
+<details>
+<summary><b>Plan B for a Mac: download the ZIP instead</b></summary>
+
+1. On this page, click the green **Code** button, then **Download ZIP**. Safari unzips it into a folder
+   called **SiliCoDraw-main** in your Downloads folder (otherwise double-click the ZIP file).
+2. Open **Terminal** (**⌘ Command + Space**, type `Terminal`, press **Return**).
+3. Type `sh` followed by a space. Do not press Return yet.
+4. Drag the file **start.sh** from the SiliCoDraw-main folder into the Terminal window, then press
+   **Return**. If macOS asks whether Terminal may access your Downloads folder, click **Allow**.
+5. SiliCoDraw offers to move its folder out of Downloads into your home folder, where it is safe from
+   clean-ups. Press **Return** to accept.
+
+After that, start it with **⌘ Command + Space**, `SiliCoDraw`, **Return**, as above.
+
+Why not just double-click a file in the ZIP? macOS blocks programs from the internet that are not from
+the App Store, with a message such as *"Apple could not verify…"* or *"could not be executed because you
+do not have appropriate access privileges"*. Starting SiliCoDraw once from Terminal as above removes
+that block for this folder. If you already double-clicked and saw such a message, click **Done** or
+**OK** (not *Move to Trash*) and continue with step 2.
+</details>
+
+### Windows
+
+1. On this page, click the green **Code** button, then **Download ZIP**.
+2. Open your Downloads folder, right-click the ZIP file and choose **Extract All…**, then **Extract**.
+   SiliCoDraw does not run from inside the ZIP file. You can move the extracted folder to Documents.
+3. Open the extracted folder (if it only contains another **SiliCoDraw-main** folder, open that one too)
+   and double-click **Start SiliCoDraw.bat**.
+4. If Windows shows *"Windows protected your PC"*, click **More info**, then **Run anyway**. Windows
+   shows this once for files downloaded from the internet.
+5. The editor opens in your browser. Leave the black window open while you work (you can minimize it).
+   To quit SiliCoDraw, close it.
+
+Python is not needed on Windows: the start file uses Python if it is installed and Windows' own
+PowerShell otherwise.
+
+### Linux
+
+The Mac line works on Linux too, or download the folder and run `sh start.sh`. It needs Python 3.7 or
+newer (`sudo apt install python3` on Ubuntu).
+
+### Good to know
+
+The editor lives at <http://localhost:8770/> while SiliCoDraw runs; bookmark it if you like. It works
+in any current browser (Chrome, Edge, Firefox, Safari). On a Mac the shortcuts use ⌘ where this
+README says Ctrl. Touchscreens work too: one finger moves, two fingers zoom and pan, tap a text twice
+to edit it, press and hold for the menu.
+
+<details>
+<summary><b>Something did not work?</b></summary>
+
+| What you see | What to do |
 |---|---|
-| **Windows** | double-click `Start SiliCoDraw.bat` (uses Python if you have it, otherwise the built-in PowerShell server) |
-| **macOS** | run `sh start.sh` in Terminal the first time (it makes the double-click launchers executable and clears the download "quarantine" flag); after that, double-click `Start SiliCoDraw.command`. If macOS still says the file cannot be opened / "Apple could not verify" it (it is not from the App Store, so Gatekeeper blocks it once): System Settings → Privacy & Security → **Open Anyway**, or in Terminal `xattr -dr com.apple.quarantine <the SiliCoDraw folder>` |
-| **Linux** | `sh start.sh` (or `python3 serve.py`) |
+| The page says **Server offline** | The Terminal window (Mac) or black window (Windows) was closed. Start SiliCoDraw again; your work was saved. |
+| Mac: *"Apple could not verify…"*, *"cannot be opened"* or *"could not be executed because you do not have appropriate access privileges"* | Click **Done** or **OK**, then use Plan B above (steps 2 to 4). |
+| Mac: *"Operation not permitted"* | Click **Allow** when macOS asks about folder access, or move the SiliCoDraw folder into your home folder and start it again. |
+| Mac: Command + Space does not find SiliCoDraw | Start it once with the Terminal line or Plan B; that creates the app. Spotlight can take a minute to find a new app. |
+| Mac: *SiliCoDraw cannot find its folder* | The folder was moved or renamed. Start it once from its new place with Plan B steps 2 to 4; that repairs the app. |
+| Windows: *"cannot run from inside the ZIP file"* | Extract the ZIP first (step 2), then start SiliCoDraw from the extracted folder. |
+| *"Could not start on port 8770"* | Another program uses that port. Restart the computer and start SiliCoDraw again. Or use another port. On a Mac, run `sh ~/SiliCoDraw/start.sh --port 8771` in Terminal. On Windows, open the SiliCoDraw folder, type `powershell -ExecutionPolicy Bypass -File serve.ps1 -port 8771` in the address bar of the folder window and press Enter. Then open <http://localhost:8771/>. |
 
-The editor opens at <http://localhost:8770/> in your browser. Keep the server window open while you
-work; close it to stop. Works in any current browser (Chrome, Edge, Firefox, Safari); on a Mac the
-shortcuts use ⌘ where this README says Ctrl. Touchscreens are supported (one finger moves, two
-fingers zoom and pan, tap a text twice to edit it, press and hold for the menu).
+Still stuck? Open an issue on the [issues page](https://github.com/Alex-D-C/SiliCoDraw/issues) and
+say what you did and what you saw.
+</details>
 
 ## Keeping it up to date
 
-Run the updater in the folder: `Update SiliCoDraw.bat` (Windows), `Update SiliCoDraw.command`
-(macOS), `sh update.sh` (Linux / macOS) or `python3 update.py` anywhere. It downloads the current
-version of this repository and replaces only the software files (editor, servers, launchers, docs,
-examples). Your figures, `history/`, `exports/`, `assets/`, `archive/` and `trash/` are never touched and
-nothing is deleted; replaced files are kept in `updates/backup-<date>/` for a while. `python3 update.py
---check` only lists what would change. If you cloned with git, `git pull` does the same. Restart the
-server afterwards.
+**Please read first: the updater is new and has not been tested by its author yet.** Before you
+update, save your work, close SiliCoDraw, and copy your figures (the `.json` files in the SiliCoDraw
+folder, and the `assets` folder) to a separate place, such as another folder or a USB stick. After
+updating, please report how it went on the [issues page](https://github.com/Alex-D-C/SiliCoDraw/issues),
+whether it worked or not. The updater prints a link that fills in the report for you; it contains no
+personal information, and you need a free GitHub account to send it.
+
+To update, open the SiliCoDraw folder and:
+
+- **Mac**: double-click **Update SiliCoDraw.command** (a Terminal window opens).
+- **Windows**: double-click **Update SiliCoDraw.bat**.
+- **Linux**: run `sh update.sh`.
+
+The updater shows the notice above and changes nothing until you type **Y** and press Return. Then it:
+
+1. downloads the newest version and checks that the download is complete,
+2. saves a copy of your figures in `updates/figures-backup-<date>.zip`,
+3. replaces only the software files (the editor, servers, launchers, docs and examples), keeping the
+   previous version of each in `updates/backup-<date>/` (the newest 5 are kept),
+4. puts every file back as it was if anything goes wrong in the middle.
+
+Your figures, `history/`, `exports/`, `assets/`, `archive/` and `trash/` are never touched. Start
+SiliCoDraw again afterwards and reload the browser page. If you cloned the folder with git, use
+`git pull` instead.
 
 ## Quickest start: hand the link to your AI
 
@@ -116,6 +212,11 @@ and the things you used recently stay at the top. Missing something? Ask your as
 an icon is ten lines of SVG and `AGENTS.md` explains the format.
 
 **Elements that do work, not just pictures.**
+- **Rich text anywhere**: select part of a text and press the bar (or Ctrl+B / I / U) for **bold**,
+  *italic*, underline, strikethrough, superscript and subscript (`x^2`, `Ca^{2+}`, `H_2O`, `CO_{2}`) or a
+  colored run (`{#d64545|text}`). The same marks work in chips, arrow labels and legends, lone
+  significance stars are left alone, species names are italicized automatically, and every run
+  survives the PowerPoint export as real formatting.
 - **Formulas**: a LaTeX element with a builder (Greek letters, operators, fractions, roots, matrices,
   ready-made equations, live preview), typeset into real vector paths that export cleanly.
 - **Charts from your data**: type values in the side panel and get bars with error bars, box plots
@@ -152,7 +253,8 @@ curved or elbow routing, solid, dashed or dotted, and an optional label on the l
 distribute, layers with lock and hide, right-click menu, in-place text editing, text boxes that
 re-wrap when resized, a figure-wide color palette with "replace a color everywhere", templates,
 resizable side panels, keyboard shortcuts (`?` shows them), unlimited undo, automatic version history,
-archive and trash for finished or abandoned figures.
+archive and trash for finished or abandoned figures. A light and a dark theme, four interface styles
+and three panel layouts let you make the editor your own.
 
 **Built for the review loop with an AI.** Pin a **comment** anywhere on the figure; the assistant
 (or a colleague) replies on it. **Sketch mode**: draw a rough idea with a pen, add text notes, press
@@ -162,9 +264,9 @@ while you watch.
 
 **Export for print and slides.** PNG at any physical width and dpi (tagged so Word and PowerPoint
 place it at the right size), optionally transparent; SVG; and a PowerPoint slide in which text,
-shapes, chips, arrows, funnels and legends stay native editable objects. **Several figures at once**:
-tick them in a list with thumbnails and get one file each, or one PowerPoint deck with a slide per
-figure.
+shapes, chips, arrows, funnels and legends stay native editable objects (Google Slides opens the same
+file, equally editable). **Several figures at once**: tick them in a list with thumbnails and get one
+file each, or one PowerPoint deck with a slide per figure.
 
 ## Working in the editor
 
@@ -178,6 +280,11 @@ figure.
 - `Ctrl+G` groups, `Ctrl+D` duplicates, `Ctrl+S` saves now (it also saves automatically),
   `Space`+drag pans, `Ctrl`+wheel / pinch zooms, `Shift+1` fits the page.
 - Drag the edge of either side panel to make it wider or narrower (double-click the edge to reset).
+- **Appearance** (the gear button, or **File ▾ → Appearance…**): a light or dark theme (or follow your
+  computer), four interface styles (Classic, Soft, Flat, High contrast), five accent colors, three panel
+  layouts (standard, swapped, or both panels on the right), larger text, compact spacing, words under
+  the toolbar icons, and fewer animations. `Ctrl+\` hides both side panels (focus mode). These settings
+  change only the editor and are saved in your browser: figures and exports always look the same.
 - **File ▾**: new figure (from templates, the examples, or a copy), duplicate, rename, version
   history, archive (keeps the figure list short), trash (restorable; delete permanently from the trash).
 - **Sketch mode** (pencil button, or File ▾ → New figure → "Sketch my idea first"): draw a rough idea
@@ -208,7 +315,9 @@ plain file move, so you can also do it in your file manager while the editor is 
 figure-editor.html   the editor
 serve.py / serve.ps1 the server (same API; PowerShell one needs no Python on Windows)
 update.py / update.ps1   the updater (see "Keeping it up to date")
+install.sh           the one-line installer for macOS and Linux
 Start SiliCoDraw.bat / .command, start.sh, Update SiliCoDraw.bat / .command, update.sh   launchers
+updates/             figure backups and previous software versions made by the updater
 figure.json, *.json  your figures (one file each)
 examples/            example figures: signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow
 docs/                the pictures in this README

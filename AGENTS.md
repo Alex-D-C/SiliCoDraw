@@ -9,7 +9,9 @@ abstracts, workflow diagrams) made for co-designing figures with an AI assistant
 python3 serve.py            # macOS / Linux / Windows with Python  → http://localhost:8770/
 ```
 Windows without Python: `powershell -NoProfile -ExecutionPolicy Bypass -File serve.ps1`
-(or the user double-clicks `Start SiliCoDraw.bat`; macOS: `sh start.sh` or `Start SiliCoDraw.command`).
+(or the user double-clicks `Start SiliCoDraw.bat`; macOS: `sh start.sh` or `Start SiliCoDraw.command`). The servers need Python 3.7 or newer (`serve.ps1` needs none).
+Mac users usually install with the one-line installer (README, "Install and start"): it puts the folder in `~/SiliCoDraw`
+and creates `~/Applications/SiliCoDraw.app`, so they start it with Command+Space, "SiliCoDraw".
 
 Open `http://localhost:8770/` for `figure.json`, or `http://localhost:8770/?file=<name>.json` for any
 other figure in this folder. A name that does not exist yet starts a blank figure.
@@ -20,7 +22,8 @@ other figure in this folder. A name that does not exist yet starts a blank figur
 |---|---|
 | `figure-editor.html` | the whole editor (vanilla JS, single file) |
 | `serve.py` / `serve.ps1` | tiny file server with the save / history / export API (identical behavior) |
-| `update.py` / `update.ps1` | public release only: fetches the current version from GitHub and replaces the software files; never figures, `history/`, `exports/`, `assets/`, `archive/`, `trash/` (launchers `Update SiliCoDraw.bat` / `.command`, `update.sh`) |
+| `update.py` / `update.ps1` | public release only: fetches the current version from GitHub and replaces the software files; never figures, `history/`, `exports/`, `assets/`, `archive/`, `trash/` (launchers `Update SiliCoDraw.bat` / `.command`, `update.sh`). It shows a notice and asks first (`--yes` / `-Yes` skips the question, `--check` / `-Check` only lists the changes), zips the figures into `updates/figures-backup-<date>.zip`, and puts everything back if it fails part-way. Never run it in a git clone (`git pull` there). |
+| `install.sh` | public release only: the macOS / Linux one-line installer (`curl -fsSL https://raw.githubusercontent.com/Alex-D-C/SiliCoDraw/main/install.sh \| sh`) |
 | `*.json` (root) | one figure per file; `figure.json` is the default |
 | `history/<name>/` | automatic snapshots of a figure (at most one per 5 min, newest 60) |
 | `exports/` | PNG / SVG exports written by the editor |
@@ -38,9 +41,13 @@ Two ways; both are picked up by an open editor within ~1.5 s (it polls the file)
    `fig.get()`, `fig.set(scene)`, `fig.add(type, props)`, `fig.update(id, props)`, `fig.remove(id)`,
    `fig.selected()`, `fig.comments()`, `fig.reply(id, text, resolve)`, `fig.template()`.
    Helpers you may call: `bbox(id)` (rendered bounds), `render()`, `commit()` (push to undo + save).
+   `fig.prefs()` returns the editor's Appearance settings and `fig.prefs({theme: 'dark'})` changes them (theme
+   light/dark/system, style classic/soft/flat/contrast, accent, layout std/swap/right, text, density, labels, motion).
+   They live in the browser only, never in the figure, and never change exports.
 
 Exports: in the page, `await svgString({transparent})` returns a standalone SVG and
-`await exportPptx()` returns `{blob}` for a PowerPoint slide with editable objects; the Export dialog
+`await exportPptx()` returns `{blob}` for a PowerPoint slide with editable objects (Google Slides opens
+the same `.pptx`); the Export dialog
 writes PNG/SVG/PPTX into `exports/`; you can POST bytes to `exports/<name>.png|svg|pptx` yourself.
 Several figures at once: File ▾ → "Export several figures…" (`batchExportDialog()`): PNG/SVG per
 figure, or one `.pptx` with a slide per figure (`pptxSetup` + `pptxAddScene` per rendered scene).
@@ -58,7 +65,7 @@ Defaults for every type are in `DEF` in figure-editor.html; the editable fields 
 
 | type | key props |
 |---|---|
-| `text` | `text` (`\n` = line break), `size`, `weight` 300–700, `italic`, `color`, `anchor` start/middle/end, `font`, `boxW` (wrap width, 0 = none) |
+| `text` | `text` (`\n` = line break; inline formatting in any text: `**bold**`, `*italic*`, `__underline__`, `~~strike~~`, `x^2` / `x^{2+}` superscript, `H_2O` / `CO_{2}` subscript, `{#hex\|colored}`; lone `*` and snake_case are left alone), `size`, `weight` 300–700, `italic`, `color`, `anchor` start/middle/end, `font`, `boxW` (wrap width, 0 = none) |
 | `chip` | pill label: `text`, `size`, `fill`, `color` |
 | `shape` | `kind` ellipse/circle/rect/triangle/diamond/hexagon/line, `w`, `h`, `fill`, `stroke`, `sw`, `rx`, `dash` |
 | `box` | rounded panel: `w`, `h`, `rx`, `fill`, `stroke`, `sw`, `dash` |
@@ -85,7 +92,7 @@ Defaults for every type are in `DEF` in figure-editor.html; the editable fields 
 | `qr` | `url` (QR is regenerated when it changes), `size` |
 | `survival` | Kaplan-Meier-style sketch: `w`, `h`, `color`, `doses`, `effect`, `series` lines `name:#hex` (first = control) |
 | `gradbar`, `capsule`, `worm`, `dna`, `plate`, `badge`, `sketch` | gradient arrow, pill, C. elegans, DNA helix, petri dish, check/cross, the user's pen sketch; see `DEF` |
-| `comment` | a review note: `text`, `reply`, `resolved`, `x, y` where it points. **Never exported.** |
+| `comment` | a review note: `text`, `reply`, `resolved`, `collapsed` (bubble closed with its ✕; selecting it opens it again), `x, y` where it points. A comment left without text and reply is removed by the editor. **Never exported.** |
 
 ## Comments = the review loop
 
