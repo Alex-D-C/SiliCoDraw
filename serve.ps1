@@ -17,8 +17,16 @@ try { $l.Start() } catch {
   Start-Sleep -Seconds 8; exit 1
 }
 Write-Host "SiliCoDraw is running at http://localhost:$port/  (close this window to stop it)"
-$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation' }
+$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml; charset=utf-8'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.md'='text/markdown; charset=utf-8'; '.txt'='text/plain; charset=utf-8'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation' }
 
+# query parameters decoded as UTF-8 (HttpListener's QueryString uses the ANSI code page, which garbles names like non-ASCII names)
+function Get-Q($req, $name) {
+  foreach ($pair in $req.Url.Query.TrimStart('?').Split('&')) {
+    $kv = $pair.Split([char[]]'=', 2)
+    if ([Uri]::UnescapeDataString($kv[0].Replace('+', ' ')) -eq $name) { if ($kv.Count -gt 1) { return [Uri]::UnescapeDataString($kv[1].Replace('+', ' ')) } else { return '' } }
+  }
+  return $null
+}
 function Send-Raw($ctx, $json) {
   $b = [Text.Encoding]::UTF8.GetBytes($json)
   $ctx.Response.ContentType = 'application/json; charset=utf-8'
@@ -50,13 +58,13 @@ while ($l.IsListening) {
 
     if ($path -eq 'api/files') {
       # ?scope=active (root, default) | archive | trash | examples
-      $scope = $req.QueryString['scope']
+      $scope = (Get-Q $req 'scope')
       $dir = if ($scope -eq 'archive' -or $scope -eq 'trash' -or $scope -eq 'examples') { Join-Path $root $scope } else { $root }
       $list = if (Test-Path -LiteralPath $dir) { Get-ChildItem -LiteralPath $dir -Filter *.json -File | Sort-Object Name } else { @() }
       Send-Json $ctx (Get-Entries $list)
     } elseif ($req.HttpMethod -eq 'POST' -and $path -eq 'api/move') {
       # move a figure between active (root), archive\ and trash\
-      $f = $req.QueryString['file']; $from = $req.QueryString['from']; $to = $req.QueryString['to']
+      $f = (Get-Q $req 'file'); $from = (Get-Q $req 'from'); $to = (Get-Q $req 'to')
       $fromDir = if ($from -eq 'archive' -or $from -eq 'trash') { Join-Path $root $from } else { $root }
       $toDir = if ($to -eq 'archive' -or $to -eq 'trash') { Join-Path $root $to } else { $root }
       $srcP = Join-Path $fromDir $f; $dstP = Join-Path $toDir $f
@@ -65,16 +73,16 @@ while ($l.IsListening) {
       } else { $ctx.Response.StatusCode = 409 }
     } elseif ($req.HttpMethod -eq 'POST' -and $path -eq 'api/delete') {
       # permanent delete: only possible from trash\ (the figure's history goes with it)
-      $f = $req.QueryString['file']; $p = Join-Path (Join-Path $root 'trash') $f
+      $f = (Get-Q $req 'file'); $p = Join-Path (Join-Path $root 'trash') $f
       if ($f -match $nameRe -and (Test-Path -LiteralPath $p)) {
         Remove-Item -LiteralPath $p; $h = Get-HistoryDir $f; if (Test-Path -LiteralPath $h) { Remove-Item -LiteralPath $h -Recurse }; $ctx.Response.StatusCode = 204
       } else { $ctx.Response.StatusCode = 409 }
     } elseif ($path -eq 'api/history') {
-      $f = $req.QueryString['file']; $dir = Get-HistoryDir $f
+      $f = (Get-Q $req 'file'); $dir = Get-HistoryDir $f
       if ($f -match $nameRe -and (Test-Path -LiteralPath $dir)) { Send-Json $ctx (Get-Entries (Get-ChildItem -LiteralPath $dir -Filter *.json -File | Sort-Object LastWriteTime -Descending)) }
       else { Send-Json $ctx @() }
     } elseif ($req.HttpMethod -eq 'POST' -and $path -eq 'api/rename') {
-      $from = $req.QueryString['from']; $to = $req.QueryString['to']
+      $from = (Get-Q $req 'from'); $to = (Get-Q $req 'to')
       $src = Join-Path $root $from; $dst = Join-Path $root $to
       if ($from -match $nameRe -and $to -match $nameRe -and (Test-Path -LiteralPath $src) -and -not (Test-Path -LiteralPath $dst)) {
         Move-Item -LiteralPath $src -Destination $dst
@@ -83,6 +91,9 @@ while ($l.IsListening) {
         $ctx.Response.StatusCode = 204
       } else { $ctx.Response.StatusCode = 409 }
     } elseif ($req.HttpMethod -eq 'POST' -and $path -match $nameRe) {
+      $reader = New-Object IO.StreamReader($req.InputStream, [Text.Encoding]::UTF8)
+      $text = $reader.ReadToEnd()
+      if ($text.Trim() -eq '') { $ctx.Response.StatusCode = 400; $ctx.Response.Close(); continue }   # an empty body (a broken tool or upload) would wipe the figure
       # snapshot the previous version first (at most one snapshot every 5 minutes per figure), keep the newest 60
       if (Test-Path -LiteralPath $full) {
         $hdir = Get-HistoryDir $path
@@ -93,8 +104,11 @@ while ($l.IsListening) {
           Get-ChildItem -LiteralPath $hdir -Filter *.json -File | Sort-Object LastWriteTime -Descending | Select-Object -Skip 60 | Remove-Item
         }
       }
-      $reader = New-Object IO.StreamReader($req.InputStream, [Text.Encoding]::UTF8)
-      [IO.File]::WriteAllText($full, $reader.ReadToEnd(), (New-Object Text.UTF8Encoding $false))
+      # write a temporary file and swap it in: a full disk or a crash mid-write no longer leaves a truncated figure
+      $tmp = $full + '.tmp'
+      [IO.File]::WriteAllText($tmp, $text, (New-Object Text.UTF8Encoding $false))
+      if (Test-Path -LiteralPath $full) { try { [IO.File]::Replace($tmp, $full, $null) } catch { [IO.File]::Copy($tmp, $full, $true); Remove-Item -LiteralPath $tmp } }
+      else { [IO.File]::Move($tmp, $full) }
       $ctx.Response.StatusCode = 204
     } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|json)$') {
       # exports (PNG/SVG/PPTX), inserted images and the user's own icon library (assets/my-icons.json) are written as files into their folder

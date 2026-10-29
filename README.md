@@ -30,7 +30,7 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 </tr>
 </table>
 
-![72 of the ~1200 icons](docs/example-icons.png)
+![72 of the ~1500 icons](docs/example-icons.png)
 
 All of these are in `examples/` and open from **File ▾ → New figure → Example: …**, so you can take
 them apart.
@@ -188,7 +188,7 @@ format, every element type and the review loop.
 
 ## Features
 
-**A library that covers most fields.** About 1200 flat, recolorable icons in 24 groups: cells &
+**A library that covers most fields.** About 1500 flat, recolorable icons in 24 groups: cells &
 tissues (organelles, cell types, bacteria, viruses, cell processes such as phagocytosis, endocytosis,
 differentiation, migration, angiogenesis and metastasis, the cell cycle and spindle), molecules &
 genetics (receptors, kinases, DNA replication, repair and transcription factors, CRISPR, RNAi,
@@ -207,15 +207,15 @@ materials (graphene, nanotube, lattice, gears, robot arm…), energy & electroni
 aerospace, earth & climate (carbon and water cycles, hurricane, global warming…), ecology &
 agriculture, society & economics (scientist, doctor, family, poster, peer review, open access…),
 food, sport & nutrition, history & humanities, symbols. Every icon has a main and an accent color you
-can change. Search all 1850 items by name or keyword, jump to a group with the chips, collapse groups,
+can change. Search all ~1600 items by name or keyword, jump to a group with the chips, collapse groups,
 and the things you used recently stay at the top. Missing something? Ask your assistant to draw it;
 an icon is ten lines of SVG and `AGENTS.md` explains the format.
 
 **Elements that do work, not just pictures.**
 - **Rich text anywhere**: select part of a text and press the bar (or Ctrl+B / I / U) for **bold**,
-  *italic*, underline, strikethrough, superscript and subscript (`x^2`, `Ca^{2+}`, `H_2O`, `CO_{2}`) or a
+  *italic*, underline, strikethrough, superscript and subscript (`x^2`, `Ca^{2+}`, `H_2O`, `CO_{2}`; letters need braces: `x^{n}`) or a
   colored run (`{#d64545|text}`). The same marks work in chips, arrow labels and legends, lone
-  significance stars are left alone, species names are italicized automatically, and every run
+  significance stars are left alone (type `\*` for a literal star), species names are italicized automatically, and every run
   survives the PowerPoint export as real formatting.
 - **Formulas**: a LaTeX element with a builder (Greek letters, operators, fractions, roots, matrices,
   ready-made equations, live preview), typeset into real vector paths that export cleanly.
@@ -225,6 +225,14 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   poles. **Geometry** whose angles, side lengths and area update as you drag the corners, a
   **vector** with live components, a **unit circle** with sin/cos/tan, a coordinate grid and a number
   line.
+- **Network medicine diagrams**: disease modules inside an interaction network, STRING-style.
+  Choose how many modules, how many dots each has (with optional gene names), how many dots are not
+  associated, how many are shared between modules, and how likely links are inside versus between
+  modules; add drugs linked to their targets, with sliders for the number of targets, how spread out they are, and how close they lie to each module (the panel and the statistics show the resulting average distances). Drag single dots (Shift + drag moves a whole module) and
+  the links and module areas follow; click two dots to add or remove the link between them. *Scatter randomly* spreads all dots at random so the modules are no longer clustered (the links stay), and *Gather into modules* brings them back, both as a short animation. Show or
+  hide links, module areas (a smooth outline or a shape that hugs the dots), names, a legend, and
+  module statistics including the network separation s(A,B). Presets are under *Diagrams* in the Add
+  panel.
 - **Gantt charts**: tasks, phases, milestones and dependencies as short lists; bars are dragged in
   time and across rows, resized at the ends, and milestones can be attached to a bar's start or end.
 - **Bendable membranes and filaments**: a lipid bilayer drawn along a curve with draggable points.
@@ -241,9 +249,11 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
 - A periodic-table tile, a microscopy scale bar, a funnel diagram, a Kaplan–Meier-style sketch, a QR
   code, legends, label chips.
 - **Editable icons**: right-click an icon → *Convert to editable parts* turns it into plain shapes you
-  can recolor, move, resize or delete. Select them and choose *Fuse & save as icon* when you are done:
-  the result becomes one light element again and joins the Add panel as *bird2*, *bird3*… under
-  **My icons** (the built-in icon is untouched; ✕ on an item removes it). Your icons are kept in
+  can recolor, move, resize or delete. Select them and choose *Save as icon…* when you are done:
+  you name it, the parts become one light element again, and it joins the Add panel under
+  **My icons** (the built-in icon is untouched; ✕ on an item removes it). The same works for a
+  **group of icons**: select several (or group them with Ctrl+G or the *Group* button in the side
+  panel) and choose *Save as icon…*; the elements stay in the figure as they are. Your icons are kept in
   `assets/my-icons.json`, which updates never touch, and are embedded in the figures that use them.
 
 **Arrows for pathways.** Arrow, open, inhibitor ⊣, circle and diamond ends at either end, straight,
@@ -252,7 +262,7 @@ curved or elbow routing, solid, dashed or dotted, and an optional label on the l
 **Editing that stays out of the way.** Smart alignment guides and snapping, groups, align and
 distribute, layers with lock and hide, right-click menu, in-place text editing, text boxes that
 re-wrap when resized, a figure-wide color palette with "replace a color everywhere", templates,
-resizable side panels, keyboard shortcuts (`?` shows them), unlimited undo, automatic version history,
+resizable side panels, keyboard shortcuts (`?` shows them), undo of the last 300 steps, automatic version history,
 archive and trash for finished or abandoned figures. A light and a dark theme, four interface styles
 and three panel layouts let you make the editor your own.
 
@@ -286,13 +296,15 @@ file each, or one PowerPoint deck with a slide per figure.
   the toolbar icons, and fewer animations. `Ctrl+\` hides both side panels (focus mode). These settings
   change only the editor and are saved in your browser: figures and exports always look the same.
 - **File ▾**: new figure (from templates, the examples, or a copy), duplicate, rename, version
-  history, archive (keeps the figure list short), trash (restorable; delete permanently from the trash).
+  history, export several figures, a .json copy. The archive-box and trash icons next to the figure
+  switcher hold the archive (keeps the figure list short) and the trash (restorable; delete permanently
+  from the trash).
 - **Sketch mode** (pencil button, or File ▾ → New figure → "Sketch my idea first"): draw a rough idea
   with a pen and place text notes, then press **Build it with my AI**.
 - **Export**: PNG with print width + dpi (optionally transparent), SVG, or a PowerPoint `.pptx`, all
   written to `exports/`. **File ▾ → Export several figures…** (or "Several figures…" in the Export
   dialog) exports a selection of figures in one go, or builds one PowerPoint with a slide per figure.
-- New figures start with a small gray "Made with SiliCoDraw" line in the bottom-left corner. It is an
+- New figures start with a small gray "Made with SiliCoDraw.com" line in the bottom-left corner. It is an
   ordinary text element: move it, edit it, or delete it.
 
 ## Managing figures: active, archived, trash

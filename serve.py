@@ -21,9 +21,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))   # realpath: a folder reached through a symlink still works
 NAME_RE = re.compile(r'^[\w.\-]+\.json$')
-FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|json)$')   # exports, inserted images, the user's icon library
+FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|json)$', re.I)   # exports, inserted images, the user's icon library
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
-         '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml', '.png': 'image/png',
+         '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml; charset=utf-8', '.png': 'image/png',
          '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
          '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
          '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'}
@@ -35,6 +35,26 @@ KEEP_SNAPSHOTS = 60
 def entries(paths):
     return [{'name': os.path.basename(p), 'size': os.path.getsize(p),
              'modified': datetime.fromtimestamp(os.path.getmtime(p)).strftime('%Y-%m-%d %H:%M')} for p in paths]
+
+
+def stamped(e):
+    """A snapshot's time is the version's own time (in its name), as serve.ps1 lists it, not the time it was copied."""
+    m = re.match(r'^(\d{4}-\d\d-\d\d)_(\d\d)-(\d\d)', e['name'])
+    if m:
+        e['modified'] = '%s %s:%s' % m.groups()
+    return e
+
+
+def write_atomic(full, body):
+    """Write a temporary file and swap it in: a full disk, a crash or a poll mid-write never sees a truncated figure."""
+    tmp = full + '.tmp'
+    with open(tmp, 'wb') as f:
+        f.write(body)
+    try:
+        os.replace(tmp, full)
+    except OSError:   # Windows: the figure is open in another program without delete sharing
+        shutil.copyfile(tmp, full)
+        os.remove(tmp)
 
 
 def history_dir(name):
@@ -70,8 +90,29 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header('Cache-Control', 'no-store')
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
-        if body:
+        if body and self.command != 'HEAD':   # a HEAD probe gets headers only, as in serve.ps1
             self.wfile.write(body)
+
+    def _guard(self, fn):
+        """A failed request (file locked by a sync tool, disk full) answers 500 like serve.ps1; it used to drop the
+        connection, which the editor reads as "server offline" instead of "not saved"."""
+        try:
+            fn()
+        except Exception as e:
+            print('Request failed: %s' % e, flush=True)
+            try:
+                self._send(500, b'request failed')
+            except Exception:
+                pass
+
+    def do_GET(self):
+        self._guard(self._get)
+
+    def do_HEAD(self):
+        self._guard(self._get)
+
+    def do_POST(self):
+        self._guard(self._post)
 
     def _json(self, obj):
         self._send(200, json.dumps(obj).encode('utf-8'), 'application/json; charset=utf-8')
@@ -89,7 +130,7 @@ class Handler(BaseHTTPRequestHandler):
         return name in ('', 'localhost', '127.0.0.1', '[::1]')
 
     # --- GET: editor, figure files, api ---
-    def do_GET(self):
+    def _get(self):
         if not self._host_ok():
             return self._send(403, b'forbidden: unknown host name')
         path, q = self._parts()
@@ -101,7 +142,7 @@ class Handler(BaseHTTPRequestHandler):
             name = q.get('file', [''])[0]
             d = history_dir(name)
             if NAME_RE.match(name) and os.path.isdir(d):
-                return self._json(entries(sorted(glob.glob(os.path.join(d, '*.json')), key=os.path.getmtime, reverse=True)))
+                return self._json([stamped(e) for e in entries(sorted(glob.glob(os.path.join(d, '*.json')), key=os.path.getmtime, reverse=True))])
             return self._json([])
         full = os.path.realpath(os.path.join(ROOT, path))
         if full.startswith(ROOT + os.sep) and os.path.isfile(full):
@@ -111,7 +152,7 @@ class Handler(BaseHTTPRequestHandler):
         self._send(404, b'not found')
 
     # --- POST: save figure, rename, exports / assets ---
-    def do_POST(self):
+    def _post(self):
         if not self._host_ok():
             return self._send(403, b'forbidden: unknown host name')
         path, q = self._parts()
@@ -153,10 +194,11 @@ class Handler(BaseHTTPRequestHandler):
         if NAME_RE.match(path):
             full = os.path.join(ROOT, path)
             body = self._body()
+            if not body.strip() or len(body) < int(self.headers.get('Content-Length') or 0):   # empty, or the upload broke off: keep the figure
+                return self._send(400, b'empty or incomplete figure')
             if os.path.isfile(full):
                 snapshot(full, path)
-            with open(full, 'wb') as f:
-                f.write(body)
+            write_atomic(full, body)
             return self._send(204)
         if FILE_RE.match(path):
             full = os.path.join(ROOT, path)
