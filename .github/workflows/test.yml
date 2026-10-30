@@ -1,4 +1,6 @@
-# Runs after every upload to GitHub: installs and starts SiliCoDraw on real macOS, Linux and Windows machines.
+# Runs after every upload to GitHub: installs and starts SiliCoDraw on real macOS, Linux and Windows machines, then runs
+# the browser test suite (tests/run.html + tests/editor-tests.js) in a headless Chrome / Edge there, in Firefox on Linux
+# and in Safari on macOS. See tests/README.md.
 # Results: the repository's "Actions" tab (a green check mark next to the latest commit = all good).
 name: install-and-start
 on:
@@ -15,8 +17,19 @@ jobs:
       - uses: actions/checkout@v4
       - name: Smoke test (installer, first start, server, updater)
         run: sh tests/smoke.sh
+      - name: Browser tests (every element type, icon and example; exports; undo/redo; save and reload)
+        run: sh tests/browser.sh
+      - name: Browser tests in Firefox (headless)
+        if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}   # Firefox comes with the Ubuntu runner
+        run: sh tests/browser.sh --browser firefox
+      - name: Browser tests in Safari
+        if: ${{ !cancelled() && matrix.os == 'macos-latest' }}
+        continue-on-error: true   # new: reported, but not yet allowed to turn the run red; remove this line once it has passed on GitHub
+        run: |
+          sudo safaridriver --enable
+          sh tests/browser.sh --browser safari
       - name: The one-line installer exactly as written in the README
-        if: github.ref == 'refs/heads/main'
+        if: ${{ !cancelled() && github.ref == 'refs/heads/main' }}   # also when a test above failed: it checks something else
         run: |
           export SILICODRAW_DIR="$RUNNER_TEMP/oneliner/SiliCoDraw" SILICODRAW_NO_START=1
           curl -fsSL https://raw.githubusercontent.com/Alex-D-C/SiliCoDraw/main/install.sh | sh
@@ -28,3 +41,10 @@ jobs:
       - name: Smoke test (built-in PowerShell server, updater)
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\smoke.ps1
+      - name: Browser tests (headless Edge)
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\browser.ps1
+      - name: Browser tests in Firefox (headless)
+        if: ${{ !cancelled() }}
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\browser.ps1 -Browser firefox
