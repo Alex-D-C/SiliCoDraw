@@ -8,6 +8,7 @@
 set -u
 ROOT=$(cd "$(dirname "$0")/.." && pwd)
 PORT=8799
+NM="zz-smoke-$$"   # a name of its own: a figure called zz-smoke in the folder is left alone
 FAIL=0
 TMP=$(mktemp -d 2>/dev/null || mktemp -d -t silicodraw)
 SRV=''
@@ -46,20 +47,23 @@ SRV=$!
 i=0; until curl -fs "http://localhost:$PORT/api/files" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 40 ] && break; sleep 0.25; done
 if curl -fs "http://localhost:$PORT/" | grep -q '<title>SiliCoDraw</title>'; then ok "editor page served"; else bad "editor page not served"; cat "$TMP/server.log"; fi
 FIG='{"version":4,"w":400,"h":300,"bg":"#ffffff","objects":[{"id":"t","type":"text","x":20,"y":40,"text":"smoke"}]}'
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data "$FIG" "http://localhost:$PORT/zz-smoke.json")
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data "$FIG" "http://localhost:$PORT/$NM.json")
 [ "$code" = 204 ] && ok "save a figure" || bad "save a figure (HTTP $code)"
-curl -fs "http://localhost:$PORT/zz-smoke.json" | grep -q '"smoke"' && ok "read it back" || bad "read it back"
-curl -s -o /dev/null -X POST --data "$FIG" "http://localhost:$PORT/zz-smoke.json"
-ls "$ROOT/history/zz-smoke/"*.json >/dev/null 2>&1 && ok "history snapshot" || bad "no history snapshot"
-curl -fs "http://localhost:$PORT/api/files" | grep -q 'zz-smoke.json' && ok "file list" || bad "file list"
-code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://evil.example' --data "$FIG" "http://localhost:$PORT/zz-evil.json")
+curl -fs "http://localhost:$PORT/$NM.json" | grep -q '"smoke"' && ok "read it back" || bad "read it back"
+TAG=$(curl -fsI "http://localhost:$PORT/$NM.json" | tr -d '\r' | sed -n 's/^[Ee][Tt][Aa][Gg]: *//p')
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "If-None-Match: $TAG" "http://localhost:$PORT/$NM.json")
+[ -n "$TAG" ] && [ "$code" = 304 ] && ok "unchanged figure: 304" || bad "unchanged figure with If-None-Match (HTTP $code)"
+curl -s -o /dev/null -X POST --data "$FIG" "http://localhost:$PORT/$NM.json"
+ls "$ROOT/history/$NM/"*.json >/dev/null 2>&1 && ok "history snapshot" || bad "no history snapshot"
+curl -fs "http://localhost:$PORT/api/files" | grep -q "$NM.json" && ok "file list" || bad "file list"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://evil.example' --data "$FIG" "http://localhost:$PORT/$NM-evil.json")
 [ "$code" = 403 ] && ok "refuses writes from other websites" || bad "accepted a cross-site write (HTTP $code)"
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data x "http://localhost:$PORT/figure-editor.html")
 [ "$code" != 204 ] && ok "cannot overwrite the editor ($code)" || bad "editor file was writable"
 # a second start on the same port must not crash: it reports the running editor and exits 0
 if "$PY" "$ROOT/serve.py" --no-browser --port $PORT >"$TMP/second.log" 2>&1; then ok "second start reports the running editor"; else bad "second start failed: $(cat "$TMP/second.log")"; fi
 kill "$SRV" 2>/dev/null; SRV=''
-rm -rf "$ROOT/zz-smoke.json" "$ROOT/zz-evil.json" "$ROOT/history/zz-smoke"
+rm -rf "$ROOT/$NM.json" "$ROOT/$NM-evil.json" "$ROOT/history/$NM"
 
 # 4. installer (into a temporary home) and the updater's dry run
 if [ "${SILICODRAW_TEST_ONLINE:-1}" != 0 ] || [ -n "${SILICODRAW_TEST_ZIP:-}" ]; then

@@ -1,7 +1,9 @@
 # SiliCoDraw server: http://localhost:<port>/
 #  - serves the editor and the figure files in this folder
 #  - saves figures (POST <name>.json); before overwriting, keeps a snapshot in history\<name>\ (at most every 5 minutes)
-#  - writes exports (POST exports/<name>.png|svg|pptx)
+#  - sends a figure with its version (ETag); a save made from an older version (If-Match) is refused with 409 and the current file, so the editor merges;
+#    a read that sends the version it has (If-None-Match) gets 304 when unchanged
+#  - writes exports (POST exports/<name>.png|svg|pdf|tif|pptx)
 #  - api/files, api/history?file=..., api/rename, api/move, api/delete for the editor's file menu
 param([int]$port = 8770)
 $root = $PSScriptRoot
@@ -17,7 +19,11 @@ try { $l.Start() } catch {
   Start-Sleep -Seconds 8; exit 1
 }
 Write-Host "SiliCoDraw is running at http://localhost:$port/  (close this window to stop it)"
-$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml; charset=utf-8'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.md'='text/markdown; charset=utf-8'; '.txt'='text/plain; charset=utf-8'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation' }
+$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml; charset=utf-8'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.md'='text/markdown; charset=utf-8'; '.txt'='text/plain; charset=utf-8'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation'; '.pdf'='application/pdf'; '.tif'='image/tiff'; '.tiff'='image/tiff' }
+# a figure's version is a hash of its content, sent as ETag with the figure (the same as serve.py). A save carries it back (If-Match, or ?base= from a
+# page that is closing) and is refused with 409 and the file as it is now when the file changed since (another window or a tool wrote it): the editor merges instead of overwriting
+$sha = [Security.Cryptography.SHA256]::Create()
+function Get-ETag($bytes) { '"' + ([BitConverter]::ToString($sha.ComputeHash($bytes)) -replace '-', '').ToLower() + '"' }
 
 # query parameters decoded as UTF-8 (HttpListener's QueryString uses the ANSI code page, which garbles names like non-ASCII names)
 function Get-Q($req, $name) {
@@ -94,11 +100,26 @@ while ($l.IsListening) {
       $reader = New-Object IO.StreamReader($req.InputStream, [Text.Encoding]::UTF8)
       $text = $reader.ReadToEnd()
       if ($text.Trim() -eq '') { $ctx.Response.StatusCode = 400; $ctx.Response.Close(); continue }   # an empty body (a broken tool or upload) would wipe the figure
+      # made from an older version of the file than the one there now: refused, with the current file (see Get-ETag)
+      $base = $req.Headers['If-Match']; if (-not $base) { $base = Get-Q $req 'base' }
+      if ($base -and $base.Trim() -eq '*') { $base = $null }   # If-Match: * = "any version" (HTTP): no check
+      if ($base -and (Test-Path -LiteralPath $full)) {
+        $cur = [IO.File]::ReadAllBytes($full); $tag = Get-ETag $cur
+        if ((($base.Trim() -replace '^W/', '').Trim('"')) -ne $tag.Trim('"')) {
+          if (-not $req.Headers['If-Match']) {   # sent by a page that was closing (?base=): it cannot merge any more, so its last change is kept in the version history
+            $hdir = Get-HistoryDir $path; New-Item -ItemType Directory -Force $hdir | Out-Null
+            [IO.File]::WriteAllText((Join-Path $hdir ((Get-Date).ToString('yyyy-MM-dd_HH-mm-ss') + '-closed-window.json')), $text, (New-Object Text.UTF8Encoding $false))
+          }
+          $ctx.Response.StatusCode = 409; $ctx.Response.ContentType = 'application/json; charset=utf-8'
+          $ctx.Response.Headers.Add('ETag', $tag); $ctx.Response.Headers.Add('Cache-Control', 'no-store')
+          $ctx.Response.ContentLength64 = $cur.Length; $ctx.Response.OutputStream.Write($cur, 0, $cur.Length); $ctx.Response.Close(); continue
+        }
+      }
       # snapshot the previous version first (at most one snapshot every 5 minutes per figure), keep the newest 60
       if (Test-Path -LiteralPath $full) {
         $hdir = Get-HistoryDir $path
         New-Item -ItemType Directory -Force $hdir | Out-Null
-        $last = Get-ChildItem -LiteralPath $hdir -Filter *.json -File | Sort-Object CreationTime -Descending | Select-Object -First 1
+        $last = Get-ChildItem -LiteralPath $hdir -Filter *.json -File | Where-Object { $_.Name -notlike '*-closed-window.json' } | Sort-Object CreationTime -Descending | Select-Object -First 1   # a closed window's kept change is no snapshot: it must not hold back the next one
         if (-not $last -or ((Get-Date) - $last.CreationTime).TotalMinutes -ge 5) {
           Copy-Item -LiteralPath $full -Destination (Join-Path $hdir ((Get-Item -LiteralPath $full).LastWriteTime.ToString('yyyy-MM-dd_HH-mm-ss') + '.json')) -Force
           Get-ChildItem -LiteralPath $hdir -Filter *.json -File | Sort-Object LastWriteTime -Descending | Select-Object -Skip 60 | Remove-Item
@@ -106,12 +127,14 @@ while ($l.IsListening) {
       }
       # write a temporary file and swap it in: a full disk or a crash mid-write no longer leaves a truncated figure
       $tmp = $full + '.tmp'
-      [IO.File]::WriteAllText($tmp, $text, (New-Object Text.UTF8Encoding $false))
+      $bytes = (New-Object Text.UTF8Encoding $false).GetBytes($text)
+      [IO.File]::WriteAllBytes($tmp, $bytes)
       if (Test-Path -LiteralPath $full) { try { [IO.File]::Replace($tmp, $full, $null) } catch { [IO.File]::Copy($tmp, $full, $true); Remove-Item -LiteralPath $tmp } }
       else { [IO.File]::Move($tmp, $full) }
+      $ctx.Response.Headers.Add('ETag', (Get-ETag $bytes))   # the new version, for the editor's next save
       $ctx.Response.StatusCode = 204
-    } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|json)$') {
-      # exports (PNG/SVG/PPTX), inserted images and the user's own icon library (assets/my-icons.json) are written as files into their folder
+    } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|pdf|tif|tiff|json)$') {
+      # exports (PNG/SVG/PDF/TIFF/PPTX), inserted images and the user's own icon library (assets/my-icons.json) are written as files into their folder
       New-Item -ItemType Directory -Force (Join-Path $root $Matches[1]) | Out-Null
       $ms = New-Object IO.MemoryStream
       $req.InputStream.CopyTo($ms)
@@ -124,8 +147,18 @@ while ($l.IsListening) {
       $ext = [IO.Path]::GetExtension($full).ToLower()
       $ctx.Response.ContentType = if ($types[$ext]) { $types[$ext] } else { 'application/octet-stream' }
       $ctx.Response.Headers.Add('Cache-Control','no-store')
-      $ctx.Response.ContentLength64 = $bytes.Length
-      if ($req.HttpMethod -ne 'HEAD') { $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length) }
+      $same = $false
+      if ($path -match $nameRe) {   # a figure: its version (see Get-ETag)
+        $etg = Get-ETag $bytes; $ctx.Response.Headers.Add('ETag', $etg)
+        # the editor's poll sends the version it has (If-None-Match): unchanged = 304 without the file (as serve.py)
+        $inm = $req.Headers['If-None-Match']
+        if ($inm) { $seen = @($inm.Split(',') | ForEach-Object { $_.Trim() -replace '^W/', '' } | Where-Object { $_ }); $same = ($seen -contains $etg) -or ($seen -contains '*') }
+      }
+      if ($same) { $ctx.Response.StatusCode = 304 }
+      else {
+        $ctx.Response.ContentLength64 = $bytes.Length
+        if ($req.HttpMethod -ne 'HEAD') { $ctx.Response.OutputStream.Write($bytes, 0, $bytes.Length) }
+      }
     } else { $ctx.Response.StatusCode = 404 }
   } catch {
     Write-Host "Request failed: $($_.Exception.Message)"

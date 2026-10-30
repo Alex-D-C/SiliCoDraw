@@ -131,7 +131,7 @@ try {
   Write-Host 'SiliCoDraw updater'
   Write-Host "  folder: $root"
   Write-Host "  source: https://github.com/$Repo ($Branch)"
-  if ((Test-Path -LiteralPath (Join-Path $root '.git')) -and -not $Force) { Stop-Update 'This folder is a git clone: update it with "git pull" instead (or run again with -Force).' }
+  if ((Test-Path -LiteralPath (Join-Path $root '.git')) -and -not $Force) { $st.result = 'not started'; Stop-Update 'This folder is a git clone: update it with "git pull" instead (or run again with -Force).' }
   if (-not $Check) {
     Write-Host $notice
     if (-not $Yes) {

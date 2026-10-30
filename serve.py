@@ -8,28 +8,39 @@
 What it does:
   * serves figure-editor.html and the files in this folder
   * saves figures   (POST <name>.json), keeping a snapshot in history/<name>/ at most every 5 minutes
-  * writes exports  (POST exports/<name>.png|svg|pptx) and inserted images (POST assets/<name>.png|jpg|svg|...)
+  * sends a figure with its version (ETag); a save made from an older version (If-Match) is refused with 409 and
+    the current file, so the editor merges; a read that sends the version it has (If-None-Match) gets 304 when unchanged
+  * writes exports  (POST exports/<name>.png|svg|pdf|tif|pptx) and inserted images (POST assets/<name>.png|jpg|svg|...)
   * api/files, api/history?file=..., api/rename, api/move, api/delete   for the editor's File menu
 No dependencies beyond the Python 3 standard library.
 """
 import sys
 if sys.version_info < (3, 7):
     sys.exit('SiliCoDraw needs Python 3.7 or newer (this is %d.%d). Get it from https://www.python.org/downloads/' % sys.version_info[:2])
-import argparse, glob, json, os, re, shutil, threading, time, urllib.parse, urllib.request, webbrowser
+import argparse, glob, hashlib, json, os, re, shutil, threading, time, urllib.parse, urllib.request, webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))   # realpath: a folder reached through a symlink still works
 NAME_RE = re.compile(r'^[\w.\-]+\.json$')
-FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|json)$', re.I)   # exports, inserted images, the user's icon library
+FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|pdf|tif|tiff|json)$', re.I)   # exports, inserted images, the user's icon library
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
          '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml; charset=utf-8', '.png': 'image/png',
          '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
          '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
-         '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation'}
+         '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+         '.pdf': 'application/pdf', '.tif': 'image/tiff', '.tiff': 'image/tiff'}
 SNAPSHOT_EVERY = 300   # seconds
 ANY_HOST = False       # True when started with --host other than 127.0.0.1 (reachable from the network on purpose)
 KEEP_SNAPSHOTS = 60
+SAVE_LOCK = threading.Lock()   # a version check and the write after it are one step (requests run in threads)
+
+
+def etag(data):
+    """A figure's version: a hash of its content, sent as ETag with the figure (the same as serve.ps1). A save carries it
+    back (If-Match, or ?base= from a page that is closing) and is refused with 409 and the file as it is now when the file
+    changed since (another window or a tool wrote it): the editor then merges instead of overwriting."""
+    return '"%s"' % hashlib.sha256(data).hexdigest()
 
 
 def entries(paths):
@@ -66,7 +77,8 @@ def snapshot(full, name):
     hdir = history_dir(name)
     os.makedirs(hdir, exist_ok=True)
     snaps = sorted(glob.glob(os.path.join(hdir, '*.json')), key=os.path.getmtime, reverse=True)
-    if snaps and time.time() - os.path.getmtime(snaps[0]) < SNAPSHOT_EVERY:
+    regular = [s for s in snaps if not s.endswith('-closed-window.json')]   # a closed window's kept change is no snapshot: it must not hold back the next one
+    if regular and time.time() - os.path.getmtime(regular[0]) < SNAPSHOT_EVERY:
         return
     stamp = datetime.fromtimestamp(os.path.getmtime(full)).strftime('%Y-%m-%d_%H-%M-%S')
     shutil.copyfile(full, os.path.join(hdir, stamp + '.json'))   # copyfile: the snapshot's own mtime = now
@@ -84,10 +96,12 @@ class Handler(BaseHTTPRequestHandler):
         path = urllib.parse.unquote(u.path.lstrip('/')) or 'figure-editor.html'
         return path, urllib.parse.parse_qs(u.query)
 
-    def _send(self, code, body=b'', ctype='text/plain; charset=utf-8'):
+    def _send(self, code, body=b'', ctype='text/plain; charset=utf-8', headers=None):
         self.send_response(code)
         self.send_header('Content-Type', ctype)
         self.send_header('Cache-Control', 'no-store')
+        for k, v in (headers or {}).items():
+            self.send_header(k, v)
         self.send_header('Content-Length', str(len(body)))
         self.end_headers()
         if body and self.command != 'HEAD':   # a HEAD probe gets headers only, as in serve.ps1
@@ -148,7 +162,15 @@ class Handler(BaseHTTPRequestHandler):
         if full.startswith(ROOT + os.sep) and os.path.isfile(full):
             with open(full, 'rb') as f:
                 data = f.read()
-            return self._send(200, data, TYPES.get(os.path.splitext(full)[1].lower(), 'application/octet-stream'))
+            ctype = TYPES.get(os.path.splitext(full)[1].lower(), 'application/octet-stream')
+            if NAME_RE.match(path):   # a figure: its version (see etag)
+                tag = etag(data)
+                # the editor's poll sends the version it has (If-None-Match): unchanged = 304 without the file (as serve.ps1)
+                seen = [re.sub(r'^W/', '', t.strip()) for t in (self.headers.get('If-None-Match') or '').split(',') if t.strip()]
+                if tag in seen or '*' in seen:
+                    return self._send(304, b'', ctype, {'ETag': tag})
+                return self._send(200, data, ctype, {'ETag': tag})
+            return self._send(200, data, ctype)
         self._send(404, b'not found')
 
     # --- POST: save figure, rename, exports / assets ---
@@ -196,10 +218,28 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
             if not body.strip() or len(body) < int(self.headers.get('Content-Length') or 0):   # empty, or the upload broke off: keep the figure
                 return self._send(400, b'empty or incomplete figure')
-            if os.path.isfile(full):
-                snapshot(full, path)
-            write_atomic(full, body)
-            return self._send(204)
+            base = re.sub(r'^W/', '', (self.headers.get('If-Match') or q.get('base', [''])[0]).strip()).strip('"')
+            if base == '*':   # If-Match: * = "any version" (HTTP): no check
+                base = ''
+            cur = None
+            with SAVE_LOCK:
+                if base and os.path.isfile(full):   # made from an older version than the one there now: refused (see etag)
+                    with open(full, 'rb') as f:
+                        cur = f.read()
+                    if hashlib.sha256(cur).hexdigest() == base:
+                        cur = None
+                if cur is None:
+                    if os.path.isfile(full):
+                        snapshot(full, path)
+                    write_atomic(full, body)
+            if cur is not None:
+                if not self.headers.get('If-Match'):   # sent by a page that was closing (?base=): it cannot merge any more, so its last change is kept in the version history
+                    hdir = history_dir(path)
+                    os.makedirs(hdir, exist_ok=True)
+                    with open(os.path.join(hdir, datetime.now().strftime('%Y-%m-%d_%H-%M-%S') + '-closed-window.json'), 'wb') as f:
+                        f.write(body)
+                return self._send(409, cur, 'application/json; charset=utf-8', {'ETag': etag(cur)})
+            return self._send(204, headers={'ETag': etag(body)})   # the new version, for the editor's next save
         if FILE_RE.match(path):
             full = os.path.join(ROOT, path)
             os.makedirs(os.path.dirname(full), exist_ok=True)

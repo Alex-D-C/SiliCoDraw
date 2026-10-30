@@ -2,8 +2,14 @@
 #   powershell -NoProfile -ExecutionPolicy Bypass -File tests\smoke.ps1
 # Checks the built-in PowerShell server (page, save, history, file list, refusal of cross-site writes) and the
 # updater's dry run. Exit code 0 = everything passed.
-param([int]$Port = 8798, [switch]$Offline)
-$root = Split-Path $PSScriptRoot -Parent
+#   -Root <folder>  the SiliCoDraw folder (default: the nearest folder above this script with serve.ps1)
+#   -Port <n>       (default: a free port)   -Offline: skip the updater check (needs github.com)
+param([int]$Port = 0, [switch]$Offline, [string]$Root = '')
+$root = $Root
+if (-not $root) { $root = Split-Path $PSScriptRoot -Parent; while ($root -and -not (Test-Path (Join-Path $root 'serve.ps1'))) { $root = Split-Path $root -Parent } }
+if (-not $root -or -not (Test-Path (Join-Path $root 'serve.ps1'))) { Write-Host '  FAIL  no SiliCoDraw folder (serve.ps1) found; pass -Root'; exit 1 }
+if ($Port -le 0) { $t = New-Object Net.Sockets.TcpListener ([Net.IPAddress]::Loopback), 0; $t.Start(); $Port = $t.LocalEndpoint.Port; $t.Stop() }
+$nm = 'zz-smoke-' + (Get-Random -Maximum 999999)   # a name of its own: a figure called zz-smoke in the folder is left alone
 $fail = 0
 function Ok($m) { Write-Host "  ok    $m" }
 function Bad($m) { Write-Host "  FAIL  $m"; $script:fail = 1 }
@@ -20,21 +26,25 @@ try {
   $page = try { (Invoke-WebRequest "http://localhost:$Port/" -UseBasicParsing).Content } catch { '' }
   if ($page -match '<title>SiliCoDraw</title>') { Ok 'editor page served' } else { Bad 'editor page not served' }
   $fig = '{"version":4,"w":400,"h":300,"bg":"#ffffff","objects":[{"id":"t","type":"text","x":20,"y":40,"text":"smoke"}]}'
-  $c = Code POST "http://localhost:$Port/zz-smoke.json" $fig; if ($c -eq 204) { Ok 'save a figure' } else { Bad "save a figure (HTTP $c)" }
-  $back = try { (Invoke-WebRequest "http://localhost:$Port/zz-smoke.json" -UseBasicParsing).Content } catch { '' }
+  $c = Code POST "http://localhost:$Port/$nm.json" $fig; if ($c -eq 204) { Ok 'save a figure' } else { Bad "save a figure (HTTP $c)" }
+  $back = try { (Invoke-WebRequest "http://localhost:$Port/$nm.json" -UseBasicParsing).Content } catch { '' }
   if ($back -match '"smoke"') { Ok 'read it back' } else { Bad 'read it back' }
-  Code POST "http://localhost:$Port/zz-smoke.json" $fig | Out-Null
-  if (Get-ChildItem "$root\history\zz-smoke" -Filter *.json -ErrorAction SilentlyContinue) { Ok 'history snapshot' } else { Bad 'no history snapshot' }
+  $tg = try { (Invoke-WebRequest "http://localhost:$Port/$nm.json" -UseBasicParsing).Headers['ETag'] } catch { '' }
+  $c = try { (Invoke-WebRequest "http://localhost:$Port/$nm.json" -UseBasicParsing -Headers @{ 'If-None-Match' = $tg }).StatusCode } catch { [int]$_.Exception.Response.StatusCode }
+  if ($tg -and $c -eq 304) { Ok 'unchanged figure: 304' } else { Bad "unchanged figure with If-None-Match (HTTP $c)" }
+  Code POST "http://localhost:$Port/$nm.json" $fig | Out-Null
+  if (Get-ChildItem "$root\history\$nm" -Filter *.json -ErrorAction SilentlyContinue) { Ok 'history snapshot' } else { Bad 'no history snapshot' }
   $list = try { (Invoke-WebRequest "http://localhost:$Port/api/files" -UseBasicParsing).Content } catch { '' }
-  if ($list -match 'zz-smoke.json') { Ok 'file list' } else { Bad 'file list' }
-  $c = Code POST "http://localhost:$Port/zz-evil.json" $fig @{ Origin = 'https://evil.example' }; if ($c -eq 403) { Ok 'refuses writes from other websites' } else { Bad "accepted a cross-site write (HTTP $c)" }
+  if ($list -match "$nm.json") { Ok 'file list' } else { Bad 'file list' }
+  $c = Code POST "http://localhost:$Port/$nm-evil.json" $fig @{ Origin = 'https://evil.example' }; if ($c -eq 403) { Ok 'refuses writes from other websites' } else { Bad "accepted a cross-site write (HTTP $c)" }
   $c = Code POST "http://localhost:$Port/figure-editor.html" 'x'; if ($c -ne 204) { Ok "cannot overwrite the editor ($c)" } else { Bad 'editor file was writable' }
 } finally {
   if ($srv -and -not $srv.HasExited) { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
-  Remove-Item "$root\zz-smoke.json", "$root\zz-evil.json" -Force -ErrorAction SilentlyContinue
-  Remove-Item "$root\history\zz-smoke" -Recurse -Force -ErrorAction SilentlyContinue
+  Remove-Item "$root\$nm.json", "$root\$nm-evil.json" -Force -ErrorAction SilentlyContinue
+  Remove-Item "$root\history\$nm" -Recurse -Force -ErrorAction SilentlyContinue
 }
-if (-not $Offline) {
+if (-not $Offline -and -not (Test-Path (Join-Path $root 'update.ps1'))) { Write-Host '  skip  updater -Check (no update.ps1 in this folder)' }
+elseif (-not $Offline) {
   $out = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\update.ps1" -Check -Yes -Force 2>&1 | Out-String
   if ($LASTEXITCODE -eq 0) { Ok 'updater -Check' } else { Bad "updater -Check: $out" }
 }

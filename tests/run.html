@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SiliCoDraw tests</title>
+<style>
+  :root { --bg: #ffffff; --fg: #1f2328; --muted: #6b7280; --ok: #1a7f37; --bad: #cf222e; --skip: #9a6700; --line: #d0d7de; }
+  @media (prefers-color-scheme: dark) { :root { --bg: #0d1117; --fg: #e6edf3; --muted: #8b949e; --ok: #3fb950; --bad: #f85149; --skip: #d29922; --line: #30363d; } }
+  body { margin: 0; padding: 16px; background: var(--bg); color: var(--fg); font: 14px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  #state { color: var(--muted); margin-bottom: 12px; }
+  #out div { padding: 2px 0; border-bottom: 1px solid var(--line); }
+  .ok { color: var(--ok); } .bad { color: var(--bad); } .skip { color: var(--skip); }
+  .ms { color: var(--muted); font-size: 12px; }
+  iframe { width: 1400px; height: 900px; max-width: 100%; border: 1px solid var(--line); margin-top: 16px; }
+</style>
+</head>
+<body>
+<h1>SiliCoDraw tests</h1>
+<div id="state">Starting…</div>
+<div id="out"></div>
+<iframe id="ed" title="Editor under test"></iframe>
+<script>
+// Loads the editor in the frame on a new scratch figure, runs editor-tests.js inside it, reloads the figure to check that
+// the saved file comes back the same, then removes the scratch figure. Address options:
+//   ?editor=dev/web/editor.html   another editor page on this server (default: figure-editor.html at the server root)
+//   ?only=icons,examples          only the tests whose names start with these
+//   ?report=zz-tests-<id>         also write the results to exports/<that>.json (used by browser.ps1 / browser.sh)
+//   ?figure=zz-test-<id>          the scratch figure's name (default: a random zz-test-… name)
+(async () => {
+  const q = new URLSearchParams(location.search), $ = s => document.querySelector(s), sleep = ms => new Promise(r => setTimeout(r, ms));
+  const state = m => { $('#state').textContent = m; document.title = 'SiliCoDraw tests: ' + m; };
+  const ed = q.get('editor') || 'figure-editor.html';
+  if (!/^[\w\-]+(\/[\w\-.]+)*\.html$/.test(ed) || ed.includes('..')) { state('bad editor= address'); return; }   // a page of this server only
+  const report = q.get('report'); const reportOk = report && /^zz-tests-[\w\-]+$/.test(report);
+  const only = (q.get('only') || '').split(',').map(s => s.trim()).filter(Boolean);
+  const fq = q.get('figure');   // browser.ps1 / browser.sh pass the name, so they can remove the figure even when this page never finishes
+  const name = (fq && /^zz-test-[\w\-]+$/.test(fq) ? fq : 'zz-test-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)) + '.json';
+  const edURL = new URL('/' + ed + '?file=' + name, location.origin).href;
+  const frame = $('#ed'); let result = null;
+  const stub = w => { try { w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.download = () => {}; w.showSaveFilePicker = undefined; w.HTMLAnchorElement.prototype.click = function () {}; w.onbeforeunload = null; } catch (e) {} };
+  async function open(timeout = 60000) {
+    frame.src = 'about:blank'; await sleep(50); frame.src = edURL; const t0 = Date.now();
+    for (;;) {
+      await sleep(100); const w = frame.contentWindow;
+      try { if (w && w.fig && w.eval('typeof fileReady!=="undefined"&&fileReady')) { stub(w); return w; } } catch (e) {}
+      if (Date.now() - t0 > timeout) throw new Error('the editor did not start within ' + timeout / 1000 + ' s (' + edURL + ')');
+    }
+  }
+  const finish = async r => {
+    result = r; window.__results = r;
+    $('#out').innerHTML = r.tests.map(t => `<div class="${t.skip ? 'skip' : t.ok ? 'ok' : 'bad'}">${t.skip ? 'skip' : t.ok ? 'ok  ' : 'FAIL'} ${esc(t.name)}${t.msg ? ' — ' + esc(t.msg) : ''} <span class="ms">${t.ms != null ? t.ms + ' ms' : ''}</span></div>`).join('');
+    state(`DONE ${r.ok ? 'PASS' : 'FAIL'} · ${r.passed} passed, ${r.failed} failed, ${r.skipped} skipped · ${(r.ms / 1000).toFixed(1)} s`);
+    if (reportOk) try { await fetch(new URL('/exports/' + report + '.json', location.origin), { method: 'POST', body: JSON.stringify(r, null, 1) }); } catch (e) {}
+  };
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const t0 = performance.now();
+  let r = { ok: false, passed: 0, failed: 1, skipped: 0, total: 1, ms: 0, env: { editor: ed }, tests: [] };
+  try {
+    state('opening the editor…');
+    let w = await open();
+    const code = await (await fetch(new URL('editor-tests.js', location.href), { cache: 'no-store' })).text();
+    w.eval(code);
+    r = await w.runEditorTests({ keep: true, only, onProgress: (n, i, N) => state(`running ${i + 1}/${N}: ${n}`) });
+    // reload: the figure read back from its file must be the one that was saved
+    if (!only.length || only.some(p => 'save → reload'.startsWith(p))) {
+      const want = w.__roundTrip, t1 = performance.now(); let tr;
+      const inPage = r.tests.find(t => t.name.startsWith('save → reload: the saved file'));
+      try {
+        if (!want) throw Object.assign(new Error('not run: the in-page save test ' + (inPage ? 'did not pass' : 'did not run')), { skip: !!inPage || r.tests.some(t => t.skip && /^not run/.test(t.msg || '')) });
+        state('reloading the figure…'); w = await open();
+        await sleep(300); const got = w.eval('JSON.stringify(scene)'), saved = w.eval('lastSaved');
+        if (got !== want || saved !== want) { let i = 0; while (i < got.length && got[i] === want[i]) i++; throw new Error('the reloaded figure differs at character ' + i + ': …' + got.slice(Math.max(0, i - 60), i + 60) + '… vs …' + want.slice(Math.max(0, i - 60), i + 60) + '…'); }
+        tr = { name: 'save → reload: the figure reopens unchanged (new page load)', ok: true };
+      } catch (e) { tr = { name: 'save → reload: the figure reopens unchanged (new page load)', ok: false, msg: e.message }; if (e.skip) tr.skip = true; }
+      tr.ms = Math.round(performance.now() - t1); r.tests.push(tr); if (tr.skip) r.skipped++; else if (!tr.ok) { r.failed++; r.ok = false; } else r.passed++; r.total++;
+    }
+    // remove the scratch figure: trash, then delete from the trash (its history goes with it); the editor's own fetch, so the web version's storage is used there
+    state('cleaning up…');
+    try { await w.eval('flushSave()'); } catch (e) {}
+    const base = new URL(ed, location.origin + '/').href.replace(/[^/]*$/, '');   // while the editor is still open: it sees the file gone and stops saving, so nothing writes it back
+    try { await w.fetch(base + 'api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await w.fetch(base + 'api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
+    frame.src = 'about:blank'; await sleep(400);
+    try { localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}   // the editor's copy in this browser (same origin)
+  } catch (e) {
+    r.tests.push({ name: 'test runner', ok: false, msg: String(e && e.message || e) }); r.ok = false; r.failed = r.tests.filter(t => !t.ok && !t.skip).length; r.total = r.tests.length;
+  }
+  r.ms = Math.round(performance.now() - t0); r.figure = name;
+  await finish(r);
+})();
+</script>
+</body>
+</html>
