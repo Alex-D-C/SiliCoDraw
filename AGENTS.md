@@ -98,8 +98,15 @@ and at once when it is shown again).
    Nature double column, or `""` with `mm`), `fig.raiseText(pt)` (every text printed below `pt` raised to it, one step).
    Helpers you may call: `bbox(id)` (rendered bounds), `render()`, `commit()` (push to undo + save).
    `fig.prefs()` returns the editor's Appearance settings and `fig.prefs({theme: 'dark'})` changes them (theme
-   light/dark/system, style classic/soft/flat/contrast, accent, layout std/swap/right, text, density, labels, motion).
-   They live in the browser only, never in the figure, and never change exports.
+   light/dark/system, style classic/soft/flat/contrast, accent, layout std/swap/right, text, density, labels, motion,
+   phone auto/on/off). They live in the browser only, never in the figure, and never change exports.
+   **Phones**: under 700 px wide (or a short touch screen, a phone held sideways) the editor uses its phone layout
+   (`html.phone`, `html.ph-land` sideways; `PHONE()` in the page): a bottom toolbar, the side panels as sheets,
+   full-screen dialogs, Share… after an export; a structure's selected atom or bond gets buttons on top of its properties
+   sheet (what a keyboard types), a network a Drag whole modules toggle; what is small on screen moves as a whole (its
+   handles sit beside it or wait for zooming in), and an arrow's bend handle sits beside its line. `phone: 'off'` still keeps it under 560 px wide
+   (no room for the side panels). `?phone=1` / `?phone=0` in the address force it on / off for that page
+   without saving anything (`&file=` still picks the figure); the figure file and the API are the same.
 
 Exports: in the page, `await svgString({transparent})` returns a standalone SVG,
 `await makePng(W, dpi, {transparent})` returns `{bytes}` (W px wide, tagged with its dpi),

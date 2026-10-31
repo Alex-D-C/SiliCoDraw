@@ -81,8 +81,9 @@ finally {
   if ($srv -and -not $srv.HasExited) { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
   Remove-Item -LiteralPath $reportFile -Force -ErrorAction SilentlyContinue
   # the scratch figure, if the page could not remove it (also after a timeout or a browser crash)
-  foreach ($p in @((Join-Path $Root "$figName.json"), (Join-Path $Root "trash\$figName.json"))) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
-  Remove-Item -LiteralPath (Join-Path $Root "history\$figName") -Recurse -Force -ErrorAction SilentlyContinue
+  foreach ($f in @($figName, "$figName-phone")) {   # -phone: the phone layout test's own figure
+    foreach ($p in @((Join-Path $Root "$f.json"), (Join-Path $Root "trash\$f.json"))) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
+    Remove-Item -LiteralPath (Join-Path $Root "history\$f") -Recurse -Force -ErrorAction SilentlyContinue }
   for ($i = 0; $i -lt 10 -and (Test-Path -LiteralPath $prof); $i++) { Remove-Item -LiteralPath $prof -Recurse -Force -ErrorAction SilentlyContinue; if (Test-Path -LiteralPath $prof) { Start-Sleep -Milliseconds 500 } }
 }
 if ($res) {

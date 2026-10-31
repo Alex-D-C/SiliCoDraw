@@ -8,7 +8,7 @@ everything passed.
 | Script | What it checks | Needs |
 |---|---|---|
 | `smoke.sh` / `smoke.ps1` | the server (page, save, 304 for an unchanged figure, history, file list, refusal of writes from other websites), the first-start setup and installer (macOS / Linux), the updater's dry run | Python 3.7+ (macOS / Linux); nothing on Windows |
-| `browser.sh` / `browser.ps1` | the editor itself, in a headless browser: every element type (add, draw, side panel, bounds), every icon, every example (loads; SVG, PNG, PDF and PowerPoint export), TIFF export and import, copy as picture / paste from clipboard (with the clipboard stubbed), undo/redo, connectors, elements parked off the page, colors (chart series, ink on dark pages, the color check, recoloring), rich-text parsing, repairing broken files, `fig` API errors, and a save → reload round trip | Chrome, Chromium, Edge, Firefox or Safari; Python 3 on macOS / Linux |
+| `browser.sh` / `browser.ps1` | the editor itself, in a headless browser: every element type (add, draw, side panel, bounds), every icon, every example (loads; SVG, PNG, PDF and PowerPoint export), TIFF export and import, copy as picture / paste from clipboard (with the clipboard stubbed), undo/redo, connectors, elements parked off the page, colors (chart series, ink on dark pages, the color check, recoloring), rich-text parsing, repairing broken files, `fig` API errors, the phone layout (the editor in phone-sized frames, upright and sideways: toolbar, Add and properties sheets, dialogs, menus, Back, finger and stylus gestures, small elements at the opening zoom, exports and app browsers; the desktop and tablet layout unchanged), and a save → reload round trip | Chrome, Chromium, Edge, Firefox or Safari; Python 3 on macOS / Linux |
 
 ## Run them
 
@@ -28,7 +28,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File tests\browser.ps1
 
 The browser tests start a server of their own on a free port (the editor you work with is not touched), open
 `tests/run.html` in a headless browser, and take 2–3 minutes (most of it is the PowerPoint export of the icon library
-example). They work on a scratch figure called `zz-test-….json`, which is removed at the end.
+example). They work on a scratch figure called `zz-test-….json` (and `zz-test-…-phone.json` for the phone layout), which
+is removed at the end.
 
 Options for the browser tests:
 

@@ -111,8 +111,21 @@ newer (`sudo apt install python3` on Ubuntu).
 
 The editor lives at <http://localhost:8770/> while SiliCoDraw runs; bookmark it if you like. It works
 in any current browser (Chrome, Edge, Firefox, Safari). On a Mac the shortcuts use ⌘ where this
-README says Ctrl and ⌥ Option where it says Alt (Redo is ⌘⇧Z or ⌘Y). Touchscreens work too: one finger moves, two fingers zoom and pan, tap a text twice
+README says Ctrl and ⌥ Option where it says Alt (Redo is ⌘⇧Z or ⌘Y). Tablets work too: one finger moves, two fingers zoom and pan, tap a text twice
 to edit it, press and hold for the menu.
+
+Phones get a layout of their own (in windows under 700 px wide, and on a phone held sideways): the
+canvas fills the screen, a toolbar at the bottom holds Add, Layers, Select several, Sketch and Page
+(with something selected: Edit, Style, Duplicate, Arrange, Lock, Delete), and the panels open as
+sheets. A tap selects, a drag on a selected element moves it, a drag anywhere else pans (a flick goes
+on for a moment), two fingers zoom, press and hold for the menu; a stylus works as a finger does, and
+draws in Sketch. At a phone's opening zoom a small element simply moves when dragged (zoom in for its
+ends and points). Export makes a PNG and **Share…** sends it to Photos, Files or a message; several
+figures go into one .zip. A link opened inside an app (LinkedIn, Facebook…) lands in that app's built-in
+browser, where exports may not save and figures may not last: the editor says so, and the page is better
+opened in Safari or Chrome. **⋯ → Help** lists the gestures; **Appearance → Phone layout** turns it on or off (Off still keeps it
+under 560 px wide, where the side panels would leave no canvas; `?phone=1` / `?phone=0` in the address
+force it for one visit).
 
 <details>
 <summary><b>Something did not work?</b></summary>

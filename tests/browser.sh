@@ -63,6 +63,7 @@ cleanup() {
   [ -n "$SRV" ] && kill "$SRV" 2>/dev/null
   sleep 1; rm -rf "$TMP"; rm -f "$REPORT"
   rm -f "$ROOT/$FIG.json" "$ROOT/trash/$FIG.json"; rm -rf "$ROOT/history/$FIG"   # also after a timeout or a browser crash
+  rm -f "$ROOT/$FIG-phone.json" "$ROOT/trash/$FIG-phone.json"; rm -rf "$ROOT/history/$FIG-phone"   # the phone layout test's own figure
 }
 trap cleanup EXIT INT TERM
 
