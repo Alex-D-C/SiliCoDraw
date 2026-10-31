@@ -108,7 +108,7 @@ header .sep{width:1px;height:22px;background:var(--line);margin:0 6px;flex:none}
 #wrap{padding:48px;width:max-content;margin:auto}   /* flex + margin:auto centers the page both ways when it is smaller than the area, and still scrolls when it is larger */
 /* the figure page: always white and dark ink, whatever the theme (the page color itself comes from the figure's bg) */
 #offpage{fill:var(--bg);fill-opacity:.55}
-#svg{display:block;overflow:visible;background:#fff;color:#111827;color-scheme:light;forced-color-adjust:none;box-shadow:var(--page-shadow);-webkit-user-select:none;user-select:none;touch-action:none;border-radius:2px}
+#svg{display:block;overflow:visible;background:#fff;color:#111827;color-scheme:light;forced-color-adjust:none;box-shadow:var(--page-shadow);-webkit-user-select:none;user-select:none;touch-action:none}   /* no border-radius here: Safari clips an svg's content to it even with overflow:visible, which hid everything off the page */
 #stage.dropping::after{content:'Drop to insert';position:absolute;inset:8px;border:2px dashed var(--accent);border-radius:14px;background:rgba(37,99,235,.05);display:grid;place-items:center;color:var(--accent);font-size:17px;font-weight:600;pointer-events:none}
 /* right */
 #props{grid-area:props;min-height:0;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:12px 14px}
