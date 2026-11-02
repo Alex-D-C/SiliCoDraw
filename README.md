@@ -413,9 +413,51 @@ plain file move, so you can also do it in your file manager while the editor is 
 **A figure file from someone else:** **File ▾ → Load from a .json file…**, or drop the `.json` on the
 canvas. It opens as a new figure under its own name (`pathway.json` becomes "pathway", or "pathway-2"
 when that name is taken), or, if you choose, replaces the open figure (Ctrl+Z brings that one back).
-Several `.json` files or a backup `.zip` dropped on the canvas all come in beside the figures you have.
+Several `.json` files, a folder or a `.zip` dropped on the canvas all come in beside the figures you have
+(see [Moving all your figures to another device by hand](#moving-all-your-figures-to-another-device-by-hand)).
 A copy of an example (`name-example.json`, as the website's example links make) has **File ▾ → Start the
 example over…** to get the original back.
+
+## Keeping figures in Dropbox, OneDrive, Google Drive, iCloud Drive or Box
+
+**File ▾ → Where figures are kept…** chooses the place. Figures are plain `.json` files in every case, and the
+same folder layout (`archive/`, `trash/`, `history/`, `assets/`) is used everywhere.
+
+| Where you work | What you can do | Services |
+|---|---|---|
+| **Run from your computer** (`serve.py` / `serve.ps1`) | Pick a folder that the service's app keeps in sync. Figures, their history and exports live there; the program stays where it is | all of them, or any other folder |
+| **Website, Chrome or Edge on a computer** | Link a folder that the service's app keeps in sync: every change is saved there. The browser asks for permission again when it restarts | all of them, or any other folder |
+| **Website, any browser, phones too** | Sign in to the service, and every change is saved in a folder of SiliCoDraw's own there (when the site offers that service) | Dropbox, Google Drive, OneDrive |
+| **Anywhere, by hand** | **Save all figures to a folder…** and **Open a folder of figures…** move every figure at once (see below); **Save a copy (.json)…** and **Load from a .json file…** move one. On a phone they open the share sheet and the Files app | whichever services' apps you have, iCloud Drive and Box too |
+
+iCloud Drive and Box have no sign-in a browser can use on its own, so they work through their app's folder or by hand.
+Figures go directly between your browser or computer and the service: SiliCoDraw has no server in between, and the
+sign-in reaches only SiliCoDraw's own folder there, not the rest of your account. You can start from a folder with
+`python3 serve.py --data <folder>` (Windows: `serve.ps1 -data <folder>`) for one run, without changing the choice.
+
+### Moving all your figures to another device by hand
+
+**File ▾ → Save all figures to a folder…** saves every figure as its own `.json` file, laid out like SiliCoDraw's own
+folder: archived figures in `archive/`, the trash in `trash/`, your own icons and the pictures the figures use in `assets/`.
+**File ▾ → Open a folder of figures…** brings such a folder in on any device: the website on a phone or a computer, or
+a copy run from your computer. A figure already there unchanged is skipped, and a different figure with the same name
+comes in beside it as `name-restored.json`, so nothing is replaced.
+
+| Where you are | Save all figures to a folder… | Open a folder of figures… |
+|---|---|---|
+| Chrome or Edge on a computer | into any folder you choose (a file already there that differs is replaced only if you say so), or one `.zip` | a folder, `.json` files or a `.zip` |
+| Firefox or Safari on a computer | one `.zip`; unpacked, it is the folder (Safari unpacks it by itself) | a folder, `.json` files or a `.zip` |
+| iPhone, iPad, Android | **Share the .json files…** → Save to Files puts them in a folder you pick (iCloud Drive, Google Drive, Dropbox…), or one `.zip` with everything | `.json` files (in Files, **Select** picks several) or a `.zip` |
+
+Dropping a folder, a `.zip` or several `.json` files on the canvas does the same as Open a folder of figures….
+
+Two people, or two devices, working on one figure at the same moment: sync services keep their own conflict
+copies, and the editor merges what it sees change while it is open. Sync apps can take a moment to bring a change over,
+so give it time before opening the figure on another device.
+
+If the folder or service cannot be reached (a drive unplugged, a sync app stopped, no internet, a sign-in run out), the status
+line says **Not saved**, your changes wait in the browser, and nothing is written anywhere else; saving goes on by itself when it is
+back. A sign-in to Google Drive lasts an hour and one to OneDrive a day; after that the status line asks for one click.
 
 ## Files
 

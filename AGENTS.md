@@ -33,7 +33,7 @@ most recently changed one that is not a `*-example.json` copy, else a blank `fig
 | `assets/` | images the user inserted (referenced as `assets/<file>` from the figure) |
 | `examples/` | example figures to copy from (signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow); they appear in File ▾ → New figure; `api/files?scope=examples` lists them |
 | `lib/mathjax/` | MathJax 3.2.2 (Apache 2.0), loaded first so formulas typeset without internet; the editor falls back to the same version on a CDN when it is missing |
-| (website) | silicodraw.com runs this same editor with a storage script (`window.SiliCoDrawWeb`): figures live in the browser (IndexedDB), exports are downloaded, and File ▾ → Back up all figures… / Restore from backup… move every figure as one .zip laid out like this folder (`name.json`, `archive/`, `trash/`, `assets/my-icons.json`) |
+| (website) | silicodraw.com runs this same editor with a storage script (`window.SiliCoDrawWeb`): figures live in the browser (IndexedDB), exports are downloaded |
 
 ## How to change a figure
 
@@ -206,6 +206,11 @@ to guess.
 
 Figures in the root are active. `archive/` holds finished ones, `trash/` deleted ones (restorable);
 the editor moves files between them (`api/move`, `api/delete`). Do not edit files in `trash/`.
+
+The **figures folder** may be elsewhere: File ▾ → Where figures are kept… (`api/storage`; the choice is in `.silicodraw-folder` beside the
+servers; `--data <folder>` / `-data <folder>` for one run) keeps figures, `archive/`, `trash/`, `history/`, `assets/` and `exports/` in any folder, such as
+one a sync app keeps; the program's files stay here. `GET api/storage` says where (`dir`). The website (`window.SiliCoDrawWeb.storage`) keeps them in the
+browser, a linked folder (Chrome and Edge) or Dropbox, Google Drive or OneDrive, called directly from the browser, in the same layout. **By hand, on every platform:** File ▾ → Save all figures to a folder… (`saveAllDialog()`: a folder chosen in Chrome/Edge (`wsToFolder`), the share sheet on phones, or one .zip (`webBackup`)) writes every figure as `name.json` in that layout (`archive/`, `trash/`, `assets/my-icons.json` and the pictures in `assets/` the figures name), and File ▾ → Open a folder of figures… (`openFolderDialog()`, `webRestore(files)`; a folder, .json files or a .zip, also dropped on the canvas) adds them: the same figure is skipped, a different one of that name comes in as `name-restored.json`; pictures go to `assets/` (on the website into the figure).
 
 ## Conventions
 

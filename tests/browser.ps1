@@ -37,6 +37,8 @@ if ($Port -le 0) { $t = New-Object Net.Sockets.TcpListener ([Net.IPAddress]::Loo
 $id = 'zz-tests-' + [DateTime]::Now.ToString('yyyyMMddHHmmss') + '-' + (Get-Random -Maximum 99999)
 $figName = $id -replace '^zz-tests-', 'zz-test-'   # the scratch figure: named here, so it is removed even when the page never reports
 $reportFile = Join-Path $Root "exports\$id.json"
+$progFile = Join-Path $Root "exports\$id-progress.json"   # how far the page is (run.html)
+function Get-Progress { try { ([IO.File]::ReadAllText($progFile, [Text.Encoding]::UTF8) | ConvertFrom-Json).state } catch { '' } }
 $prof = Join-Path ([IO.Path]::GetTempPath()) "silicodraw-browser-$id"
 $url = "http://localhost:$Port/${runPath}?report=$id&figure=$figName"   # braces: ? is a valid character in a PowerShell variable name
 if ($Editor) { $url += '&editor=' + [Uri]::EscapeDataString($Editor) }
@@ -46,7 +48,7 @@ Write-Host "  browser: $exe"
 Write-Host "  page:    $url"
 $fail = 1; $srv = $null; $br = $null; $res = $null
 try {
-  $srv = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$Root\serve.ps1`"", '-port', $Port -PassThru -WindowStyle Hidden
+  $srv = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$Root\serve.ps1`"", '-port', $Port, '-data', "`"$Root`"" -PassThru -WindowStyle Hidden
   $up = $false
   for ($i = 0; $i -lt 80 -and -not $up; $i++) { Start-Sleep -Milliseconds 250; try { $up = (Invoke-WebRequest "http://localhost:$Port/api/files" -UseBasicParsing -TimeoutSec 5).StatusCode -eq 200 } catch {} }
   if (-not $up) { throw "the server did not start on port $Port" }
@@ -65,25 +67,36 @@ try {
     if (-not $Show) { $args0 = @('--headless=new', '--disable-gpu', '--mute-audio') + $args0 }
   }
   $br = Start-Process $exe -ArgumentList ($args0 + "`"$url`"") -PassThru
-  $t0 = Get-Date; $next = 30
+  $t0 = Get-Date; $next = 30; $gone = 0; $noProgress = 720   # above the longest test's limit (300 s, and 60 s to finish) and the page's start
   while (-not $res) {
     Start-Sleep -Milliseconds 500
     if (Test-Path -LiteralPath $reportFile) { try { $res = [IO.File]::ReadAllText($reportFile, [Text.Encoding]::UTF8) | ConvertFrom-Json } catch { $res = $null } }
+    if ($res) { break }
     $s = ((Get-Date) - $t0).TotalSeconds
-    if ($s -gt $next) { Write-Host "  ... still running ($([int]$s) s)"; $next += 30 }
+    if ($s -gt $next) { $next += 30
+      Write-Host "  ... still running ($([int]$s) s) $(Get-Progress)"
+      # the browser itself (only ours: the profile path carries the run id); gone twice in a row, and a failed query says nothing
+      try { if (@(Get-CimInstance Win32_Process -Filter "CommandLine LIKE '%$id%'" -ErrorAction Stop | Where-Object { $_.Name -match '^(msedge|chrome|firefox)' -or $_.ExecutablePath -eq $exe }).Count -eq 0) { $gone++ } else { $gone = 0 } } catch { $gone = 0 }
+      if ($gone -ge 2) { throw 'the browser exited' }
+      $seen = if (Test-Path -LiteralPath $progFile) { (Get-Item -LiteralPath $progFile).LastWriteTime } else { $t0 }
+      if (((Get-Date) - $seen).TotalSeconds -gt $noProgress) { throw "no progress for $noProgress s" }
+    }
     if ($s -gt $Timeout) { throw "no results after $Timeout s" }
     if ($srv.HasExited) { throw 'the server stopped' }
   }
-} catch { Write-Host "  FAIL  $($_.Exception.Message)" }
+} catch { Write-Host "  FAIL  $($_.Exception.Message)"; $where = Get-Progress; if ($where) { Write-Host "  the page was at: $where" } }
 finally {
   if ($br) { & taskkill /T /F /PID $br.Id 2>$null | Out-Null }
   try { Get-CimInstance Win32_Process -Filter "Name='msedge.exe' OR Name='chrome.exe' OR Name='firefox.exe'" | Where-Object { $_.CommandLine -like "*$id*" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } } catch {}   # only ours: the profile path carries the run id
   if ($srv -and -not $srv.HasExited) { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
-  Remove-Item -LiteralPath $reportFile -Force -ErrorAction SilentlyContinue
+  Remove-Item -LiteralPath $reportFile, $progFile -Force -ErrorAction SilentlyContinue
   # the scratch figure, if the page could not remove it (also after a timeout or a browser crash)
   foreach ($f in @($figName, "$figName-phone")) {   # -phone: the phone layout test's own figure
     foreach ($p in @((Join-Path $Root "$f.json"), (Join-Path $Root "trash\$f.json"))) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue }
     Remove-Item -LiteralPath (Join-Path $Root "history\$f") -Recurse -Force -ErrorAction SilentlyContinue }
+  # the folder tests' figures and pictures (named after the scratch figure)
+  foreach ($d in @($Root, (Join-Path $Root 'archive'), (Join-Path $Root 'trash'), (Join-Path $Root 'assets'))) { Get-ChildItem -LiteralPath $d -Filter "*$figName-ws*" -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue }
+  Get-ChildItem -LiteralPath (Join-Path $Root 'history') -Filter "$figName-ws*" -Directory -ErrorAction SilentlyContinue | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
   for ($i = 0; $i -lt 10 -and (Test-Path -LiteralPath $prof); $i++) { Remove-Item -LiteralPath $prof -Recurse -Force -ErrorAction SilentlyContinue; if (Test-Path -LiteralPath $prof) { Start-Sleep -Milliseconds 500 } }
 }
 if ($res) {

@@ -36,9 +36,12 @@ find_br() {   # the first of these names / paths that exists
 }
 WANT=$BR
 case "$BR" in
-  ''|chrome|chromium|edge) BR=$(find_br google-chrome google-chrome-stable chromium chromium-browser microsoft-edge microsoft-edge-stable \
+  '') BR=$(find_br google-chrome google-chrome-stable chromium chromium-browser microsoft-edge microsoft-edge-stable \
            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome" "/Applications/Chromium.app/Contents/MacOS/Chromium" \
            "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge") ;;
+  chrome) BR=$(find_br google-chrome google-chrome-stable "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome") ;;
+  chromium) BR=$(find_br chromium chromium-browser "/Applications/Chromium.app/Contents/MacOS/Chromium") ;;
+  edge) BR=$(find_br microsoft-edge microsoft-edge-stable "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge") ;;
   firefox) BR=$(find_br firefox firefox-esr "/Applications/Firefox.app/Contents/MacOS/firefox" \
            "/Applications/Firefox Developer Edition.app/Contents/MacOS/firefox" "/Applications/Firefox Nightly.app/Contents/MacOS/firefox") ;;
   safari) BR=$(find_br safaridriver /usr/bin/safaridriver) ;;
@@ -51,28 +54,30 @@ PORT=$("$PY" -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); p
 ID="zz-tests-$(date +%Y%m%d%H%M%S)-$$"
 FIG="zz-test-${ID#zz-tests-}"   # the scratch figure: named here, so it is removed even when the page never reports
 REPORT="$ROOT/exports/$ID.json"
+PROG="$ROOT/exports/$ID-progress.json"   # how far the page is (run.html)
 TMP=$(mktemp -d 2>/dev/null || mktemp -d -t silicodraw)
 URL="http://localhost:$PORT/$REL/run.html?report=$ID&figure=$FIG"
 [ -n "$EDITOR" ] && URL="$URL&editor=$EDITOR"
 [ -n "$ONLY" ] && URL="$URL&only=$(printf '%s' "$ONLY" | sed 's/ /%20/g')"
 SRV=''; BPID=''; WD=''; SID=''
 cleanup() {
-  [ -n "$SID" ] && curl -fs -X DELETE "$WD/session/$SID" >/dev/null 2>&1   # Safari: ends the automation window
+  [ -n "$SID" ] && curl -fs --max-time 10 -X DELETE "$WD/session/$SID" >/dev/null 2>&1   # Safari: ends the automation window
   [ -n "$BPID" ] && kill "$BPID" 2>/dev/null
   command -v pkill >/dev/null 2>&1 && pkill -f "$TMP/profile" 2>/dev/null
   [ -n "$SRV" ] && kill "$SRV" 2>/dev/null
-  sleep 1; rm -rf "$TMP"; rm -f "$REPORT"
+  sleep 1; rm -rf "$TMP"; rm -f "$REPORT" "$PROG"
   rm -f "$ROOT/$FIG.json" "$ROOT/trash/$FIG.json"; rm -rf "$ROOT/history/$FIG"   # also after a timeout or a browser crash
   rm -f "$ROOT/$FIG-phone.json" "$ROOT/trash/$FIG-phone.json"; rm -rf "$ROOT/history/$FIG-phone"   # the phone layout test's own figure
+  rm -rf "$ROOT/$FIG"-ws* "$ROOT/archive/$FIG"-ws* "$ROOT/trash/$FIG"-ws* "$ROOT/assets/"*"$FIG"-ws* "$ROOT/history/$FIG"-ws*   # the folder tests' figures and pictures
 }
 trap cleanup EXIT INT TERM
 
 echo "SiliCoDraw browser tests, folder: $ROOT"
 echo "  browser: $BR"
 echo "  page:    $URL"
-"$PY" "$ROOT/serve.py" --no-browser --port "$PORT" >"$TMP/server.log" 2>&1 &
+"$PY" "$ROOT/serve.py" --no-browser --port "$PORT" --data "$ROOT" >"$TMP/server.log" 2>&1 &   # --data: its files stay here, whatever figures folder is chosen
 SRV=$!
-i=0; until curl -fs "http://localhost:$PORT/api/files" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 80 ] && { echo "  FAIL  the server did not start"; cat "$TMP/server.log"; exit 1; }; sleep 0.25; done
+i=0; until curl -fs --max-time 5 "http://localhost:$PORT/api/files" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 80 ] && { echo "  FAIL  the server did not start"; cat "$TMP/server.log"; exit 1; }; sleep 0.25; done
 
 if [ "$KIND" = safari ]; then
   # Safari has no headless mode: safaridriver opens a separate automation window (needs Safari → Develop → Allow Remote
@@ -81,15 +86,15 @@ if [ "$KIND" = safari ]; then
   WD="http://localhost:$WPORT"
   "$BR" -p "$WPORT" >"$TMP/browser.log" 2>&1 &
   BPID=$!
-  i=0; until curl -fs "$WD/status" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 40 ] && { echo "  FAIL  safaridriver did not start"; cat "$TMP/browser.log"; exit 1; }; sleep 0.25; done
-  ANS=$(curl -s -X POST -H 'Content-Type: application/json' -d '{"capabilities":{"alwaysMatch":{"browserName":"safari"}}}' "$WD/session")
+  i=0; until curl -fs --max-time 5 "$WD/status" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 40 ] && { echo "  FAIL  safaridriver did not start"; cat "$TMP/browser.log"; exit 1; }; sleep 0.25; done
+  ANS=$(curl -s --max-time 120 -X POST -H 'Content-Type: application/json' -d '{"capabilities":{"alwaysMatch":{"browserName":"safari"}}}' "$WD/session")
   SID=$(printf '%s' "$ANS" | "$PY" -c 'import json, sys; print((json.load(sys.stdin).get("value") or {}).get("sessionId") or "")' 2>/dev/null)
   if [ -z "$SID" ]; then
     echo "  FAIL  Safari refused the automation session: $ANS"
     echo "  Turn it on once: Safari → Settings → Advanced → Show features for web developers, then Develop → Allow Remote Automation"
     echo "  (or run: sudo safaridriver --enable)"; echo 'Browser tests FAILED.'; exit 1
   fi
-  curl -fs -X POST -H 'Content-Type: application/json' -d '{"width":1500,"height":1100}' "$WD/session/$SID/window/rect" >/dev/null 2>&1
+  curl -fs --max-time 10 -X POST -H 'Content-Type: application/json' -d '{"width":1500,"height":1100}' "$WD/session/$SID/window/rect" >/dev/null 2>&1
   curl -fs -X POST -H 'Content-Type: application/json' -d "{\"url\":\"$URL\"}" "$WD/session/$SID/url" >/dev/null 2>&1 &   # returns when the page has loaded: the polling below starts at once
 elif [ "$KIND" = firefox ]; then
   # Firefox: a fresh profile of its own (--no-remote: never hands the page to a Firefox window that is already open), no first-run pages
@@ -118,13 +123,25 @@ else
   BPID=$!
 fi
 
-T0=$(date +%s); NEXT=30
+progress() { [ -s "$PROG" ] && PYTHONIOENCODING=utf-8 "$PY" -c 'import json, sys; print(json.load(open(sys.argv[1], encoding="utf-8")).get("state", ""))' "$PROG" 2>/dev/null; }
+fail_run() { echo "  FAIL  $1"; W=$(progress); [ -n "$W" ] && echo "  the page was at: $W"; tail -20 "$TMP/browser.log" 2>/dev/null; echo 'Browser tests FAILED.'; exit 1; }
+browser_alive() {   # the browser itself: a wrapper script may have handed over to another process, so also what runs on our profile (Safari: the driver)
+  kill -0 "$BPID" 2>/dev/null && return 0
+  [ "$KIND" != safari ] && command -v pgrep >/dev/null 2>&1 && pgrep -f "$TMP/profile" >/dev/null 2>&1
+}
+T0=$(date +%s); NEXT=30; GONE=0; NOPROG=720; LASTPROG=''; LASTPROGT=$T0   # 720: above the longest test's limit (300 s, and 60 s to finish) and the page's start
 while :; do
   sleep 0.5
   if [ -s "$REPORT" ] && "$PY" -c 'import json, sys; json.load(open(sys.argv[1], encoding="utf-8"))' "$REPORT" 2>/dev/null; then break; fi
   S=$(( $(date +%s) - T0 ))
-  [ $S -ge $NEXT ] && { echo "  ... still running ($S s)"; NEXT=$((NEXT+30)); }
-  if [ $S -gt "$TIMEOUT" ]; then echo "  FAIL  no results after $TIMEOUT s"; tail -20 "$TMP/browser.log"; echo 'Browser tests FAILED.'; exit 1; fi
+  if [ $S -ge $NEXT ]; then
+    NEXT=$((NEXT+30)); W=$(progress); echo "  ... still running ($S s) $W"
+    if browser_alive; then GONE=0; else GONE=$((GONE+1)); fi
+    [ $GONE -ge 2 ] && fail_run 'the browser exited'
+    if [ "$W" != "$LASTPROG" ]; then LASTPROG=$W; LASTPROGT=$(date +%s); fi
+    [ $(( $(date +%s) - LASTPROGT )) -gt $NOPROG ] && fail_run "no progress for $NOPROG s"
+  fi
+  [ $S -gt "$TIMEOUT" ] && fail_run "no results after $TIMEOUT s"
   kill -0 "$SRV" 2>/dev/null || { echo "  FAIL  the server stopped"; cat "$TMP/server.log"; echo 'Browser tests FAILED.'; exit 1; }
 done
 

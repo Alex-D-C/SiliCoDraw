@@ -30,29 +30,35 @@
 //   ?figure=zz-test-<id>          the scratch figure's name (default: a random zz-test-… name)
 (async () => {
   const q = new URLSearchParams(location.search), $ = s => document.querySelector(s), sleep = ms => new Promise(r => setTimeout(r, ms));
-  const state = m => { $('#state').textContent = m; document.title = 'SiliCoDraw tests: ' + m; };
+  // how far the run is: browser.ps1 / browser.sh read it, so a run that hangs says where (at most one request every 2 s, none waited for)
+  const report = q.get('report'); const reportOk = report && /^zz-tests-[\w\-]+$/.test(report);
+  let progT = 0, progLast = 0, progMsg = '';
+  const progSend = () => { progT = 0; progLast = Date.now(); if (reportOk) fetch(new URL('/exports/' + report + '-progress.json', location.origin), { method: 'POST', body: JSON.stringify({ state: progMsg }) }).catch(() => {}); };
+  const state = m => { $('#state').textContent = m; document.title = 'SiliCoDraw tests: ' + m; progMsg = m; if (!progT) progT = setTimeout(progSend, Math.max(0, 2000 - (Date.now() - progLast))); };
+  const lim = (p, ms = 30000) => Promise.race([p, sleep(ms).then(() => { throw new Error('no answer within ' + ms / 1000 + ' s'); })]);   // what the tests' own limits do not cover
   const ed = q.get('editor') || 'figure-editor.html';
   if (!/^[\w\-]+(\/[\w\-.]+)*\.html$/.test(ed) || ed.includes('..')) { state('bad editor= address'); return; }   // a page of this server only
-  const report = q.get('report'); const reportOk = report && /^zz-tests-[\w\-]+$/.test(report);
-  const only = (q.get('only') || '').split(',').map(s => s.trim()).filter(Boolean);
+  const only =(q.get('only') || '').split(',').map(s => s.trim()).filter(Boolean);
   const fq = q.get('figure');   // browser.ps1 / browser.sh pass the name, so they can remove the figure even when this page never finishes
   const name = (fq && /^zz-test-[\w\-]+$/.test(fq) ? fq : 'zz-test-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6)) + '.json';
   const edURL = new URL('/' + ed + '?file=' + name, location.origin).href;
   const frame = $('#ed'); let result = null;
   const stub = w => { try { w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.download = () => {}; w.showSaveFilePicker = undefined; w.HTMLAnchorElement.prototype.click = function () {}; w.onbeforeunload = null; } catch (e) {} };
-  async function open(timeout = 60000) {
+  async function open(timeout = 180000) {
+    try { const o = frame.contentWindow; if (o && o.fig) o.__old = 1; } catch (e) {}   // a page still on its way: the old editor must not count as the new one (only a window that ran the editor: a first blank one may be reused for the page)
     frame.src = 'about:blank'; await sleep(50); frame.src = edURL; const t0 = Date.now();
     for (;;) {
       await sleep(100); const w = frame.contentWindow;
-      try { if (w && w.fig && w.eval('typeof fileReady!=="undefined"&&fileReady')) { stub(w); return w; } } catch (e) {}
-      if (Date.now() - t0 > timeout) throw new Error('the editor did not start within ' + timeout / 1000 + ' s (' + edURL + ')');
+      try { if (w && !w.__old && w.fig && w.eval('typeof fileReady!=="undefined"&&fileReady')) { stub(w); return w; } } catch (e) {}
+      if (Date.now() - t0 > timeout) { let how = 'no page'; try { how = 'page ' + w.document.readyState + (w.fig ? ', the script ran' : ', the script not done') + (w.fig ? ', status "' + w.document.querySelector('#status').textContent + '", server ' + w.eval('serverOk') : ''); } catch (e) {} throw new Error('the editor did not start within ' + timeout / 1000 + ' s (' + how + '; ' + edURL + ')'); }
     }
   }
   const finish = async r => {
     result = r; window.__results = r;
     $('#out').innerHTML = r.tests.map(t => `<div class="${t.skip ? 'skip' : t.ok ? 'ok' : 'bad'}">${t.skip ? 'skip' : t.ok ? 'ok  ' : 'FAIL'} ${esc(t.name)}${t.msg ? ' — ' + esc(t.msg) : ''} <span class="ms">${t.ms != null ? t.ms + ' ms' : ''}</span></div>`).join('');
     state(`DONE ${r.ok ? 'PASS' : 'FAIL'} · ${r.passed} passed, ${r.failed} failed, ${r.skipped} skipped · ${(r.ms / 1000).toFixed(1)} s`);
-    if (reportOk) try { await fetch(new URL('/exports/' + report + '.json', location.origin), { method: 'POST', body: JSON.stringify(r, null, 1) }); } catch (e) {}
+    // the results, again if that fails: browser.ps1 / browser.sh wait for this file
+    if (reportOk) for (let i = 0; i < 5; i++) { try { const a = await lim(fetch(new URL('/exports/' + report + '.json', location.origin), { method: 'POST', body: JSON.stringify(r, null, 1) })); if (a.ok) break; } catch (e) {} await sleep(2000); }
   };
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const t0 = performance.now();
@@ -60,7 +66,7 @@
   try {
     state('opening the editor…');
     let w = await open();
-    const code = await (await fetch(new URL('editor-tests.js', location.href), { cache: 'no-store' })).text();
+    const code = await lim(fetch(new URL('editor-tests.js', location.href), { cache: 'no-store' }).then(a => a.text()));
     w.eval(code);
     r = await w.runEditorTests({ keep: true, only, onProgress: (n, i, N) => state(`running ${i + 1}/${N}: ${n}`) });
     // reload: the figure read back from its file must be the one that was saved
@@ -78,9 +84,9 @@
     }
     // remove the scratch figure: trash, then delete from the trash (its history goes with it); the editor's own fetch, so the web version's storage is used there
     state('cleaning up…');
-    try { await w.eval('flushSave()'); } catch (e) {}
+    try { await lim(w.eval('flushSave()'), 90000); } catch (e) {}
     const base = new URL(ed, location.origin + '/').href.replace(/[^/]*$/, '');   // while the editor is still open: it sees the file gone and stops saving, so nothing writes it back
-    try { await w.fetch(base + 'api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await w.fetch(base + 'api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
+    try { await lim(w.fetch(base + 'api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' })); await lim(w.fetch(base + 'api/delete?file=' + encodeURIComponent(name), { method: 'POST' })); } catch (e) {}
     frame.src = 'about:blank'; await sleep(400);
     try { localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}   // the editor's copy in this browser (same origin)
   } catch (e) {

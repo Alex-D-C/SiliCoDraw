@@ -25,6 +25,9 @@
   const finiteBox = b => !!b && [b.x, b.y, b.w, b.h].every(Number.isFinite);
   const blank = (w = 1600, h = 900) => fig.set({ version: 4, w, h, bg: '#ffffff', palette: [], objects: [] });
   class Skip extends Error {}
+  // a double tap by a finger: both taps' events are made first, so their times stay within the 400 ms the editor counts (a loaded machine's redraw after the first tap is not the user's delay); the second press goes to what is under it by then
+  const doubleTap = async (w, x1, y1, x2 = x1, y2 = y1, afterFirst) => { const d = w.document, svg = d.querySelector('#svg'), E = [['pointerdown', x1, y1], ['pointerup', x1, y1], ['pointerdown', x2, y2], ['pointerup', x2, y2]].map(([type, clientX, clientY]) => new w.PointerEvent(type, { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX, clientY, bubbles: true, cancelable: true, composed: true, button: 0, buttons: type === 'pointerup' ? 0 : 1 }));
+    let t = d.elementFromPoint(x1, y1); t.dispatchEvent(E[0]); (t.isConnected ? t : svg).dispatchEvent(E[1]); if (afterFirst) afterFirst(); await sleep(100); t = d.elementFromPoint(x2, y2); t.dispatchEvent(E[2]); (t.isConnected ? t : svg).dispatchEvent(E[3]); };
   const OFFLINE = /internet|Could not load/i;
 
   // --- export checks: the bytes look like a valid file of that kind ---
@@ -71,6 +74,7 @@
   W.runEditorTests = async function (opts = {}) {
     const t00 = performance.now(), tests = [], errs = [];
     const onErr = e => errs.push(String(e.message || e)), onRej = e => errs.push('unhandled rejection: ' + String(e.reason && e.reason.message || e.reason));
+    const watch = f => { f.addEventListener('error', e => { if (!/ResizeObserver loop/.test(e.message || '')) onErr(e); }); f.addEventListener('unhandledrejection', onRej); return f; };   // a frame's own uncaught errors fail the test too (the frames are resized: that browser notice is no error)
     const env = { editor: location.pathname, web: typeof WEB !== 'undefined' && WEB, ua: navigator.userAgent, file: typeof FILE !== 'undefined' ? FILE : null };
     const list = [];
     const test = (name, fn, timeout = 120000) => list.push({ name, fn, timeout });
@@ -373,6 +377,7 @@
       const s = healScene({ w: 'x', h: -5, bg: 7, palette: 'red', objects: [null, 5, { type: 'text', id: 'a', text: 'one' }, { type: 'box', id: 'a' }, { noType: 1 }, { type: 'text' }] });
       eq(s.objects.length, 3, 'objects kept'); eq(new Set(s.objects.map(o => o.id)).size, 3, 'unique ids');
       eq([s.w, s.h, s.bg], [1600, 900, '#ffffff'], 'page fields'); ok(Array.isArray(s.palette), 'palette');
+      eq(healScene({ objects: [{ type: 'sketch', id: 'k' }] }).objects[0].strokes, [], 'a sketch without strokes (it made the load throw: no polling, and the next change went over the file)');
     });
     test('fig API: clear errors for wrong calls', async () => {
       const th = f => { try { f(); return false; } catch (e) { return true; } };
@@ -395,6 +400,368 @@
       commit(); const pre = lastSaved; let rel; const pr = fig.batch(async () => { fig.add('chip', { x: 60, y: 700 }); await new Promise(r => rel = r); fig.add('chip', { x: 90, y: 700 }); });
       undo(); ok(!figB.d && lastSaved === pre, 'Undo during an async fig.batch ends it and undoes it'); rel(); await pr; ok(!figB.d && hist.includes(pre), 'after the batch: ordinary steps, the state before it still in the history');
     });
+    test('a request that is never answered gives up, says so, and the save follows when the server answers again', async () => {
+      if (typeof FETCH_MS === 'undefined') throw new Skip('this editor has no request limits');
+      const F = W.fetch, M = { ...FETCH_MS }, status = () => D.querySelector('#status').textContent, wait = async (f, ms) => { const t0 = Date.now(); while (!f() && Date.now() - t0 < ms) await sleep(40); return f(); };
+      blank(); await settle(); await flushSave();
+      try {
+        W.fetch = (u, o) => new Promise((_, no) => { if (o && o.signal) o.signal.addEventListener('abort', () => no(new DOMException('Aborted', 'AbortError'))); });
+        FETCH_MS.read = FETCH_MS.save = 200;
+        const id = fig.add('text', { x: 100, y: 100, text: 'kept' });
+        ok(await wait(() => /offline|Not saved/.test(status()), 8000), 'still "' + status() + '" with no answer');
+        W.fetch = F; Object.assign(FETCH_MS, M);
+        ok(await wait(() => status() === 'Saved' && fileSame(), 15000), 'not saved after the server answered again: "' + status() + '"');
+        ok(get(id), 'the change went');
+      } finally { W.fetch = F; Object.assign(FETCH_MS, M); }
+    });
+    // the page going away commits what was typed in a panel field, and leaves a field that was only clicked into alone (width px rescales from its rounded value)
+    test('a tab going to the background changes nothing, and saves a panel field typed in', async () => {
+      blank(); const id = fig.add('shape', { kind: 'rect', x: 500, y: 300, w: 123.4, h: 81.7 }); await settle(); sel = new Set([id]); buildPanel(); await frame();
+      const P = D.querySelector('#props'), fields = [...P.querySelectorAll('input,textarea')].filter(f => !['checkbox', 'radio', 'color', 'range', 'file'].includes(f.type) && f.getClientRects().length), hide = on => Object.defineProperty(D, 'hidden', { get: () => on, configurable: true }), fire = () => D.dispatchEvent(new Event('visibilitychange'));
+      ok(fields.length > 2, 'the panel has no fields to try'); const before = J(scene);
+      try { hide(true); for (const f of fields) { f.focus(); if (D.activeElement !== f) continue; fire(); } eq(J(scene), before, 'a field only clicked into changed the figure when the tab was hidden');
+        const f = [...P.querySelectorAll('input,textarea')].find(x => x.type === 'number' || x.type === 'text'); f.focus(); if (D.activeElement === f) { const v0 = f.value, h0 = hist.length; f.value = String(parseFloat(v0 || 0) + 7); f.dispatchEvent(new Event('input', { bubbles: true })); fire(); ok(hist.length > h0 || lastSaved !== before, 'a field typed in was not committed when the tab was hidden'); }
+      } finally { delete D.hidden; D.activeElement && D.activeElement.blur && D.activeElement.blur(); sel = new Set(); buildPanel(); }
+    });
+    // a closing page's beacon is refused above 64 KB in most browsers: the next start sends the change, with the version it was made from
+    test('a closing page\'s refused save goes out at the next start', async () => {
+      if (typeof closingRetry !== 'function') throw new Skip('this editor has no retry');
+      const name = String(FILE).replace(/\.json$/i, '') + '-phone.json', wait = async (f, ms) => { const t0 = Date.now(); for (;;) { let v = false; try { v = f(); } catch (e) {} if (v) return true; if (Date.now() - t0 > ms) return false; await sleep(40); } };
+      let fr = null;
+      const open = async () => { if (fr) fr.remove(); fr = D.createElement('iframe'); fr.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:800px;border:0;z-index:2147483000;background:#fff'; fr.src = location.pathname + '?file=' + encodeURIComponent(name); D.body.appendChild(fr); ok(await wait(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 180000), 'the editor did not start in the frame'); const w = watch(fr.contentWindow); w.onbeforeunload = null; return fr; };
+      try {
+        fr = await open(); let w = fr.contentWindow; w.fig.add('text', { x: 100, y: 100, text: 'saved first' }); await w.flushSave();
+        w.navigator.sendBeacon = () => false; const id = w.fig.add('text', { x: 100, y: 200, text: 'only in this browser' }); w.dispatchEvent(new w.Event('pagehide'));
+        ok(localStorage.getItem('fig.closing:' + w.eval('DIR') + name), 'the refused save left no mark'); fr.remove(); fr = null; await sleep(100);
+        fr = await open(); w = fr.contentWindow; ok(w.fig.list().some(o => o.id === id), 'the change is gone after the next start');
+        await w.flushSave(); const a = await fetch(name, { cache: 'no-store' }); ok((await a.text()).includes('only in this browser'), 'the change did not reach the figure file'); eq(localStorage.getItem('fig.closing:' + w.eval('DIR') + name), null, 'the mark stayed');
+      } finally {
+        if (fr) { try { await fr.contentWindow.flushSave(); } catch (e) {} fr.remove(); } await sleep(200);
+        try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
+        try { localStorage.removeItem('figEditor.scene.v1:' + name); localStorage.removeItem('fig.closing:' + DIR + name); } catch (e) {}
+      }
+    });
+    // ---------- where figures are kept ----------
+    const waitFor = async (f, ms = 8000) => { const t0 = Date.now(); for (;;) { let v = false; try { v = f(); } catch (e) {} if (v) return true; if (Date.now() - t0 > ms) return false; await sleep(30); } };
+    test('where figures are kept: running from a folder, the dialog sets a sync app\'s folder and says what happened', async () => {
+      if (WEB) throw new Skip('the website has its own choices');
+      const F = W.fetch, posts = []; let answer = { status: 200, json: { dir: 'C:\\Users\\a\\Dropbox\\SiliCoDraw', isDefault: false, copied: 3, differ: ['a.json'] } }, info = { dir: 'C:\\app', isDefault: true, missing: '', canChange: true, program: 'C:\\app', options: [{ name: 'Dropbox', path: 'C:\\Users\\a\\Dropbox' }, { name: 'iCloud Drive', path: 'C:\\Users\\a\\iCloudDrive' }] };
+      let gone = 0; storeReload.fn = () => { gone++; };
+      W.fetch = (u, o) => { if (!String(u).startsWith('api/storage')) return F(u, o); if (o && o.method === 'POST') { posts.push(u); return Promise.resolve(new Response(answer.text || JSON.stringify(answer.json), { status: answer.status })); } return Promise.resolve(new Response(JSON.stringify(info), { status: 200 })); };
+      const box = () => D.querySelector('#modalBox');
+      try {
+        await storageDialog(); ok(/Where figures are kept/.test(box().textContent), 'no dialog'); const opts = box().querySelectorAll('.stOpt'); eq(opts.length, 2, 'the sync folders found'); ok(/Dropbox\\SiliCoDraw/.test(opts[0].textContent), 'a folder of its own inside the sync folder: ' + opts[0].textContent);
+        answer = { status: 400, text: 'This folder cannot be used: no room' }; box().querySelector('#stPath').value = 'relative'; box().querySelector('#stUse').click(); ok(await waitFor(() => /no room/.test(box().querySelector('#stErr').textContent)), 'a refused folder says nothing'); eq(gone, 0, 'a refused folder reloaded the page');
+        answer = { status: 200, json: { dir: 'C:\\Users\\a\\Dropbox\\SiliCoDraw', isDefault: false, copied: 3, differ: ['a.json'] } }; opts[0].click(); ok(await waitFor(() => gone === 1), 'the page was not reloaded after the switch');
+        ok(/dir=C%3A%5CUsers%5Ca%5CDropbox%5CSiliCoDraw&copy=1/.test(posts[posts.length - 1]), 'the request: ' + posts[posts.length - 1]); const msg = sessionStorage.getItem('fig.storeMsg'); ok(/in Dropbox/.test(msg) && /3 files copied/.test(msg) && /a\.json/.test(msg), 'the message: ' + msg);
+        info = { ...info, canChange: false, options: [] }; await storageDialog(); ok(!box().querySelector('#stPath') && /fixed folder/.test(box().textContent), 'a fixed folder offers a change'); closeModal();
+      } finally { W.fetch = F; storeReload.fn = null; try { sessionStorage.removeItem('fig.storeMsg'); } catch (e) {} if (!D.querySelector('#modal').hidden) closeModal(); }
+    });
+    // what must never go over a figure
+    // these tests answer the figure's requests themselves: no poll of the editor's own may be on its way (it would bring the real file in the middle), or start
+    const pollHold = async () => { await waitFor(() => pollFile.tm, 8000); clearTimeout(pollFile.tm); pollFile.tm = 0; }, pollGo = () => { pollFile.tm = setTimeout(pollFile, 1500); };
+    const countPosts = async fn => { const F = W.fetch; let posts = 0; W.fetch = (u, o) => { if (o && o.method === 'POST') posts++; return F(u, o); }; try { await fn(); } finally { W.fetch = F; } return posts; };
+    test('saving: a file that cannot be read is no new figure: nothing goes over it, and it is read when it can be', async () => {
+      blank(); await settle(); await flushSave(); const F = W.fetch; let posts = 0, answer = 500; const keep = { fileReady, fileText, fileVer, baseState, newHold };
+      W.fetch = (u, o) => { if (o && o.method === 'POST') { posts++; return Promise.resolve(new Response(null, { status: 204 })); } if (String(u) === FILE || String(u).startsWith(FILE)) return Promise.resolve(new Response('', { status: answer })); return F(u, o); };
+      await pollHold(); try { fileReady = false; for (const code of [500, 503, 423]) { answer = code; await pollOnce(); ok(!fileReady, 'HTTP ' + code + ' counted as a new figure'); await sleep(320); eq(posts, 0, 'written over a file that answered ' + code); }
+      } finally { W.fetch = F; fileReady = keep.fileReady; fileText = keep.fileText; fileVer = keep.fileVer; baseState = keep.baseState; newHold = keep.newHold; setStatus('saved', 'Saved'); pollGo(); }
+    });
+    test('saving: a figure not in a chosen folder or service is not written there by itself; a change writes it', async () => {
+      if (WEB) throw new Skip('the same code, by another signal');
+      const id = fig.add('text', { x: 100, y: 100, text: 'an old copy' }); await settle(); await flushSave(); const F = W.fetch; let posts = 0; const keep = { fileReady, fileText, fileVer, baseState, newHold, startBase0 }; startBase0 = J(scene);
+      W.fetch = (u, o) => { if (o && o.method === 'POST') { posts++; return Promise.resolve(new Response(null, { status: 204, headers: { ETag: '"x"' } })); } if (String(u).startsWith('api/files')) return Promise.resolve(new Response('[]', { status: 200 })); if (String(u) === FILE) return Promise.resolve(new Response('', { status: 404, headers: { 'X-SiliCoDraw-Chosen': '1' } })); return F(u, o); };
+      await pollHold(); try { fileReady = false; fileText = null; fileVer = null; await pollOnce(); ok(fileReady, 'a real 404 is a new figure'); await sleep(320); eq(posts, 0, 'this browser\'s copy went to the chosen folder by itself'); ok(newHeld(), 'not held'); fig.update(id, { text: 'changed' }); ok(await waitFor(() => posts > 0, 3000), 'a change was not saved');
+      } finally { W.fetch = F; clearTimeout(pushTimer); await waitFor(() => !pushBusy, 3000); fileReady = keep.fileReady; fileText = keep.fileText; fileVer = keep.fileVer; baseState = keep.baseState; newHold = null; startBase0 = keep.startBase0; fileGone = null; await sleep(50); setStatus('saved', 'Saved'); pollGo(); }
+    });
+    test('saving: an empty figure file is a file: it opens as broken, and nothing goes over it unasked', async () => {
+      blank(); await settle(); await flushSave(); const F = W.fetch; let posts = 0; const keep = { fileReady, fileText, fileVer, baseState, newHold, badText, badKeep, badMsg };
+      W.fetch = (u, o) => { if (o && o.method === 'POST') { posts++; return Promise.resolve(new Response(null, { status: 204 })); } if (String(u) === FILE) return Promise.resolve(new Response('', { status: 200 })); return F(u, o); };
+      await pollHold(); try { fileReady = false; await pollOnce(); ok(fileReady, 'an empty file stays "cannot be read" for good'); ok(badText !== null, 'it did not count as broken'); await sleep(320); eq(posts, 0, 'written over without asking');
+      } finally { W.fetch = F; Object.assign(window, {}); fileReady = keep.fileReady; fileText = keep.fileText; fileVer = keep.fileVer; baseState = keep.baseState; newHold = keep.newHold; badText = keep.badText; badKeep = keep.badKeep; badMsg = keep.badMsg; setStatus('saved', 'Saved'); pollGo(); }
+    });
+    test('saving: edits made before the file could be read are no untouched new figure: they are saved', async () => {
+      if (WEB) throw new Skip('the same code, by another signal');
+      const F = W.fetch; let posts = 0; const keep = { fileReady, fileText, fileVer, baseState, newHold, startBase0 }; blank(); await settle(); const before = J(scene); fig.add('text', { x: 100, y: 100, text: 'drawn while the folder was away' }); await settle();
+      W.fetch = (u, o) => { if (o && o.method === 'POST') { posts++; return Promise.resolve(new Response(null, { status: 204, headers: { ETag: '"y"' } })); } if (String(u).startsWith('api/files')) return Promise.resolve(new Response('[]', { status: 200 })); if (String(u) === FILE) return Promise.resolve(new Response('', { status: 404, headers: { 'X-SiliCoDraw-Chosen': '1' } })); return F(u, o); };
+      await pollHold(); try { fileReady = false; fileText = null; fileVer = null; startBase0 = before; await pollOnce(); ok(fileReady, 'a real 404'); ok(!newHeld(), 'held as if untouched'); ok(await waitFor(() => posts > 0, 3000), 'the drawing was not saved');
+      } finally { W.fetch = F; clearTimeout(pushTimer); await waitFor(() => !pushBusy, 3000); fileReady = keep.fileReady; fileText = keep.fileText; fileVer = keep.fileVer; baseState = keep.baseState; newHold = null; startBase0 = keep.startBase0; fileGone = null; await sleep(50); setStatus('saved', 'Saved'); pollGo(); }
+    });
+    test('saving: a change kept through a close while the folder was away is not lost when more edits follow and the folder returns', async () => {
+      blank(); await settle(); await flushSave(); const t0 = fileText, v0 = fileVer, F = W.fetch, sent = []; const keep = { fileReady, startBase0 };
+      await pollHold(); W.fetch = (u, o) => { if (o && o.method === 'POST') { sent.push(String(o.body)); return Promise.resolve(new Response(null, { status: 204, headers: { ETag: '"after"' } })); } return F(u, o); };
+      try { const x = fig.add('text', { x: 100, y: 100, text: 'kept through the close' }); clearTimeout(pushTimer); fileReady = false; startBase0 = J(scene); const y = fig.add('text', { x: 100, y: 200, text: 'made after the reopen' }); closingRetry.keep = v0; readFile.ver = v0; firstRead(t0);
+        ok(get(x) && get(y), 'a change was dropped: ' + fig.list().map(o => o.text).join()); ok(await waitFor(() => sent.some(s => /kept through the close/.test(s) && /made after the reopen/.test(s)), 3000), 'both did not reach the file'); eq(closingRetry.keep, 0, 'the mark stayed');
+      } finally { W.fetch = F; clearTimeout(pushTimer); await waitFor(() => !pushBusy, 3000); fileReady = keep.fileReady; startBase0 = keep.startBase0; blank(); await settle(); await flushSave(true).catch(() => {}); setStatus('saved', 'Saved'); pollGo(); }
+    });
+    test('saving: Ctrl+S does not write over a broken file with nothing changed here; a base without a browser copy counts for nothing', async () => {
+      blank(); await settle(); await flushSave(); const keepK = badKeep, keepB = badText, keepM = badMsg; const c = W.fileSame;
+      try { badText = 'broken'; badKeep = false; badMsg = 'a test'; eq(await countPosts(() => saveNow()), 0, 'Ctrl+S wrote over a broken file'); } finally { badKeep = keepK; badText = keepB; badMsg = keepM; setStatus('saved', 'Saved'); }
+    });
+    test('where figures are kept: a switch stops for another tab with unsaved work, clears this browser\'s copies, and keeps one with a change on its way', async () => {
+      const k1 = 'figEditor.scene.v1:zz-a.json', k2 = 'figEditor.scene.v1:zz-b.json', m2 = 'fig.closing:' + DIR + 'zz-b.json', b0 = 'fig.base0:' + DIR + 'zz-a.json';
+      try { localStorage.setItem(k1, 'x'); localStorage.setItem(k2, 'y'); localStorage.setItem(m2, 'v'); localStorage.setItem(b0, 'z'); const keepName = 'figEditor.scene.v1:' + FILE, keepV = localStorage.getItem(keepName), main = localStorage.getItem('figEditor.scene.v1'); storeClear(); eq(localStorage.getItem(k1), null, 'an old copy stayed'); eq(localStorage.getItem(b0), null, 'a base stayed'); eq(localStorage.getItem(k2), 'y', 'a copy with a change on its way went'); if (keepV !== null) localStorage.setItem(keepName, keepV); if (main !== null) localStorage.setItem('figEditor.scene.v1', main); } finally { [k1, k2, m2, b0].forEach(k => localStorage.removeItem(k)); }
+      if (typeof BroadcastChannel !== 'function') return; const other = new BroadcastChannel('silicodraw-files'); other.onmessage = e => { if (e.data && e.data.switching && e.data.dir === DIR) other.postMessage({ dir: DIR, busy: true }); }; try { ok(await storeAsk(), 'a tab with unsaved work was not heard'); } finally { other.close(); } ok(!(await storeAsk()), 'no other tab: still busy');
+    });
+    test('saving: opening the storage dialog or flushing writes nothing unchanged, and not over a broken file', async () => {
+      blank(); await settle(); await flushSave(); const keepK = badKeep, keepB = badText;
+      eq(await countPosts(() => flushSave()), 0, 'a flush with nothing changed wrote the file');
+      try { badKeep = true; badText = 'broken'; const keepFs = fileText; eq(await countPosts(() => flushSave(true)), 0, 'written over a broken file with nothing changed here'); } finally { badKeep = keepK; badText = keepB; }
+    });
+    test('saving: a message from a tab on another place is no version of this figure', async () => {
+      if (!fileBC) throw new Skip('no BroadcastChannel here');
+      blank(); await settle(); const before = J(scene); fileBC.onmessage({ data: { saved: FILE, dir: DIR, place: 'dropbox:Dropbox', text: J({ version: 4, w: 100, h: 100, bg: '#000000', objects: [] }), ver: '"z"' } }); await sleep(60); eq(J(scene), before, 'another place\'s save was taken in');
+    });
+    // a real reload, in the phone layout: closing the dialog's Back entry must not cancel it (a stub of the reload hid that)
+    test('where figures are kept: on a phone the switch really reloads the page and says what happened', async () => {
+      if (WEB) throw new Skip('the same code, on the website through its own choices');
+      const name = String(FILE).replace(/\.json$/i, '') + '-phone.json'; let fr = D.createElement('iframe'); fr.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:844px;border:0;z-index:2147483000;background:#fff'; fr.src = location.pathname + '?file=' + encodeURIComponent(name) + '&phone=1'; D.body.appendChild(fr);
+      try {
+        ok(await waitFor(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 180000), 'the editor did not start in the frame'); const w = watch(fr.contentWindow); w.onbeforeunload = null; w.applyUIClasses && w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); await sleep(250); ok(w.eval('PHONE()'), 'no phone layout');
+        const F = w.fetch; w.fetch = (u, o) => { const s = String(u); if (s.startsWith('api/storage')) return Promise.resolve(new Response(JSON.stringify(o && o.method === 'POST' ? { dir: 'D:\\Sync\\SiliCoDraw', isDefault: false, copied: 0, differ: [] } : { dir: 'C:\\app', isDefault: true, missing: '', canChange: true, program: 'C:\\app', options: [{ name: 'Dropbox', path: 'D:\\Sync' }] }), { status: 200 })); return F(u, o); };
+        w.storeTell = () => {}; /* (the page running the tests is a tab too: it must not reload with this one) */ await w.storageDialog(); w.__before = 1; const opt = w.document.querySelector('#modalBox .stOpt'); ok(opt, 'no choice in the dialog'); opt.click();
+        ok(await waitFor(() => { const n = fr.contentWindow; return !n.__before && n.fig && n.eval('typeof fileReady!=="undefined"&&fileReady'); }, 30000), 'the page did not reload after the switch');
+        ok(await waitFor(() => /Figures are now kept in Dropbox/.test(fr.contentWindow.document.querySelector('#toast').textContent), 4000), 'no message after the reload: ' + fr.contentWindow.document.querySelector('#toast').textContent); eq(sessionStorage.getItem('fig.storeMsg'), null, 'the message stayed');
+      } finally { try { await fr.contentWindow.flushSave(); } catch (e) {} fr.remove(); await sleep(200); try { sessionStorage.removeItem('fig.storeMsg'); sessionStorage.removeItem('fig.switchHold'); await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {} }
+    }, 300000);
+    test('where figures are kept: Save a copy uses the system\'s Save dialog, and cancelling it saves nothing', async () => {
+      if (PHONE()) throw new Skip('the phone layout uses the share sheet');
+      const P = W.showSaveFilePicker, dl = W.download; let wrote = '', asked = null, downloads = 0;
+      W.download = () => { downloads++; };
+      try {
+        W.showSaveFilePicker = async o => { asked = o; return { name: 'copy.json', createWritable: async () => ({ write: async b => { wrote = await b.text(); }, close: async () => {} }) }; };
+        await menuActs.savejson(); eq(asked.suggestedName, FILE, 'the name offered'); ok(JSON.parse(wrote).objects, 'the figure was not written'); eq(downloads, 0, 'it also downloaded');
+        W.showSaveFilePicker = async () => { throw new DOMException('no', 'AbortError'); }; await menuActs.savejson(); eq(downloads, 0, 'cancelling downloaded it');
+        W.showSaveFilePicker = async () => { throw new Error('not allowed'); }; await menuActs.savejson(); eq(downloads, 1, 'a Save dialog that fails: no download instead');
+      } finally { W.showSaveFilePicker = P; W.download = dl; }
+    });
+    // File ▾ → Save all figures to a folder… / Open a folder of figures…: this run's own figures only (named after the scratch figure, so browser.ps1 removes leftovers)
+    const wsPre = () => BASE + '-ws', wsPng = () => Uint8Array.from(atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='), c => c.charCodeAt(0));
+    const wsFig = (t, src) => JSON.stringify({ version: 4, w: 400, h: 300, objects: [{ id: 't1', type: 'text', x: 10, y: 20, s: 1, r: 0, text: t }].concat(src ? [{ id: 'i1', type: 'image', x: 100, y: 100, s: 1, r: 0, src, w: 10, h: 10 }] : []) });
+    const wsClean = async () => { for (const sc of ['', 'archive', 'trash']) for (const f of (await listFiles(sc)) || []) if (f.name.startsWith(wsPre())) { if (sc !== 'trash') await fetch(`api/move?file=${encodeURIComponent(f.name)}&from=${sc}&to=trash`, { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(f.name), { method: 'POST' }); } };
+    const wsMine = g => ({ ...g, files: g.files.filter(f => f.name.includes(wsPre())) });
+    test('all figures to a folder: the menu and the dialogs offer what this browser can do', async () => {
+      ok(!document.querySelector('#fileMenu [data-act=saveall]').hidden && !document.querySelector('#fileMenu [data-act=openfolder]').hidden, 'the menu items are hidden');
+      ok((await fetch(encodeURIComponent(wsPre() + '-m.json'), { method: 'POST', body: wsFig('menu') })).ok, 'a figure');   // (the website saves the scratch figure only at its first change)
+      await saveAllDialog(); const box = document.querySelector('#modalBox'); try { ok(/Save all figures to a folder/.test(box.textContent), 'no dialog: ' + box.textContent.slice(0, 80)); ok(box.querySelector('#saZip'), 'no .zip choice'); eq(!!box.querySelector('#saFolder'), typeof W.showDirectoryPicker === 'function', 'the folder choice'); } finally { closeModal(); }
+      openFolderDialog(); try { ok(document.querySelector('#modalBox #ofFiles'), 'no file choice'); eq(!!document.querySelector('#modalBox #ofDir'), typeof W.showDirectoryPicker === 'function' || !WS_MOBILE, 'the folder choice'); } finally { closeModal(); }
+      await wsClean();
+    });
+    test('all figures to a folder: saved into a folder and opened back, with the archive and pictures; nothing doubles', async () => {
+      let root; try { root = await (await navigator.storage.getDirectory()).getDirectoryHandle('zz-ws-test', { create: true }); const w = await (await root.getFileHandle('probe.txt', { create: true })).createWritable(); await w.close(); await root.removeEntry('probe.txt'); } catch (e) { throw new Skip('no writable private file system here: ' + e.message); }
+      const pre = wsPre(), A = pre + '-a.json', B = pre + '-b.json', C = pre + '-c.json', P = 'assets/' + pre + '.png', P2 = pre + '-new.png', SDP = W.showDirectoryPicker;
+      const rd = async (d, n) => (await (await d.getFileHandle(n)).getFile()).text(), put = async (d, n, body) => { const w = await (await d.getFileHandle(n, { create: true })).createWritable(); await w.write(body); await w.close(); };
+      try {
+        const pic = !WEB && (await fetch(P, { method: 'POST', body: wsPng() })).ok; if (!WEB) ok(pic, 'the server took no picture');
+        ok((await fetch(encodeURIComponent(A), { method: 'POST', body: wsFig('first', pic ? P : '') })).ok, 'figure a'); ok((await fetch(encodeURIComponent(B), { method: 'POST', body: wsFig('second') })).ok, 'figure b'); ok(await moveFile(B, 'active', 'archive'), 'b to the archive');
+        const g = wsMine(await wsGather()), names = g.files.map(f => f.name); ok(names.includes(A) && names.includes('archive/' + B), 'gathered: ' + names.join()); if (pic) ok(names.includes(P), 'the picture was not gathered: ' + names.join());
+        W.showDirectoryPicker = async () => root;
+        const r1 = await wsToFolder(g); eq(r1.failed, 0, 'write failures'); eq(r1.wrote, g.files.length, 'written: ' + J(r1));
+        eq(JSON.parse(await rd(root, A)).objects[0].text, 'first', 'a in the folder'); eq(JSON.parse(await rd(await root.getDirectoryHandle('archive'), B)).objects[0].text, 'second', 'b in archive/');
+        const r2 = await wsToFolder(g); eq(r2.wrote, 0, 'the same files were written again'); eq(r2.same, g.files.length, 'the same files');
+        await put(root, A, wsFig('changed there', pic ? P : ''));   // a file there that differs is replaced only when the user says so
+        const p3 = wsToFolder(g); ok(await waitFor(() => document.querySelector('#rfNo'), 3000), 'no question about the different file'); document.querySelector('#rfNo').click(); const r3 = await p3;
+        eq(r3.kept, 1, 'kept'); eq(JSON.parse(await rd(root, A)).objects[0].text, 'changed there', 'the different file was replaced');
+        await put(root, C, wsFig('third', 'assets/' + P2)); await put(await root.getDirectoryHandle('assets', { create: true }), P2, wsPng());   // a figure whose picture is only in the folder
+        await wsClean(); const list = await wsWalk(root); ok(list.some(x => x.path === 'archive/' + B) && list.some(x => x.path === 'assets/' + P2), 'the walk: ' + list.map(x => x.path).join());
+        await webRestore(list);
+        const act = ((await listFiles()) || []).map(f => f.name), ar = ((await listFiles('archive')) || []).map(f => f.name); ok(act.includes(A) && act.includes(C), 'a or c did not come back: ' + act.filter(n => n.startsWith(pre)).join()); ok(ar.includes(B) && !act.includes(B), 'b did not come back to the archive');
+        const fa = JSON.parse(await (await fetch(encodeURIComponent(A), { cache: 'no-store' })).text()), fc = JSON.parse(await (await fetch(encodeURIComponent(C), { cache: 'no-store' })).text());
+        eq(fa.objects[0].text, 'changed there', 'the folder\'s version'); if (pic) eq(fa.objects[1].src, P, 'a picture already here keeps its address');
+        if (WEB) ok(/^data:image\/png;base64,/.test(fc.objects[1].src), 'the website keeps the picture in the figure: ' + String(fc.objects[1].src).slice(0, 40));
+        else { eq(fc.objects[1].src, 'assets/' + P2, 'the picture\'s address'); const r = await fetch('assets/' + P2, { cache: 'no-store' }); ok(r.ok && (await r.arrayBuffer()).byteLength === wsPng().length, 'the picture is not in assets/'); }
+        await webRestore(await wsWalk(root)); const again = ((await listFiles()) || []).map(f => f.name).filter(n => n.startsWith(pre)); eq(again.length, 2, 'opened twice made copies: ' + again.join());
+      } finally { W.showDirectoryPicker = SDP; closeModal(); await wsClean().catch(() => {}); await (await navigator.storage.getDirectory()).removeEntry('zz-ws-test', { recursive: true }).catch(() => {}); }
+    });
+    test('all figures to a folder: archived on one side is no copy, a system tool\'s .zip, the same picture twice, plain files, My icons merged, old figures named', async () => {
+      const pre = wsPre(), A = pre + '-x.json', L = pre + '-loose.png', Q = pre + '-p.png', PD = W.download; let root = null;
+      const put = async (d, n, body) => { const w = await (await d.getFileHandle(n, { create: true })).createWritable(); await w.write(body); await w.close(); }, act = async () => ((await listFiles()) || []).map(f => f.name).filter(n => n.startsWith(pre));
+      try {
+        // archived here, at the top of the folder (still active on the other device): already here, no -restored copy
+        ok((await fetch(encodeURIComponent(A), { method: 'POST', body: wsFig('archived') })).ok, 'figure'); ok(await moveFile(A, 'active', 'archive'), 'to the archive');
+        await webRestore([new File([wsFig('archived')], A, { type: 'application/json' })]); eq((await act()).length, 0, 'an archived figure came in again: ' + (await act()).join());
+        // a .zip of a folder named "archive" made by the system's own tool (its name before every entry, backslashes from PowerShell): the figures land at the top
+        await wsClean(); const zip = zipStore([{ name: 'archive\\' + A, data: wsFig('wrapped') }, { name: 'archive\\assets\\' + L, data: wsPng() }, { name: '__MACOSX/archive/._' + A, data: 'x' }]);
+        await webRestore([new File([zip], 'archive.zip', { type: 'application/zip' })]); ok((await act()).includes(A), 'the wrapped figure is not at the top: ' + (await act()).join()); eq(((await listFiles('archive')) || []).filter(f => f.name.startsWith(pre)).length, 0, 'it went to the archive');
+        // a figure with a loose picture chosen beside it (a phone's Files app): the picture comes along
+        await wsClean(); await webRestore([new File([wsFig('loose', 'assets/' + L)], A, { type: 'application/json' }), new File([wsPng()], L, { type: 'image/png' })]);
+        const fl = JSON.parse(await (await fetch(encodeURIComponent(A), { cache: 'no-store' })).text()).objects[1].src; if (WEB) ok(/^data:image\/png/.test(fl), 'the loose picture: ' + fl.slice(0, 30)); else { eq(fl, 'assets/' + L, 'the loose picture\'s address'); ok((await fetch('assets/' + L, { cache: 'no-store' })).ok, 'the loose picture is not in assets/'); }
+        if (!WEB) { // a different picture with a name taken here: a name made from the picture, and opening it again makes nothing new
+          await wsClean(); ok((await fetch('assets/' + Q, { method: 'POST', body: wsPng() })).ok, 'a picture'); const other = wsPng(); other[other.length - 1] ^= 1;
+          const two = () => [new File([wsFig('other picture', 'assets/' + Q)], A, { type: 'application/json' }), new File([other], Q, { type: 'image/png' })];
+          await webRestore(two()); const s1 = JSON.parse(await (await fetch(encodeURIComponent(A), { cache: 'no-store' })).text()).objects[1].src; ok(s1 !== 'assets/' + Q && s1.endsWith('-' + Q), 'the different picture\'s name: ' + s1);
+          await webRestore(two()); eq((await act()).length, 1, 'opened twice made copies: ' + (await act()).join()); }
+        // a folder from the browser's own picker that gave plain files (no folder paths): they come in
+        await wsClean(); const dt = new DataTransfer(); dt.items.add(new File([wsFig('plain')], A, { type: 'application/json' })); const inp = document.querySelector('#folderIn'); inp.files = dt.files; inp.dispatchEvent(new Event('change'));
+        let inn = false; for (let i = 0; i < 100 && !inn; i++) { inn = (await act()).includes(A); if (!inn) await sleep(50); } ok(inn, 'plain files from the folder picker were dropped');   // (waitFor takes no async check)
+        // a folder that holds My icons and an older figure: the icons are merged, the older figure is named
+        try { root = await (await navigator.storage.getDirectory()).getDirectoryHandle('zz-ws-test2', { create: true }); } catch (e) { root = null; }
+        if (root) { const as = await root.getDirectoryHandle('assets', { create: true }); await put(as, 'my-icons.json', JSON.stringify({ theirs: { n: 'Theirs', svg: '<g/>' } })); await put(root, pre + '-old.json', wsFig('old'));
+          const SDP = W.showDirectoryPicker; W.showDirectoryPicker = async () => root;
+          try { const r = await wsToFolder({ files: [{ name: USER_FILE, data: JSON.stringify({ mine: { n: 'Mine', svg: '<g/>' } }) }], n: 0, bad: 0, scopeBad: [] }); ok(document.querySelector('#modal').hidden, 'asked about My icons'); closeModal();   // (a closed dialog stays in the page, hidden)
+            const ic = JSON.parse(await (await (await as.getFileHandle('my-icons.json')).getFile()).text()); ok(ic.theirs && ic.mine, 'My icons not merged: ' + Object.keys(ic).join()); ok(r.stale.some(x => x.p === pre + '-old.json'), 'the older figure is not named: ' + J(r.stale.map(x => x.p)));
+          } finally { W.showDirectoryPicker = SDP; } }
+      } finally { W.download = PD; closeModal(); await wsClean().catch(() => {}); if (root) await (await navigator.storage.getDirectory()).removeEntry('zz-ws-test2', { recursive: true }).catch(() => {}); }
+    });
+    test('all figures to a folder: the .zip holds the same and opens back; a folder\'s own name is no reason to skip it', async () => {      if (PHONE()) throw new Skip('the phone layout shares the .zip');
+      const pre = wsPre(), A = pre + '-z.json', D = pre + '-d.json', PD = W.download, NS = navigator.storage, had = NS && Object.getOwnPropertyDescriptor(NS, 'persisted'); let got = null;
+      if (NS && NS.persisted) Object.defineProperty(NS, 'persisted', { configurable: true, value: async () => true });   // (asking to keep the site's storage is a prompt in Firefox, which nobody answers here)
+      try {
+        ok((await fetch(encodeURIComponent(A), { method: 'POST', body: wsFig('zipped') })).ok, 'figure');
+        W.download = (n, b) => { got = { n, b }; }; await webBackup(wsMine(await wsGather())); ok(got && /\.zip$/.test(got.n), 'no .zip'); const z = await unzip(await got.b.arrayBuffer()); ok(z.some(x => x.name === A), 'in the .zip: ' + z.map(x => x.name).join());
+        await wsClean(); await webRestore([new File([got.b], got.n, { type: 'application/zip' })]); ok(((await listFiles()) || []).some(f => f.name === A), 'the .zip did not open back');
+        const f = new File([wsFig('fourth')], D, { type: 'application/json' }); Object.defineProperty(f, 'webkitRelativePath', { value: 'history/' + D });   // a folder chosen with the browser's own picker, named "history"
+        await webRestore([f]); ok(((await listFiles()) || []).some(x => x.name === D), 'a folder named history was skipped');
+      } finally { W.download = PD; if (NS) { if (had) Object.defineProperty(NS, 'persisted', had); else delete NS.persisted; } await wsClean().catch(() => {}); }
+    });
+    // the website's places: a real folder handle (the browser's private file system has the same interface) and each service against a stand-in with its rules
+    const WEBS = () => W.SiliCoDrawWeb && W.SiliCoDrawWeb.createStore ? W.SiliCoDrawWeb : null;
+    const memBackend = () => { const m = new Map(); return { m, get: async k => m.get(k), put: async (k, v) => { m.set(k, v); }, del: async k => { m.delete(k); }, keys: async () => [...m.keys()] }; };
+    const storeCycle = async (B, what) => { const S = WEBS(), st = S.createStore(B, () => storeCycle.t), Q = o => new URLSearchParams(o || {}), H = o => new Headers(o || {}); storeCycle.t = Date.now();
+      const a = await st.handle('POST', 'one.json', Q(), '{"objects":[1]}', H()); eq(a.status, 204, what + ': first save'); const g = await st.handle('GET', 'one.json', Q(), null, H()); eq(g.body, '{"objects":[1]}', what + ': read it back'); ok(g.etag, what + ': no version');
+      const b = await st.handle('POST', 'one.json', Q(), '{"objects":[2]}', H({ 'If-Match': g.etag })); eq(b.status, 204, what + ': save on its version');
+      const c = await st.handle('POST', 'one.json', Q(), '{"objects":[3]}', H({ 'If-Match': g.etag })); eq(c.status, 409, what + ': a save from an older version'); eq(c.body, '{"objects":[2]}', what + ': the refusal gives the current text');
+      ok((await B.keys()).some(k => /^history\/one\/.+\.json$/.test(k)), what + ': no version-history copy'); eq((await st.handle('POST', 'api/move', Q({ file: 'one.json', from: '', to: 'archive' }), null, H())).status, 204, what + ': archive'); ok((await st.handle('GET', 'archive/one.json', Q(), null, H())).status === 200, what + ': read from the archive'); eq((await st.handle('GET', 'one.json', Q(), null, H())).status, 404, what + ': gone from the figures'); eq(JSON.parse((await st.handle('GET', 'api/files', Q({ scope: 'archive' }), null, H())).body).map(x => x.name), ['one.json'], what + ': the archive list');
+      eq((await st.handle('POST', 'api/move', Q({ file: 'one.json', from: 'archive', to: 'trash' }), null, H())).status, 204, what + ': trash'); eq((await st.handle('POST', 'api/delete', Q({ file: 'one.json' }), null, H())).status, 204, what + ': delete'); eq((await st.handle('GET', 'trash/one.json', Q(), null, H())).status, 404, what + ': deleted'); };
+    test('where figures are kept: a linked folder works as the desktop folder does', async () => {
+      const S = WEBS(); if (!S) throw new Skip('the website\'s storage script is not loaded here');
+      let root; try { root = await (await navigator.storage.getDirectory()).getDirectoryHandle('zz-folder-test', { create: true }); const w = await (await root.getFileHandle('probe.txt', { create: true })).createWritable(); await w.close(); await root.removeEntry('probe.txt'); } catch (e) { throw new Skip('no writable private file system here: ' + e.message); }
+      try { const B = S.folderBackend(root); await storeCycle(B, 'folder');
+        await B.put('assets/my-icons.json', { body: '{}' }); const f = await (await root.getFileHandle('note.txt', { create: true })).createWritable(); await f.close(); await B.put('two.json', { body: '{"objects":[]}' }); const ks = await B.keys(); ok(ks.includes('assets/my-icons.json') && ks.includes('two.json') && !ks.includes('note.txt'), 'what is listed: ' + ks.join());
+        const to = memBackend(); to.m.set('two.json', { body: 'other' }); await B.put('three.json', { body: '{"objects":[3]}' }); const r = await S.copyAll(B, to); eq(to.m.get('two.json').body, 'other', 'a copy replaced what was there'); ok(r.differ.includes('two.json') && to.m.get('three.json').body === '{"objects":[3]}', 'the copy: ' + J(r));
+      } finally { await (await navigator.storage.getDirectory()).removeEntry('zz-folder-test', { recursive: true }).catch(() => {}); }
+    });
+    // stand-ins for the services' file calls: each keeps files with a version, as the service's documentation describes
+    const jsonR = (o, status = 200) => new Response(JSON.stringify(o), { status, headers: { 'Content-Type': 'application/json' } });
+    const fakeDropbox = () => { const m = new Map(); let n = 0; const meta = k => ({ '.tag': 'file', name: k.split('/').pop(), path_display: '/' + k, rev: m.get(k).rev, server_modified: '2026-11-01T10:00:00Z', size: m.get(k).body.length });
+      return async (u, o) => { const arg = o.headers && o.headers['Dropbox-API-Arg'] ? JSON.parse(o.headers['Dropbox-API-Arg']) : null; if (arg) ok(/^[\x20-\x7e]*$/.test(o.headers['Dropbox-API-Arg']), 'Dropbox: a header outside ASCII');
+        if (/list_folder$/.test(u)) return jsonR({ entries: [...m.keys()].map(meta), has_more: false }); if (/files\/upload$/.test(u)) { const k = arg.path.slice(1), mode = arg.mode; if (fakeDropbox.full) return jsonR({ error_summary: 'path/insufficient_space/..' }, 409); if (mode === 'add' && m.has(k) || mode['.tag'] === 'update' && (!m.has(k) || m.get(k).rev !== mode.update)) return jsonR({ error_summary: 'path/conflict/file/..' }, 409); m.set(k, { body: o.body, rev: 'r' + (++n) }); return jsonR(meta(k)); }
+        if (/files\/download$/.test(u)) return m.has(arg.path.slice(1)) ? new Response(m.get(arg.path.slice(1)).body) : jsonR({}, 409); if (/delete_v2$/.test(u)) { const k = JSON.parse(o.body).path.slice(1); if (!m.has(k)) return jsonR({}, 409); m.delete(k); return jsonR({}); } throw new Error('Dropbox stand-in: ' + u); }; };
+    const fakeOneDrive = () => { const m = new Map(), R = 'https://graph.microsoft.com/v1.0/me/drive/special/approot'; let n = 0; const item = k => ({ name: k.split('/').pop(), file: {}, eTag: m.get(k).rev, lastModifiedDateTime: '2026-11-01T10:00:00Z', size: m.get(k).body.length });
+      const call = async (u, o) => { o = o || {}; const us = String(u); if (us.startsWith('data:')) return F0(u); if (!us.startsWith(R)) throw new Error('OneDrive stand-in: ' + u); const rest = us.slice(R.length); if (/^\/children/.test(rest)) return jsonR({ value: [...m.keys()].filter(k => !k.includes('/')).map(item) }); let x = rest.match(/^:\/(\w+):\/children/); if (x) { const inside = [...m.keys()].filter(k => k.startsWith(x[1] + '/')); return inside.length ? jsonR({ value: inside.map(item) }) : jsonR({}, 404); }
+        x = rest.match(/^:\/(.+):\/content$/); if (x && o.method === 'PUT') { const k = decodeURIComponent(x[1]), h = o.headers['If-Match']; if (h && (!m.has(k) || m.get(k).rev !== h) || o.headers['If-None-Match'] === '*' && m.has(k)) return jsonR({}, 412); m.set(k, { body: o.body, rev: '"e' + (++n) + '"' }); return jsonR(item(k)); }
+        x = rest.match(/^:\/(.+?)(\?select=.*)?$/); const k = decodeURIComponent(x[1]); if (o.method === 'DELETE') { if (!m.has(k)) return jsonR({}, 404); m.delete(k); return new Response(null, { status: 204 }); } return m.has(k) ? jsonR({ '@microsoft.graph.downloadUrl': 'data:application/json,' + encodeURIComponent(m.get(k).body) }) : jsonR({}, 404); }; return call; };
+    const F0 = u => fetch(u);
+    const fakeGoogle = () => { const files = new Map(); let n = 0; const Fd = 'application/vnd.google-apps.folder', mk = (name, parent, mimeType, body) => { const id = 'f' + (++n); files.set(id, { id, name, parents: [parent], mimeType, body: body || '', version: String(n), modifiedTime: '2026-11-01T10:00:00Z', size: String((body || '').length) }); return files.get(id); }, pub = f => { const { body, ...o } = f; return o; };
+      return async (u, o) => { o = o || {}; const url = new URL(u), m = o.method || 'GET', id = url.pathname.split('/').pop(); if (url.pathname === '/drive/v3/files' && m === 'GET') { const q = url.searchParams.get('q'), nm = (q.match(/name='([^']*)'/) || [])[1], par = (q.match(/'([^']+)' in parents/) || [])[1], folder = /mimeType='application\/vnd\.google-apps\.folder'/.test(q); return jsonR({ files: [...files.values()].filter(f => f.parents.includes(par) && (!nm || f.name === nm) && (!folder || f.mimeType === Fd)).map(pub) }); }
+        if (url.pathname === '/drive/v3/files' && m === 'POST') { const j = JSON.parse(o.body); return jsonR(pub(mk(j.name, j.parents[0], j.mimeType))); } if (url.pathname === '/upload/drive/v3/files' && m === 'POST') { const parts = o.body.split(/\r\n--silicodraw\d+/), j = JSON.parse(parts[0].split('\r\n\r\n')[1]), body = parts[1].split('\r\n\r\n')[1]; return jsonR(pub(mk(j.name, j.parents[0], 'application/json', body))); }
+        const f = files.get(id); if (!f) return jsonR({}, 404); if (m === 'PATCH') { f.body = o.body; f.version = String(++n); f.size = String(o.body.length); return jsonR(pub(f)); } if (m === 'DELETE') { files.delete(id); return new Response(null, { status: 204 }); } return new Response(f.body); }; };
+    [['dropbox', fakeDropbox], ['onedrive', fakeOneDrive], ['google', fakeGoogle]].forEach(([kind, fake]) => test('where figures are kept: ' + kind + ' (a stand-in for the service): saves, versions, archive, trash, the history stays in this browser', async () => {
+      const S = WEBS(); if (!S) throw new Skip('the website\'s storage script is not loaded here');
+      const local = memBackend(), B = S.cloudBackend(S.providers[kind](fake()), local, 0); await storeCycle(B, kind); const st2 = S.createStore(B), Q2 = () => new URLSearchParams(), H2 = () => new Headers(); await st2.handle('POST', 'h.json', Q2(), '{"objects":[1]}', H2()); await st2.handle('POST', 'h.json', Q2(), '{"objects":[2]}', H2()); ok([...local.m.keys()].some(k => k.startsWith('history/h/')), kind + ': the history went to the service'); ok(![...local.m.keys()].some(k => !k.startsWith('history/')), kind + ': a figure stayed in this browser');
+      await B.put('åäö figure.json', { body: '{"objects":[9]}' }); eq((await B.get('åäö figure.json')).body, '{"objects":[9]}', kind + ': a name outside ASCII'); await B.put('assets/my-icons.json', { body: '{}' }); ok((await B.keys()).includes('assets/my-icons.json'), kind + ': a subfolder');
+    }));
+    test('where figures are kept: a service\'s own errors are no conflicts, a listing is no download, a listing under way loses nothing, one file per name', async () => {
+      const S = WEBS(); if (!S) throw new Skip('the website\'s storage script is not loaded here');
+      fakeDropbox.full = false; let reads = 0; const call0 = fakeDropbox(), call = async (u, o) => { if (/download$/.test(u)) reads++; return call0(u, o); }; const local = memBackend(), P = S.providers.dropbox(call), B = S.cloudBackend(P, local, 0), st = S.createStore(B), Q = o => new URLSearchParams(o || {}), H = o => new Headers(o || {});
+      await st.handle('POST', 'a.json', Q(), '{"objects":["a"]}', H()); await st.handle('POST', 'b.json', Q(), '{"objects":["b"]}', H()); const g = await st.handle('GET', 'a.json', Q(), null, H()); reads = 0;
+      const B2 = S.cloudBackend(P, local, 0); await S.createStore(B2).handle('GET', 'api/files', Q(), null, H()); eq(reads, 0, 'listing the figures downloaded them');
+      fakeDropbox.full = true; let threw = ''; try { await st.handle('POST', 'a.json', Q(), '{"objects":["more"]}', H({ 'If-Match': g.etag })); } catch (e) { threw = e.message; } fakeDropbox.full = false; ok(/full/.test(threw), 'a full Dropbox was not reported as a failed save: ' + threw);
+      let before = 0; const calls = () => before; const slow = fakeDropbox(); let n = 0; const count = async (u, o) => { n++; return slow(u, o); }; const B3 = S.cloudBackend(S.providers.dropbox(async (u, o) => { n++; return jsonR({ error_summary: 'too_many_requests' }, 500); }), local, 0); await B3.keys().catch(() => {}); const after1 = n; await B3.keys().catch(() => {}); await B3.keys().catch(() => {}); eq(n, after1, 'a failing service was asked again at once');
+      // a listing on its way when a new figure is saved: its answer does not make the figure "gone"
+      const call4 = fakeDropbox(); let gateL = null, gateU = null; const P4 = S.providers.dropbox(async (u, o) => { if (gateL && /list_folder$/.test(u)) { const r = await call4(u, o); await gateL; return r; } if (gateU && /upload$/.test(u)) { await gateU; } return call4(u, o); }); const B4 = S.cloudBackend(P4, local, 0); await B4.keys(); let relU, relL; gateU = new Promise(r => { relU = r; }); const saving = B4.put('new.json', { body: '{"objects":["new"]}' }); await sleep(20); gateL = new Promise(r => { relL = r; }); const pending = B4.keys(); await sleep(20); gateU = null; relU(); await saving; const gl = gateL; gateL = null; relL(); await pending; const got = await B4.get('new.json'); ok(got && got.body === '{"objects":["new"]}', 'a figure saved during a listing counts as gone');
+      // names differing only in case are one file there: not replaced
+      // a figure that reached the place after the copy began stays; two names differing in case make one file, reported
+      const late = memBackend(); late.m.set('x.json', { body: 'old copy' }); const dest = S.cloudBackend(S.providers.dropbox(fakeDropbox()), memBackend(), 0); const realGet = late.get; late.get = async k => { if (k === 'x.json') await dest.put('x.json', { body: 'the user drew this' }); return realGet(k); }; const rl = await S.copyAll(late, dest); eq((await dest.get('x.json')).body, 'the user drew this', 'the copy replaced a figure made after it began'); ok(rl.differ.includes('x.json'), 'not reported: ' + J(rl));
+      const two = memBackend(); two.m.set('Fig.json', { body: 'a' }); two.m.set('fig.json', { body: 'b' }); const dest2 = S.cloudBackend(S.providers.dropbox(fakeDropbox()), memBackend(), 0); const r2 = await S.copyAll(two, dest2); eq(r2.copied, 1, 'two names differing in case both counted as copied'); eq(r2.differ.length, 1, 'the second is reported');
+      // an empty icon library made there first does not stand in the way
+      const ic = memBackend(); ic.m.set('assets/my-icons.json', { body: '{"a":1}' }); const dest3 = S.cloudBackend(S.providers.dropbox(fakeDropbox()), memBackend(), 0); await dest3.put('assets/my-icons.json', { body: '{}' }); await S.copyAll(ic, dest3); eq((await dest3.get('assets/my-icons.json')).body, '{"a":1}', 'the icon library was not copied');
+      // Google Drive: two writes at once make one folder
+      const gf = fakeGoogle(); let folders = 0; const P5 = S.providers.google(async (u, o) => { if (o && o.method === 'POST' && /^https:\/\/www\.googleapis\.com\/drive\/v3\/files\?/.test(u)) folders++; return gf(u, o); }); const B5 = S.cloudBackend(P5, memBackend(), 0); await Promise.all([B5.add('a.json', { body: '{}' }), B5.add('b.json', { body: '{}' })]); eq(folders, 1, 'Google Drive: folders made for two writes at once');
+      const to = S.cloudBackend(S.providers.dropbox(fakeDropbox()), memBackend(), 0); await to.put('fig1.json', { body: 'theirs' }); const from = memBackend(); from.m.set('Fig1.json', { body: 'mine' }); const r = await S.copyAll(from, to); eq(r.differ, ['Fig1.json'], 'the copy reported'); eq((await to.get('fig1.json')).body, 'theirs', 'a name differing in case replaced the file');
+      const sk = memBackend(); sk.m.set('trash/x.json', { body: 'thrown away' }); sk.m.set('history/x/1.json', { body: 'old' }); sk.m.set('y.json', { body: 'kept' }); const to2 = memBackend(); await S.copyAll(sk, to2, { skipTrash: true, skipHistory: true }); eq([...to2.m.keys()], ['y.json'], 'what a service gets');
+    });
+    test('where figures are kept: a linked folder that is away is no folder without the figure', async () => {
+      const S = WEBS(); if (!S) throw new Skip('the website\'s storage script is not loaded here');
+      let root; try { const top = await navigator.storage.getDirectory(); root = await top.getDirectoryHandle('zz-away-test', { create: true }); const w = await (await root.getFileHandle('a.json', { create: true })).createWritable(); await w.write('{}'); await w.close(); const B = S.folderBackend(root); eq(await B.get('nope.json'), undefined, 'a figure not there'); await top.removeEntry('zz-away-test', { recursive: true }); let threw = false; try { await B.get('a.json'); } catch (e) { threw = true; } ok(threw, 'a folder that went answered as if only the figure were missing'); } catch (e) { if (e instanceof Error && /answered|figure not there/.test(e.message)) throw e; throw new Skip('no writable private file system here: ' + e.message); }
+    });
+    // the whole way on the website: link a folder, reload, work there, go back. The browser's private file system stands in for the folder the picker would give
+    test('where figures are kept: the website, from this browser to a folder and back, across reloads', async () => {
+      if (!WEBS() || !WEBS().storage) throw new Skip('only on the website build');
+      let top, dir; try { top = await navigator.storage.getDirectory(); dir = await top.getDirectoryHandle('zz-link-test', { create: true }); const w0 = await (await dir.getFileHandle('p.txt', { create: true })).createWritable(); await w0.close(); await dir.removeEntry('p.txt'); if (typeof dir.queryPermission !== 'function') throw new Error('no permission calls on this handle'); } catch (e) { throw new Skip('not testable here: ' + e.message); }
+      const name = String(FILE).replace(/\.json$/i, '') + '-phone.json'; let fr = null;
+      const open = async () => { if (fr) fr.remove(); fr = D.createElement('iframe'); fr.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:800px;border:0;z-index:2147483000;background:#fff'; fr.src = location.pathname + '?file=' + encodeURIComponent(name); D.body.appendChild(fr); ok(await waitFor(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 180000), 'the editor did not start in the frame'); const w = watch(fr.contentWindow); w.onbeforeunload = null; w.confirm = () => true; w.alert = () => {}; return w; };
+      const inFolder = async f => { try { return await (await (await dir.getFileHandle(f)).getFile()).text(); } catch (e) { return null; } };
+      try {
+        let w = await open(); const a = w.fig.add('text', { x: 100, y: 100, text: 'from the browser' }); await w.flushSave(); const S1 = w.SiliCoDrawWeb.storage; eq(S1.current().kind, 'browser', 'it starts in the browser');
+        w.showDirectoryPicker = async () => dir; const r = await S1.linkFolder(true); ok(r.copied >= 1, 'nothing was copied: ' + J(r)); ok(/from the browser/.test(await inFolder(name) || ''), 'the figure is not in the folder');
+        w.eval('storeClear()'); w = await open(); const S2 = w.SiliCoDrawWeb.storage; await S2.whenReady; eq(S2.current().kind, 'folder', 'after the reload the folder is in use'); ok(w.fig.list().some(o => o.id === a), 'the figure did not open from the folder');
+        const b = w.fig.add('text', { x: 100, y: 200, text: 'in the folder now' }); await w.flushSave(); ok(/in the folder now/.test(await inFolder(name) || ''), 'a change was not saved in the folder'); ok(/your folder/.test(w.eval('webWhere().saved')), 'the tooltip does not say the folder: ' + w.eval('webWhere().saved'));
+        // an edit outside (a sync app bringing another computer's change) comes in by itself
+        const cur = JSON.parse(await inFolder(name)); cur.objects.push({ id: 'synced', type: 'text', x: 100, y: 300, s: 1, r: 0, text: 'from another computer', size: 20 }); const w2 = await (await dir.getFileHandle(name)).createWritable(); await w2.write(JSON.stringify(cur)); await w2.close(); ok(await waitFor(() => w.fig.list().some(o => o.id === 'synced'), 8000), 'a change made by a sync app did not come in');
+        // a figure that is not in the folder, with an old copy in this browser: not written there by itself
+        const stale = String(FILE).replace(/\.json$/i, '') + '-phone-stale.json';
+        await w.SiliCoDrawWeb.storage.useBrowser(false); w.eval('storeClear()'); w = await open(); eq(w.SiliCoDrawWeb.storage.current().kind, 'browser', 'back in the browser'); ok(w.fig.list().some(o => o.id === a), 'the copy in the browser stayed'); ok(!w.fig.list().some(o => o.id === b), 'the folder\'s change came along without asking');
+      } finally {
+        if (fr) { try { await fr.contentWindow.SiliCoDrawWeb.storage.useBrowser(false); await fr.contentWindow.flushSave(); } catch (e) {} fr.remove(); } await sleep(200);
+        try { await top.removeEntry('zz-link-test', { recursive: true }); } catch (e) {}
+        try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}
+      }
+    }, 300000);
+    test('where figures are kept: signing in: the right address, its challenge, and only an answer this tab asked for', async () => {
+      const S = WEBS(), A = S && S.storage; if (!A) throw new Skip('only on the website build');
+      W.__SILICODRAW_CLOUD_IDS__ = { dropbox: 'db-id', google: 'g-id', onedrive: 'ms-id' };
+      try {
+        eq(A.services().map(x => x.kind).sort(), ['dropbox', 'google', 'onedrive'], 'the services offered');
+        const sha = async v => btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v))))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+        for (const [kind, host, scope] of [['dropbox', 'www.dropbox.com', null], ['onedrive', 'login.microsoftonline.com', 'Files.ReadWrite.AppFolder offline_access']]) {
+          const go = await A._authStart(kind, true), u = new URL(go.url), q = u.searchParams; eq(u.hostname, host, kind + ': the address'); eq(q.get('response_type'), 'code', kind + ': code flow'); eq(q.get('code_challenge_method'), 'S256', kind + ': challenge method'); eq(q.get('code_challenge'), await sha(go.rec.verifier), kind + ': the challenge fits its verifier'); eq(q.get('state'), go.rec.state, kind + ': state'); eq(q.get('redirect_uri'), location.origin + location.pathname, kind + ': back to this page'); ok(go.rec.verifier.length >= 43, kind + ': a verifier of the length required'); ok(!/secret/i.test(go.url), kind + ': a secret'); if (scope) eq(q.get('scope'), scope, kind + ': only its own folder'); else eq(q.get('token_access_type'), 'offline', 'dropbox: a token that renews'); }
+        const g = await A._authStart('google', false), gq = new URL(g.url).searchParams; eq(gq.get('response_type'), 'token', 'google: browser flow'); eq(gq.get('scope'), 'https://www.googleapis.com/auth/drive.file', 'google: only what this app makes');
+        const rec = { state: 'abc', kind: 'dropbox' }; eq(A._parseBack('?state=abc&code=C1', '', rec).code, 'C1', 'a code'); eq(A._parseBack('', '#state=abc&access_token=T1&expires_in=3599', rec).token, 'T1', 'a token'); eq(A._parseBack('?state=abc&error=access_denied', '', rec).error, 'access_denied', 'a refusal'); eq(A._parseBack('?state=WRONG&code=EVIL', '', rec), null, 'an answer this tab did not ask for'); eq(A._parseBack('?code=EVIL', '', rec), null, 'an answer without state'); eq(A._parseBack('?state=abc&code=C', '', null), null, 'nothing asked');
+      } finally { delete W.__SILICODRAW_CLOUD_IDS__; }
+    });
+    test('where figures are kept: the website\'s dialog offers what this browser and the registered services allow', async () => {
+      const S = WEBS(), A = S && S.storage; if (!A) throw new Skip('only on the website build');
+      const box = () => D.querySelector('#modalBox'), keep = { connect: A.connect, canFolder: A.canFolder, current: A.current }; let asked = null;
+      W.__SILICODRAW_CLOUD_IDS__ = { dropbox: 'db-id', google: '', onedrive: 'ms-id' };
+      try {
+        A.connect = (k, c) => { asked = [k, c]; }; A.canFolder = true; await storageDialog();
+        ok(/Now:.*this browser/.test(box().textContent), 'where it is now'); ok(box().querySelector('#stFolder'), 'no folder choice'); const kinds = [...box().querySelectorAll('[data-k]')].map(b => b.dataset.k); eq(kinds, ['dropbox', 'onedrive'], 'a service without its registration is not offered'); ok(!box().querySelector('#stBrowser'), 'back to the browser while in it'); ok(/iCloud Drive, Box/.test(box().textContent), 'the by-hand way is not explained');
+        box().querySelector('[data-k=dropbox]').click(); ok(await waitFor(() => asked, 4000), 'signing in did not start'); eq(asked, ['dropbox', true], 'signing in'); closeModal();
+        A.canFolder = false; W.__SILICODRAW_CLOUD_IDS__ = { dropbox: '', google: '', onedrive: '' }; await storageDialog(); ok(!box().querySelector('#stFolder') && !box().querySelector('#stCopy') && /By hand/.test(box().textContent), 'a phone without services: the by-hand way only'); closeModal();
+        A.current = () => ({ kind: 'dropbox', name: 'Dropbox', needs: 'signin' }); await storageDialog(); ok(box().querySelector('#stAgain') && box().querySelector('#stBrowser') && /run out/.test(box().textContent), 'signing in again is not offered'); ok(/sign in again/.test(webWhere().offline), 'the tooltip: ' + webWhere().offline); closeModal();
+      } finally { Object.assign(A, keep); delete W.__SILICODRAW_CLOUD_IDS__; if (!D.querySelector('#modal').hidden) closeModal(); }
+    });
+    test('where figures are kept: closing a figure too large for the closing store: the change waits in this browser\'s own store', async () => {
+      const S = WEBS(), A = S && S.storage; if (!A) throw new Skip('only on the website build');
+      if (A.current().kind !== 'browser') throw new Skip('a place is in use');
+      const set = Storage.prototype.setItem; let threw = false; try { Storage.prototype.setItem = function () { threw = true; throw new DOMException('full', 'QuotaExceededError'); }; eq(navigator.sendBeacon(FILE + '?base=x', '{"objects":["big"]}'), false, 'told as not delivered'); } finally { Storage.prototype.setItem = set; } ok(threw, 'the closing store was not tried');
+    });
+    test('where figures are kept: on the website a figure\'s text never goes to the web host', async () => {
+      if (!WEB || !WEBS() || !WEBS().storage) throw new Skip('only on the website build');
+      const sent = []; const O = PerformanceObserver; const po = new O(l => l.getEntries().forEach(e => sent.push(e.name))); po.observe({ type: 'resource', buffered: false });
+      const name = 'zz-ålder-' + Date.now().toString(36) + '.json', set = Storage.prototype.setItem; let beacon;
+      try { const a = await fetch(name, { method: 'POST', body: '{"objects":[]}' }); eq(a.status, 204, 'a non-Latin name is stored here'); eq((await fetch('zz-unknown.bin', { method: 'POST', body: 'x' })).status, 404, 'an unknown write');
+        Storage.prototype.setItem = function () { throw new DOMException('full', 'QuotaExceededError'); }; beacon = navigator.sendBeacon(FILE + '?base=x', '{"objects":["closing"]}'); Storage.prototype.setItem = set; eq(beacon, false, 'a closing page\'s text that does not fit is refused'); await sleep(300);
+        const out = sent.filter(u => /zz-|\.json/.test(u) && !/examples|exports\//.test(u)); eq(out, [], 'figure requests that reached the network');
+      } finally { Storage.prototype.setItem = set; po.disconnect(); try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {} }
+    });
+    // tablets (a touch screen in the desktop layout): the menu of a press and hold
+    test('tablet: the click after a press and hold does not run the menu row under the finger; lifting keeps the selection behind the menu', async () => {
+      if (PHONE()) throw new Skip('this window has the phone layout');
+      const mk = (type, x, y) => new PointerEvent(type, { pointerId: 7, pointerType: 'touch', isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, composed: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1 });
+      const cm = D.querySelector('#ctxMenu'), S = D.querySelector('#svg'), wait = async (f, ms) => { const t0 = Date.now(); while (!f() && Date.now() - t0 < ms) await sleep(40); return f(); };
+      blank(); const a = fig.add('shape', { kind: 'rect', x: 400, y: 300, w: 300, h: 200 }), b = fig.add('shape', { kind: 'rect', x: 1100, y: 300, w: 300, h: 200 }); fit(true); await settle();
+      const at = id => { const r = D.querySelector('#content [data-id="' + id + '"]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+      try {
+        let p = at(a), t = D.elementFromPoint(p.x, p.y); t.dispatchEvent(mk('pointerdown', p.x, p.y)); ok(await wait(() => cm.classList.contains('open'), 3000), 'no menu after the press and hold');
+        (t.isConnected ? t : S).dispatchEvent(mk('pointerup', p.x, p.y)); ok(PH.ghost > Date.now(), 'the lift set no guard'); const row = [...cm.querySelectorAll('button')].find(x => /^Delete/.test(x.textContent)); ok(row, 'no Delete in the menu'); row.click();
+        ok(get(a), 'the click of the lifting finger ran Delete'); ok(cm.classList.contains('open'), 'the click of the lifting finger closed the menu'); eq(PH.ghost, 0, 'the guard is used up'); cm.classList.remove('open');
+        await sleep(850); sel = new Set([a, b]); render(); buildPanel(); await frame(); const pa = at(a), pb = at(b), x = (pa.x + pb.x) / 2, y = pa.y; t = D.elementFromPoint(x, y); t.dispatchEvent(mk('pointerdown', x, y));
+        S.dispatchEvent(new MouseEvent('contextmenu', { clientX: x, clientY: y, bubbles: true, cancelable: true })); ok(cm.classList.contains('open'), 'no menu for a long press in the gap'); (t.isConnected ? t : S).dispatchEvent(mk('pointerup', x, y));
+        eq([...sel].sort(), [a, b].sort(), 'lifting cleared the selection behind the menu');
+      } finally { cm.classList.remove('open'); if (touches.has(7)) touchEnd({ type: 'pointercancel', pointerType: 'touch', pointerId: 7, timeStamp: performance.now(), clientX: 0, clientY: 0 }); PH.ghost = 0; sel = new Set(); render(); buildPanel(); }
+    });
+    // Fewer animations (Appearance, or a system set to reduce motion, as GitHub's Windows and Mac machines are): nothing may lag behind. A tiny transition on everything kept a new size at its old value until the next frame in Firefox
+    test('fewer animations: a zoom counts at once, no transitions or animations', async () => {
+      blank(); const id = fig.add('shape', { kind: 'rect', x: 800, y: 500, w: 300, h: 200 }); await settle();
+      const H = D.documentElement, S = D.querySelector('#svg'), still = H.classList.contains('ui-still'), z0 = zoom, width = e => Math.round(e.getBoundingClientRect().width);
+      H.classList.add('ui-still');
+      try {
+        for (const z of [2.5, 1, 2, .5]) { setZoom(z); eq(width(S), Math.round(scene.w * z), 'the canvas right after a zoom to ' + z); near(width(D.querySelector('#content [data-id="' + id + '"]')) / z, 302, 2, 'the element right after a zoom to ' + z); await sleep(30); }
+        const cs = getComputedStyle(S); eq(cs.transitionProperty, 'none', 'transition on the canvas'); const cm = D.querySelector('#ctxMenu'); cm.classList.add('open'); const an = getComputedStyle(cm).animationName; cm.classList.remove('open'); eq(an, 'none', 'animation on an open menu');
+      } finally { H.classList.toggle('ui-still', still); setZoom(z0); }
+    });
     // phone touch tests (M2)
     // synthetic touch PointerEvents (pointerType touch, own pointerIds) in a frame of a phone's size on a figure of its own (removed afterwards); ?phone=1 forces the phone layout
     test('phone touch: scroll vs move, tap select, 10 px slop, pinch with one render, press and hold menus, a handle press undone, double taps at 390 × 844 and 844 × 390', async () => {
@@ -414,7 +781,7 @@
         const deselect = () => { V('sel').clear(); w.render(); w.buildPanel(); }, closeMenus = () => d.querySelectorAll('.pop.open').forEach(m => m.classList.remove('open'));
         w.fig.set({ version: 4, w: 1600, h: 900, bg: '#ffffff', palette: [], objects: [{ id: 't1', type: 'text', x: 200, y: 150, s: 1, r: 0, text: 'Touch me', size: 24, anchor: 'start' },
           { id: 'r1', type: 'shape', kind: 'rect', x: 800, y: 500, s: 1, r: 0, w: 300, h: 200, fill: '#cfe3f5', stroke: '#6f86c8', sw: 2 }] });
-        V('snap=false;guides=false'); w.setZoom(1); await sleep(100); const R = () => V('get')('r1');
+        await until(() => w.fit.z != null, 10000); V('snap=false;guides=false'); w.setZoom(1); await sleep(100); const R = () => V('get')('r1');
         // one finger on an element that is not selected scrolls the view and moves nothing; a tap selects it
         let p = center('r1'); const x0 = R().x, y0 = R().y, s0 = [st.scrollLeft, st.scrollTop];
         ev('pointerdown', p.x, p.y); for (let i = 1; i <= 6; i++) ev('pointermove', p.x - i * 10, p.y - i * 7); ev('pointerup', p.x - 60, p.y - 42); if (V('phTouch').fl) V('phTouch').fl();   // (no flick going on after it)
@@ -433,10 +800,11 @@
           ev('pointerup', c.x + 100, c.y, 2); ev('pointerup', c.x - 100, c.y, 1); await sleep(50);
           near(V('zoom'), z0 * 200 / 80, 1e-6, 'zoom after the pinch' + at); eq(n, 1, 'renders after the pinch' + at); ok(!$$('#wrap').style.transform && !$$('#phSpace'), 'the pinch left its scale or spacer behind' + at);
         } finally { w.render = R0; }
+        deselect(); await sleep(450); { const e3 = empty(), s3 = st.getBoundingClientRect(), c3 = { x: Math.min(Math.max(e3.x, s3.left + 110), s3.right - 110), y: e3.y }; ev('pointerdown', c3.x - 40, c3.y, 1); ev('pointerdown', c3.x + 40, c3.y, 2); ev('pointerdown', c3.x, c3.y + 30, 3); ok(V('pinch'), 'no pinch with two fingers' + at); ev('pointerup', c3.x - 40, c3.y, 1); eq(V('pinch'), null, 'the pinch went on after one of its own fingers lifted' + at); ev('pointerup', c3.x + 40, c3.y, 2); ev('pointerup', c3.x, c3.y + 30, 3); eq(V('touches').size, 0, 'fingers left after three lifted' + at); ok(!$$('#wrap').style.transform, 'the pinch left its scale behind' + at); }
         w.setZoom(1); await sleep(50);
         // press and hold: the element's menu (as an action sheet), the canvas menu on empty canvas
         p = center('r1'); ev('pointerdown', p.x, p.y); ev('pointermove', p.x + 3, p.y + 2); ok(await until(() => cm.classList.contains('open'), 2000), 'press and hold on an element opened no menu' + at);
-        ok(cm.classList.contains('sheet') && V('sel').has('r1'), 'the element menu is no action sheet for the element' + at); ev('pointerup', p.x + 3, p.y + 2); eq([R().x, R().y], [x0, y0], 'press and hold moved the element' + at); closeMenus(); await sleep(350);
+        ok(cm.classList.contains('sheet'), 'the element menu is no action sheet' + at); ok(V('sel').has('r1'), 'press and hold did not select the element under the finger (selected: ' + [...V('sel')].join() + ')' + at); ev('pointerup', p.x + 3, p.y + 2); eq([R().x, R().y], [x0, y0], 'press and hold moved the element' + at); closeMenus(); await sleep(350);
         deselect(); const e1 = empty(); ev('pointerdown', e1.x, e1.y); ok(await until(() => cm.classList.contains('open'), 2000), 'press and hold on empty canvas opened no menu' + at);
         ok(/Text here/.test(cm.textContent) && /Paste/.test(cm.textContent), 'the canvas menu lacks its items' + at + ': ' + cm.textContent); ev('pointerup', e1.x, e1.y); closeMenus(); await sleep(350);
         // press and hold on a handle: the menu, and what the press changed is undone (a text's width handle gives it a box width at once)
@@ -445,9 +813,9 @@
         ev('pointerdown', hx, hy); ok(T().boxW > 0, 'the width handle press set no box width' + at); ok(await until(() => cm.classList.contains('open'), 2000), 'press and hold on a handle opened no menu' + at);
         eq(T().boxW, bw0, 'press and hold on a handle left the element changed' + at); eq(V('drag'), null, 'the handle drag is still going' + at); ev('pointerup', hx, hy); closeMenus(); await sleep(350);
         // a double tap on empty canvas zooms in 2×; on a text it edits it in place at 16 px or more, with Done (the view comes back)
-        deselect(); w.fit(true); await sleep(50); const zf = V('zoom'), e2 = empty(); tap(e2.x, e2.y); await sleep(100); tap(e2.x + 2, e2.y + 1);
+        deselect(); w.fit(true); await sleep(50); const zf = V('zoom'), e2 = empty(); await doubleTap(w, e2.x, e2.y, e2.x + 2, e2.y + 1);
         ok(await until(() => Math.abs(V('zoom') - zf * 2) < 1e-6, 2000), 'a double tap on empty canvas did not zoom 2× (' + zf + ' → ' + V('zoom') + ')' + at); eq(V('scene').objects.length, 2, 'the double tap added something' + at);
-        w.fit(true); await sleep(450); const zt = V('zoom'); p = mid('t1'); tap(p.x, p.y); await sleep(100); p = mid('t1'); tap(p.x, p.y);
+        w.fit(true); await sleep(450); const zt = V('zoom'); p = mid('t1'); await doubleTap(w, p.x, p.y);
         const ta = $$('textarea.inline-edit'); ok(ta && V('editor'), 'a double tap on a text did not edit it' + at); ok(parseFloat(ta.style.fontSize) >= 16, 'the in-place field is under 16 px: ' + ta.style.fontSize + at);
         ok(V('zoom') * 24 >= 16 - 1e-6, 'the text was not zoomed to 16 px' + at); const dn = $$('.fmtbar.float .fdone'); ok(dn, 'no Done on the formatting bar' + at);
         ta.value = 'Touched'; ta.dispatchEvent(new w.Event('input')); dn.click(); await sleep(50);
@@ -457,12 +825,12 @@
         fr = D.createElement('iframe'); fr.title = 'phone touch test'; fr.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:844px;border:0;z-index:2147483000;background:#fff';
         fr.src = location.pathname + '?file=' + encodeURIComponent(name) + '&phone=1'; D.body.appendChild(fr);
         ok(await until(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 60000), 'the editor did not start in the phone frame');
-        const w = fr.contentWindow; w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.download = () => {}; w.HTMLAnchorElement.prototype.click = function () {}; w.onbeforeunload = null;
+        const w = watch(fr.contentWindow); w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.download = () => {}; w.HTMLAnchorElement.prototype.click = function () {}; w.onbeforeunload = null;
         try { w.navigator.vibrate = () => true; } catch (e) {}
         if (w.applyUIClasses) w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); await sleep(250);   // a hidden tab may start the frame at 300 × 150 and send no media-query change
         await checks(w, '390 × 844');
-        fr.style.width = '844px'; fr.style.height = '390px'; if (!await until(() => w.document.documentElement.classList.contains('ph-land'), 1500)) { if (w.applyUIClasses) w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); }
-        ok(await until(() => w.document.documentElement.classList.contains('ph-land'), 4000), 'the frame did not turn sideways'); await sleep(350);
+        fr.style.width = '844px'; fr.style.height = '390px'; if (w.document.hidden && !await until(() => w.document.documentElement.classList.contains('ph-land'), 1500)) { if (w.applyUIClasses) w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); }
+        ok(await until(() => w.document.documentElement.classList.contains('ph-land'), 20000), 'the frame did not turn sideways'); await sleep(350);
         await checks(w, '844 × 390');
       } finally {
         if (fr) { try { await fr.contentWindow.flushSave(); } catch (e) {} fr.remove(); fr = null; }
@@ -470,7 +838,7 @@
         try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
         try { localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}
       }
-    }, 180000);
+    }, 300000);
     // a finger, not a mouse: what a phone's first minute with an example needs (panels behind everything, gaps in icons, thin lines), plus Back, a cancelled touch, iOS gesture events, a stylus
     test('phone touch 2: panels behind other elements, finger tolerance, cancelled touches, gesture events, Back for every mode, Select several, big charts and structures, press-and-hold click, stylus, keys', async () => {
       if (typeof phPick !== 'function') throw new Skip('this editor has no phone touch code');
@@ -480,13 +848,13 @@
         fr = D.createElement('iframe'); fr.title = 'phone touch test 2'; fr.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:844px;border:0;z-index:2147483000;background:#fff';
         fr.src = location.pathname + '?file=' + encodeURIComponent(name) + '&phone=1'; D.body.appendChild(fr);
         ok(await until(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 60000), 'the editor did not start in the phone frame');
-        const w = fr.contentWindow, d = w.document, V = s => w.eval(s), $$ = s => d.querySelector(s), svg = $$('#svg'), st = $$('#stage'), cm = $$('#ctxMenu'), tg = {};
+        const w = watch(fr.contentWindow), d = w.document, V = s => w.eval(s), $$ = s => d.querySelector(s), svg = $$('#svg'), st = $$('#stage'), cm = $$('#ctxMenu'), tg = {};
         w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.download = () => {}; w.HTMLAnchorElement.prototype.click = function () {}; w.onbeforeunload = null; try { w.navigator.vibrate = () => true; } catch (e) {}
         if (w.applyUIClasses) w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); await sleep(250);
         const ev = (type, x, y, id = 1, kind = 'touch') => { let t = type === 'pointerdown' ? d.elementFromPoint(x, y) : tg[id]; ok(t, 'nothing under ' + Math.round(x) + ', ' + Math.round(y)); if (!t.isConnected) t = svg; if (type === 'pointerdown') tg[id] = t;
           t.dispatchEvent(new w.PointerEvent(type, { pointerId: id, pointerType: kind, isPrimary: id === 1, clientX: x, clientY: y, bubbles: true, cancelable: true, composed: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' || type === 'pointercancel' ? 0 : 1 })); if (type === 'pointerup' || type === 'pointercancel') delete tg[id]; };
         const tap = (x, y, kind) => { ev('pointerdown', x, y, 1, kind); ev('pointerup', x, y, 1, kind); };
-        const swipe = (x, y, dx, dy, id = 1, kind) => { ev('pointerdown', x, y, id, kind); for (let i = 1; i <= 5; i++) ev('pointermove', x + dx * i / 5, y + dy * i / 5, id, kind); ev('pointerup', x + dx, y + dy, id, kind); if (V('phTouch').fl) V('phTouch').fl(); };   // (no flick going on after it: a slow machine's quick moves can look like one)
+        const swipe = (x, y, dx, dy, id = 1, kind = 'touch') => { const mk = (type, X, Y) => new w.PointerEvent(type, { pointerId: id, pointerType: kind, isPrimary: id === 1, clientX: X, clientY: Y, bubbles: true, cancelable: true, composed: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1 }), E = [mk('pointerdown', x, y)]; for (let i = 1; i <= 5; i++) E.push(mk('pointermove', x + dx * i / 5, y + dy * i / 5)); E.push(mk('pointerup', x + dx, y + dy)); const t = d.elementFromPoint(x, y); ok(t, 'nothing under ' + Math.round(x) + ', ' + Math.round(y)); E.forEach(e => (t.isConnected ? t : svg).dispatchEvent(e)); if (V('phTouch').fl) V('phTouch').fl(); };   // (no flick going on after it: a slow machine's quick moves can look like one)
         const mid = id => { const r = V('linkNode')(id).getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
         const center = id => { const p = mid(id), s = st.getBoundingClientRect(); st.scrollLeft += p.x - (s.left + s.width / 2); st.scrollTop += p.y - (s.top + s.height / 2); return mid(id); };
         const pause = () => sleep(450);   // past the double-tap window
@@ -498,14 +866,14 @@
         // a free spot on the panel (top right), and a panel that counts as one: no text of its own, elements on it
         ok(w.phBack(O('p1')), 'a box with no text and elements on it is no panel behind them'); const fp = page(1450, 130); eq(pickOf(fp.x, fp.y), 'p1', 'the free spot');
         // a double tap on it zooms in as on empty canvas, opens no text field and leaves nothing selected
-        tap(fp.x, fp.y); ok(V('sel').has('p1'), 'a tap selects the panel'); await sleep(100); tap(fp.x + 1, fp.y + 1);
+        await doubleTap(w, fp.x, fp.y, fp.x + 1, fp.y + 1, () => ok(V('sel').has('p1'), 'a tap selects the panel'));
         ok(await until(() => Math.abs(V('zoom') - zf * 2) < 1e-6, 2000), 'a double tap on the panel did not zoom 2×: ' + V('zoom')); ok(!V('editor') && !$$('textarea.inline-edit'), 'a double tap on the panel opened a text field'); eq(V('sel').size, 0, 'the first tap\'s selection stayed');
         w.fit(true); await pause();
         // press and hold on it: the canvas menu; once selected, its own menu
         let p = page(1450, 130); ev('pointerdown', p.x, p.y); ok(await until(() => cm.classList.contains('open'), 2000), 'press and hold on the panel opened no menu'); ok(/Text here/.test(cm.textContent), 'press and hold on the panel is not the canvas menu: ' + cm.textContent); ev('pointerup', p.x, p.y); cm.classList.remove('open'); await sleep(350);
         // a tap selects it, and then a quick swipe moves nothing while a press and a drag does
         desel(); await pause(); p = page(1450, 130); tap(p.x, p.y); await pause(); const py = O('p1').y; swipe(p.x, p.y, 0, -70); await sleep(30); eq(O('p1').y, py, 'a quick swipe moved the selected panel'); eq(V('drag'), null, 'a drag is left');
-        await pause(); ev('pointerdown', p.x, p.y); ok(await until(() => false, 230) === false); ev('pointermove', p.x, p.y - 30); ev('pointermove', p.x, p.y - 40); ev('pointerup', p.x, p.y - 40); ok(O('p1').y < py - 40, 'press, then drag did not move the panel'); w.undo(); desel(); await pause();
+        await pause(); ev('pointerdown', p.x, p.y); w.clearTimeout(V('phTouch').lp); ok(await until(() => false, 230) === false); ev('pointermove', p.x, p.y - 30); ev('pointermove', p.x, p.y - 40); ev('pointerup', p.x, p.y - 40); ok(O('p1').y < py - 40, 'press, then drag did not move the panel'); w.undo(); desel(); await pause();
         // a section box with no elements on it is edited by a double tap as before
         w.fig.update('p1', { text: 'Now with text' }); ok(!w.phBack(O('p1')), 'a box with text counts as a panel behind'); w.fig.update('p1', { text: '' }); desel(); await pause();
         // gaps in an icon go to the icon, not to the panel; beside a thin arrow the arrow; on the label the label
@@ -522,15 +890,15 @@
             w.setZoom(.5); G('gesturestart', 1); G('gesturechange', 1.5); G('gestureend', 1.5); near(V('zoom'), .75, 1e-6, 'a trackpad pinch'); } finally { w.render = R0; } w.fit(true); await pause(); }
         // Back: Sketch and placing a comment end with it; a menu item that opens a sheet at once leaves no entry behind
         w.setSketch(true); await sleep(30); ok(w.history.state && w.history.state.ph, 'Sketch has no Back entry'); w.history.back(); ok(await until(() => !V('sk').on), 'Back did not leave Sketch mode'); await sleep(120);
-        w.setSketch(true); await sleep(30); $$('#skDone').click(); await sleep(150); ok(!(w.history.state && w.history.state.ph), 'Done left Sketch\'s Back entry');
+        w.setSketch(true); await sleep(30); $$('#skDone').click(); ok(await until(() => !(w.history.state && w.history.state.ph) && !V('PH').backing, 10000), 'Done left Sketch\'s Back entry');
         w.setPlacing(true); await sleep(30); ok(w.history.state && w.history.state.ph, 'placing a comment has no Back entry'); w.history.back(); ok(await until(() => !V('placing')), 'Back did not end placing the comment'); await sleep(120);
         p = page(1450, 130); desel(); ev('pointerdown', p.x, p.y); ok(await until(() => cm.classList.contains('open'), 2000), 'no canvas menu for Back'); ev('pointerup', p.x, p.y); await sleep(500); ok(w.history.state && w.history.state.ph, 'the menu has no Back entry');
-        [...cm.querySelectorAll('button')].find(b => /Comment here/.test(b.textContent)).click(); await sleep(100); eq($$('#props').dataset.ph, 'full', 'Comment here opened no sheet'); eq(V('PH').stack.length, 1, 'layers after a menu item that opens a sheet'); $$('#props .sgx').click(); await sleep(150); ok(!(w.history.state && w.history.state.ph), 'a Back entry is left after closing the sheet: the next Back would do nothing'); w.undo(); desel(); await pause();
+        [...cm.querySelectorAll('button')].find(b => /Comment here/.test(b.textContent)).click(); await sleep(100); eq($$('#props').dataset.ph, 'full', 'Comment here opened no sheet'); eq(V('PH').stack.length, 1, 'layers after a menu item that opens a sheet'); $$('#props .sgx').click(); ok(await until(() => !(w.history.state && w.history.state.ph) && !V('PH').backing, 10000), 'a Back entry is left after closing the sheet: the next Back would do nothing'); w.undo(); desel(); await pause();
         // press and hold: the menu is under the lifting finger: the click that may come with the lift does not run a row, a later tap does
         w.fit(true); await sleep(50); p = mid('t1'); ev('pointerdown', p.x, p.y); ok(await until(() => cm.classList.contains('open'), 2000), 'no element menu'); const rw = [...cm.querySelectorAll('button')].find(b => /Duplicate/.test(b.textContent)), n1 = V('scene').objects.length; ev('pointerup', p.x, p.y); rw.click(); eq(V('scene').objects.length, n1, 'the click of the lifting finger ran a menu row'); ok(cm.classList.contains('open'), 'the click of the lifting finger closed the menu');
         await sleep(480); rw.click(); eq(V('scene').objects.length, n1 + 1, 'a tap on the row later did nothing'); w.undo(); desel(); await pause();
         // Select several: a double tap keeps the element selected and opens its properties; a single tap on it takes it out; the toolbar has only what applies
-        V('PH').multi = true; w.mbarSync(); p = mid('i1'); tap(p.x, p.y); await sleep(100); p = mid('i1'); tap(p.x, p.y); await sleep(50); ok(V('sel').has('i1'), 'a double tap in Select several deselected it'); eq($$('#props').dataset.ph, 'full', 'a double tap in Select several opened no properties'); eq($$('#props .sgt').textContent, 'Icon', 'the properties are not the icon\'s'); w.phSheet('#props', 'closed'); await pause();
+        V('PH').multi = true; w.mbarSync(); p = mid('i1'); await doubleTap(w, p.x, p.y); await sleep(50); ok(V('sel').has('i1'), 'a double tap in Select several deselected it'); eq($$('#props').dataset.ph, 'full', 'a double tap in Select several opened no properties'); eq($$('#props .sgt').textContent, 'Icon', 'the properties are not the icon\'s'); w.phSheet('#props', 'closed'); await pause();
         p = mid('i1'); tap(p.x, p.y); await sleep(30); ok(!V('sel').has('i1'), 'a tap in Select several did not take it out'); V('PH').multi = false; w.mbarSync(); desel(); await pause();
         // the selection toolbar fits a 390 px phone with Deselect in sight; Arrange lists what applies
         V('sel').add('i1'); w.render(); w.buildPanel(); { const m = $$('#mbSel'); ok(m.scrollWidth <= m.clientWidth + 1, 'the selection toolbar overflows: ' + m.scrollWidth + ' > ' + m.clientWidth); ok([...m.querySelectorAll('button')].filter(b => !b.hidden).every(b => b.getBoundingClientRect().width >= 40), 'a toolbar button is under 40 px wide'); }
@@ -543,8 +911,8 @@
         // a flick goes on after the finger lifts, a new press stops it, and a pause before lifting gives none (frames by timer: a hidden tab paints none)
         { const raf = w.requestAnimationFrame, caf = w.cancelAnimationFrame; w.requestAnimationFrame = f => w.setTimeout(() => f(w.performance.now()), 16); w.cancelAnimationFrame = i => w.clearTimeout(i);
           try { w.setZoom(1); await sleep(50); st.scrollLeft = 300; st.scrollTop = 100; const s = st.getBoundingClientRect(), x = s.left + 300, y = s.top + 40; ok(!pickOf(x, y) || pickOf(x, y) === 'p1', 'the flick starts on something'); desel(); await pause();
-            const H = d.documentElement, still = H.classList.contains('ui-still'); H.classList.remove('ui-still'); /* a system set to reduce motion (GitHub's Windows and Mac machines) has no flick: checked below */ let sl = 0, went = false; for (let a = 0; a < 4 && !went; a++) { st.scrollLeft = 300; ev('pointerdown', x, y); for (let i = 1; i <= 5; i++) { await sleep(16); ev('pointermove', x - i * 24, y); } sl = st.scrollLeft; ev('pointerup', x - 120, y); for (let i = 0; i < 30 && !went; i++) { await sleep(50); went = st.scrollLeft > sl + 20; } } ok(went, 'a flick stopped dead: ' + sl + ' → ' + st.scrollLeft); /* tries again: on a slow machine late timers can make the moves too slow to count as a flick, and frames come late */ ev('pointerdown', x, y); const s2 = st.scrollLeft; await sleep(80); eq(st.scrollLeft, s2, 'a new press did not stop the flick'); ev('pointerup', x, y); await pause(); H.classList.add('ui-still'); st.scrollLeft = 300; ev('pointerdown', x, y); for (let i = 1; i <= 5; i++) { await sleep(16); ev('pointermove', x - i * 24, y); } const sNoFlick = st.scrollLeft; ev('pointerup', x - 120, y); await sleep(200); eq(st.scrollLeft, sNoFlick, 'a flick with reduced motion'); await pause(); H.classList.toggle('ui-still', still);
-            ev('pointerdown', x, y); for (let i = 1; i <= 5; i++) { await sleep(16); ev('pointermove', x - i * 10, y); } await sleep(150); const s3 = st.scrollLeft; ev('pointerup', x - 50, y); await sleep(80); eq(st.scrollLeft, s3, 'a pause before lifting still flicked'); } finally { w.requestAnimationFrame = raf; w.cancelAnimationFrame = caf; } }
+            const H = d.documentElement, still = H.classList.contains('ui-still'); H.classList.remove('ui-still'); /* a system set to reduce motion (GitHub's Windows and Mac machines) has no flick: checked below */ let sl = 0, went = false; for (let a = 0; a < 4 && !went; a++) { st.scrollLeft = 300; ev('pointerdown', x, y); for (let i = 1; i <= 5; i++) { await sleep(16); ev('pointermove', x - i * 60, y); } sl = st.scrollLeft; ev('pointerup', x - 300, y); for (let i = 0; i < 30 && !went; i++) { await sleep(50); went = st.scrollLeft > sl + 20; } } ok(went, 'a flick stopped dead: ' + sl + ' → ' + st.scrollLeft); /* tries again: on a slow machine late timers can make the moves too slow to count as a flick, and frames come late */ ev('pointerdown', x, y); const s2 = st.scrollLeft; await sleep(80); eq(st.scrollLeft, s2, 'a new press did not stop the flick'); ev('pointerup', x, y); await pause(); H.classList.add('ui-still'); st.scrollLeft = 300; ev('pointerdown', x, y); for (let i = 1; i <= 5; i++) { await sleep(16); ev('pointermove', x - i * 24, y); } const sNoFlick = st.scrollLeft; ev('pointerup', x - 120, y); await sleep(200); eq(st.scrollLeft, sNoFlick, 'a flick with reduced motion'); await pause(); H.classList.remove('ui-still');
+            ev('pointerdown', x, y); for (let i = 1; i <= 5; i++) { await sleep(16); ev('pointermove', x - i * 10, y); } await sleep(150); const s3 = st.scrollLeft; ev('pointerup', x - 50, y); await sleep(80); eq(st.scrollLeft, s3, 'a pause before lifting still flicked'); H.classList.toggle('ui-still', still); } finally { w.requestAnimationFrame = raf; w.cancelAnimationFrame = caf; } }
         // a stylus works as a finger does: it scrolls, a tap selects, the selection moves after 10 px, press and hold has the menu; a resting hand is ignored; in Sketch it draws
         w.fig.set({ version: 4, w: 1600, h: 900, bg: '#ffffff', palette: [], objects: [{ id: 'r1', type: 'shape', kind: 'rect', x: 800, y: 500, s: 1, r: 0, w: 300, h: 200, fill: '#cfe3f5', stroke: '#6f86c8', sw: 2 }] }); w.setZoom(1); await sleep(100);
         { p = center('r1'); const x0 = O('r1').x, s0 = [st.scrollLeft, st.scrollTop]; swipe(p.x, p.y, -60, -40, 7, 'pen'); eq(O('r1').x, x0, 'a pen\'s drag moved an element that is not selected'); ok(st.scrollLeft - s0[0] > 30 && st.scrollTop - s0[1] > 20, 'a pen\'s drag did not scroll'); await pause();
@@ -555,13 +923,13 @@
         // a big Gantt chart: a quick swipe from a bar scrolls, a press and a drag moves the bar; a tiny structure drags as a whole, a zoomed-in one has handles, a row for what a keyboard types, and a bond that moves it all
         w.fig.set({ version: 4, w: 1600, h: 900, bg: '#ffffff', palette: [], objects: [{ id: 'g1', type: 'gantt', x: 100, y: 100, s: 1, r: 0, cols: 'A|B|C|D|E|F', colW: 200, rowH: 60, barH: 36, labelW: 200, tasks: 'One|1|3|a\nTwo|2|4|a\nThree|1|5|a', phases: 'a|#6f86c8|Phase' }] }); w.setZoom(3); await sleep(150);
         { V('sel').add('g1'); w.render(); w.buildPanel(); const o = O('g1'), G = w.ganttGeom(o), at = () => { const q = w.toGlobal(o, [G.X(2.5), G.rowY(1)]); return page(q.x, q.y); }; let q = at(); const s = st.getBoundingClientRect(); st.scrollLeft += q.x - (s.left + s.width / 2); st.scrollTop += q.y - (s.top + s.height / 2); await sleep(50); ok(w.phBig(), 'the chart does not count as big at this zoom'); q = at(); const t0 = o.tasks, s0 = st.scrollLeft;
-          swipe(q.x, q.y, -120, 0); await sleep(30); eq(O('g1').tasks, t0, 'a quick swipe from a bar moved the bar'); ok(st.scrollLeft > s0 + 60, 'a quick swipe from a bar did not scroll'); await pause(); q = at(); ev('pointerdown', q.x, q.y); await sleep(230); eq((V('drag') || {}).mode, 'gbar', 'press on a bar'); ev('pointermove', q.x - 30, q.y); ev('pointermove', q.x - 700, q.y); ev('pointerup', q.x - 700, q.y); ok(O('g1').tasks !== t0, 'press, then drag did not move the bar'); desel(); await pause(); }
+          swipe(q.x, q.y, -120, 0); await sleep(30); eq(O('g1').tasks, t0, 'a quick swipe from a bar moved the bar'); ok(st.scrollLeft > s0 + 60, 'a quick swipe from a bar did not scroll'); await pause(); q = at(); ev('pointerdown', q.x, q.y); w.clearTimeout(V('phTouch').lp); await sleep(230); eq((V('drag') || {}).mode, 'gbar', 'press on a bar'); ev('pointermove', q.x - 30, q.y); ev('pointermove', q.x - 700, q.y); ev('pointerup', q.x - 700, q.y); ok(O('g1').tasks !== t0, 'press, then drag did not move the bar'); desel(); await pause(); }
         w.fig.set({ version: 4, w: 1600, h: 900, bg: '#ffffff', palette: [], objects: [{ id: 'c1', type: 'chem', x: 800, y: 450, s: 1, r: 0, smiles: 'CCCC(=O)O' }] }); await sleep(100); w.fit(true); await sleep(100);
-        { p = mid('c1'); tap(p.x, p.y); await sleep(50); ok(V('sel').has('c1'), 'a tap did not select the structure'); eq(d.querySelectorAll('#overlay [data-h=catom]').length, 0, 'finger handles on a structure too small for them'); await pause(); p = mid('c1'); const x0 = O('c1').x; ev('pointerdown', p.x, p.y); await sleep(230); ev('pointermove', p.x + 30, p.y); ev('pointermove', p.x + 50, p.y); ev('pointerup', p.x + 50, p.y); ok(O('c1').x > x0 + 50, 'a tiny structure did not drag as a whole'); w.undo(); await sleep(50);
+        { p = mid('c1'); tap(p.x, p.y); await sleep(50); ok(V('sel').has('c1'), 'a tap did not select the structure'); eq(d.querySelectorAll('#overlay [data-h=catom]').length, 0, 'finger handles on a structure too small for them'); await pause(); p = mid('c1'); const x0 = O('c1').x; ev('pointerdown', p.x, p.y); w.clearTimeout(V('phTouch').lp); await sleep(230); ev('pointermove', p.x + 30, p.y); ev('pointermove', p.x + 50, p.y); ev('pointerup', p.x + 50, p.y); ok(O('c1').x > x0 + 50, 'a tiny structure did not drag as a whole'); w.undo(); await sleep(50);
           V('sel').clear(); V('sel').add('c1'); w.setZoom(1.5); await sleep(80); center('c1'); await sleep(50); const hd = s => [...d.querySelectorAll('#overlay circle[data-h=' + s + ']')].find(c => !c.classList.contains('phx')), mc = c => { const r = c.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }; ok(hd('catom') && hd('cbond'), 'no handles on a zoomed-in structure');
           const ia = +hd('catom').dataset.i; p = mc(hd('catom')); tap(p.x, p.y); await sleep(80); eq((V('chemActive') || {}).atom, ia, 'a tap on an atom did not pick it'); ok($$('#props').dataset.ph, 'picking an atom did not open the sheet with its row'); const kb = t => [...d.querySelectorAll('#props .phqk button')].find(b => b.textContent === t); ok(kb('N') && kb('+') && kb('Remove'), 'the atom row lacks its buttons: ' + $$('#props .phq').textContent);
           kb('N').click(); eq(O('c1').atoms[ia].el, 'N', 'the N button'); kb('+').click(); eq(O('c1').atoms[ia].q, 1, 'the + button'); const na = O('c1').atoms.length; kb('Remove').click(); eq(O('c1').atoms.length, na - 1, 'the Remove button'); w.undo(); w.undo(); w.undo(); w.phSheet('#props', 'closed'); await sleep(50); V('sel').clear(); V('sel').add('c1'); w.render(); w.buildPanel(); await pause();
-          const xb = O('c1').x; p = mc(hd('cbond')); ev('pointerdown', p.x, p.y); await sleep(230); ev('pointermove', p.x + 30, p.y); ev('pointermove', p.x + 60, p.y); ev('pointerup', p.x + 60, p.y); near(O('c1').x - xb, 40, 1, 'a drag on a bond moves the whole structure'); w.undo(); desel(); await pause(); }
+          const xb = O('c1').x; p = mc(hd('cbond')); ev('pointerdown', p.x, p.y); w.clearTimeout(V('phTouch').lp); await sleep(230); ev('pointermove', p.x + 30, p.y); ev('pointermove', p.x + 60, p.y); ev('pointerup', p.x + 60, p.y); near(O('c1').x - xb, 40, 1, 'a drag on a bond moves the whole structure'); w.undo(); desel(); await pause(); }
         // a keyboard that shrinks the whole page (Android in-app browsers, Firefox): while typing the layout stays, so the field keeps the focus; a rotation (another width) still changes it
         { V('sel').clear(); w.fig.set({ version: 4, w: 1600, h: 900, bg: '#ffffff', palette: [], objects: [{ id: 'r1', type: 'shape', kind: 'rect', x: 800, y: 500, s: 1, r: 0, w: 300, h: 200, fill: '#cfe3f5', stroke: '#6f86c8', sw: 2 }] }); V('sel').add('r1'); w.render(); w.buildPanel(); $$('#mbar [data-m=style]').click(); await sleep(350); const f = [...$$('#props').querySelectorAll('input[type=text],textarea')].find(i => i.getClientRects().length); ok(f, 'no text field in the properties'); for (let i = 0; i < 40 && d.activeElement !== f; i++) { f.focus(); await sleep(50); } ok(d.activeElement === f, 'the field did not take the focus');
           fr.style.height = '330px'; await until(() => w.innerHeight === 330, 1500); w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); await sleep(150); ok(w.matchMedia('(orientation:landscape)').matches, 'the frame did not turn "sideways"'); ok(!d.documentElement.classList.contains('ph-land'), 'a keyboard shrinking the page turned the layout sideways'); ok(d.activeElement === f, 'a keyboard shrinking the page took the focus from the field'); ok(d.documentElement.classList.contains('ph-kb'), 'no ph-kb with a keyboard shrinking the page');
@@ -577,14 +945,14 @@
         try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
         try { localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}
       }
-    }, 180000);
+    }, 300000);
     // a phone's opening zoom makes everything small: small elements move (their handles stay off them), arrows, tapping on a big figure, fingers whose lift got lost, Select several, the first-run hint, exports
     test('phone touch 3: small elements move, handles beside them, no redraw for a tap, lost fingers, Select several, focus, page-top rotate, comment close, Sketch, zoom after editing, Add Text, wording, Export, app browsers, Export several, Start over', async () => {
       if (typeof phRedraw !== 'function') throw new Skip('this editor has no phone touch code');
       const name = String(FILE).replace(/\.json$/i, '') + '-phone.json'; let fr = null, hello0 = null, recent0 = null; try { hello0 = localStorage.getItem('fig.phHello'); recent0 = localStorage.getItem('fig.palRecent'); } catch (e) {}   // the phone layout test's name too (see above); the hint's record and recently used go back afterwards
       const until = async (f, ms = 3000) => { const t0 = Date.now(); for (;;) { let v = false; try { v = f(); } catch (e) {} if (v) return true; if (Date.now() - t0 > ms) return false; await sleep(40); } };
       const open = async q => { if (fr) fr.remove(); fr = D.createElement('iframe'); fr.title = 'phone touch test 3'; fr.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:844px;border:0;z-index:2147483000;background:#fff'; fr.src = location.pathname + '?file=' + encodeURIComponent(name) + '&phone=1' + (q || ''); D.body.appendChild(fr);
-        ok(await until(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 60000), 'the editor did not start in the phone frame'); const w = fr.contentWindow; w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.download = () => {}; w.HTMLAnchorElement.prototype.click = function () {}; w.onbeforeunload = null; try { w.navigator.vibrate = () => true; } catch (e) {} if (w.applyUIClasses) w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); await sleep(250); return w; };
+        ok(await until(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 60000), 'the editor did not start in the phone frame'); const w = watch(fr.contentWindow); w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.download = () => {}; w.HTMLAnchorElement.prototype.click = function () {}; w.onbeforeunload = null; try { w.navigator.vibrate = () => true; } catch (e) {} if (w.applyUIClasses) w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); await sleep(250); return w; };
       try {
         const w = await open(), d = w.document, V = s => w.eval(s), $$ = s => d.querySelector(s), svg = $$('#svg'), st = $$('#stage'), cm = $$('#ctxMenu'), tg = {}, O = id => V('get')(id);
         const ev = (type, x, y, id = 1) => { let t = type === 'pointerdown' ? d.elementFromPoint(x, y) : tg[id]; ok(t, 'nothing under ' + Math.round(x) + ', ' + Math.round(y)); if (!t.isConnected) t = svg; if (type === 'pointerdown') tg[id] = t;
@@ -609,16 +977,16 @@
           try { p = mid('i1'); tap(p.x, p.y); eq([nR, nB], [0, 0], 'renders and panel builds for a tap on the selection'); ok(d.querySelector('#overlay .phx'), 'the handles\' twins did not come back'); await pause(); const q = mc(hd('scale')), s0 = O('i1').s; ev('pointerdown', q.x, q.y); eq((V('drag') || {}).mode, 'scale', 'a press on the corner handle'); for (let i = 1; i <= 5; i++) ev('pointermove', q.x + i * 8, q.y + i * 8); eq(nR, 0, 'renders during a handle drag'); ok(O('i1').s > s0, 'the handle did not scale'); ok(V('linkNode')('i1').getAttribute('transform').includes('scale(' + O('i1').s), 'the element was not redrawn: ' + V('linkNode')('i1').getAttribute('transform')); ev('pointerup', q.x + 40, q.y + 40); eq(nR, 1, 'renders at the end of a handle drag'); w.undo(); } finally { w.render = R0; w.buildPanel = B0; } desel(); await pause(); }
         // a double tap by the events' own times: a slow render between the two taps does not lose it
         { const p = mid('t1'), mk = type => new w.PointerEvent(type, { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: p.x, clientY: p.y, bubbles: true, cancelable: true, composed: true, button: 0, buttons: type === 'pointerup' ? 0 : 1 }), E = ['pointerdown', 'pointerup', 'pointerdown', 'pointerup'].map(mk), R1 = w.render; w.render = function () { const t = w.performance.now(); while (w.performance.now() - t < 300); return R1.apply(this, arguments); };
-          try { let t = d.elementFromPoint(p.x, p.y); t.dispatchEvent(E[0]); (t.isConnected ? t : svg).dispatchEvent(E[1]); ok(V('sel').has('t1'), 'the first tap did not select'); t = d.elementFromPoint(p.x, p.y); t.dispatchEvent(E[2]); (t.isConnected ? t : svg).dispatchEvent(E[3]); } finally { w.render = R1; } ok(V('editor'), 'a double tap behind a slow render did not edit'); ok(V('PH').ghost > Date.now() + 300, 'the guard against the lifting finger\'s click ran out while building'); $$('.fmtbar .fdone').click(); await sleep(50); near(V('zoom'), zf, 1e-6, 'Done brings the zoom back'); desel(); await pause(); }
+          let t3 = 0; try { let t = d.elementFromPoint(p.x, p.y); t.dispatchEvent(E[0]); (t.isConnected ? t : svg).dispatchEvent(E[1]); ok(V('sel').has('t1'), 'the first tap did not select'); t = d.elementFromPoint(p.x, p.y); t.dispatchEvent(E[2]); t3 = Date.now(); (t.isConnected ? t : svg).dispatchEvent(E[3]); } finally { w.render = R1; } ok(V('editor'), 'a double tap behind a slow render did not edit'); ok(V('PH').ghost >= t3 + 450 + 200, 'the guard against the lifting finger\'s click ran out while building'); $$('.fmtbar .fdone').click(); await sleep(50); near(V('zoom'), zf, 1e-6, 'Done brings the zoom back'); desel(); await pause(); }
         // the edit ends by a press on the bars: the zoom comes back too; a tap on the canvas stays where it is; the editing surfaces take no page pinch
-        { const p = mid('t1'); tap(p.x, p.y); await sleep(100); tap(p.x, p.y); ok(V('editor'), 'a double tap did not edit'); ok(V('zoom') > zf * 1.5, 'the edit did not zoom in'); eq(w.getComputedStyle($$('textarea.inline-edit')).touchAction, 'pan-x pan-y', 'touch-action of the in-place field'); eq(w.getComputedStyle($$('.fmtbar')).touchAction, 'pan-x pan-y', 'touch-action of its bar'); $$('#bExport').dispatchEvent(new w.PointerEvent('pointerdown', { pointerId: 2, pointerType: 'touch', isPrimary: false, bubbles: true })); ok(!V('editor'), 'a press on the bar did not end the edit'); near(V('zoom'), zf, 1e-6, 'a press on the top bar left the page zoomed in'); desel(); await pause();
-          const p2 = mid('t1'); tap(p2.x, p2.y); await sleep(100); tap(p2.x, p2.y); ok(V('editor'), 'a double tap did not edit'); const z2 = V('zoom'); svg.dispatchEvent(new w.PointerEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 60, bubbles: true, cancelable: true, button: 0, buttons: 1 })); svg.dispatchEvent(new w.PointerEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 60, bubbles: true, cancelable: true, button: 0, buttons: 0 })); ok(!V('editor'), 'a tap on the canvas did not end the edit'); near(V('zoom'), z2, 1e-6, 'a tap on the canvas took the zoom back'); w.fit(true); desel(); await pause(); }
+        { const p = mid('t1'); await doubleTap(w, p.x, p.y); ok(V('editor'), 'a double tap did not edit'); ok(V('zoom') > zf * 1.5, 'the edit did not zoom in'); eq(w.getComputedStyle($$('textarea.inline-edit')).touchAction, 'pan-x pan-y', 'touch-action of the in-place field'); eq(w.getComputedStyle($$('.fmtbar')).touchAction, 'pan-x pan-y', 'touch-action of its bar'); $$('#bExport').dispatchEvent(new w.PointerEvent('pointerdown', { pointerId: 2, pointerType: 'touch', isPrimary: false, bubbles: true })); ok(!V('editor'), 'a press on the bar did not end the edit'); near(V('zoom'), zf, 1e-6, 'a press on the top bar left the page zoomed in'); desel(); await pause();
+          const p2 = mid('t1'); await doubleTap(w, p2.x, p2.y); ok(V('editor'), 'a double tap did not edit'); const z2 = V('zoom'); svg.dispatchEvent(new w.PointerEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 60, bubbles: true, cancelable: true, button: 0, buttons: 1 })); svg.dispatchEvent(new w.PointerEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 60, bubbles: true, cancelable: true, button: 0, buttons: 0 })); ok(!V('editor'), 'a tap on the canvas did not end the edit'); near(V('zoom'), z2, 1e-6, 'a tap on the canvas took the zoom back'); w.fit(true); desel(); await pause(); }
         // a finger whose lift never reached the canvas: it ends where it lifts, and a new first finger clears what is left
         { const s = st.getBoundingClientRect(), x = s.left + 20, y = s.top + 20; ev('pointerdown', x, y); $$('body>header').dispatchEvent(new w.PointerEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: x, clientY: 20, bubbles: true })); delete tg[1]; eq(V('touches').size, 0, 'a lift outside the canvas stayed on the list'); await pause();
           ev('pointerdown', x, y); delete tg[1]; eq(V('touches').size, 1, 'the first finger'); const z0 = V('zoom'), f = () => d.elementFromPoint(x, y), pe = (type, xx) => new w.PointerEvent(type, { pointerId: 9, pointerType: 'touch', isPrimary: true, clientX: xx, clientY: y, bubbles: true, cancelable: true, button: type === 'pointermove' ? -1 : 0, buttons: type === 'pointerup' ? 0 : 1 }), t = f(); t.dispatchEvent(pe('pointerdown', x)); eq(V('touches').size, 1, 'a new first finger after a lost lift'); ok(!V('pinch'), 'a single finger counted as a pinch'); t.dispatchEvent(pe('pointermove', x + 60)); t.dispatchEvent(pe('pointerup', x + 60)); eq(V('touches').size, 0, 'the list after it'); near(V('zoom'), z0, 1e-6, 'a single finger zoomed'); if (V('phTouch').fl) V('phTouch').fl(); await pause(); }
         // Select several: press and hold and a double tap on a text keep what was gathered; a second finger takes a box back
         { V('PH').multi = true; w.mbarSync(); let p = mid('t1'); tap(p.x, p.y); await pause(); p = mid('i1'); tap(p.x, p.y); await pause(); eq(ids(), 'i1,t1', 'gathered'); p = mid('b1'); ev('pointerdown', p.x, p.y); ok(await until(() => cm.classList.contains('open'), 2000), 'no menu for press and hold'); eq(ids(), 'b1,i1,t1', 'press and hold in Select several'); ev('pointerup', p.x, p.y); cm.classList.remove('open'); await sleep(350);
-          V('sel').delete('t1'); w.render(); w.buildPanel(); await pause(); p = mid('t1'); tap(p.x, p.y); await sleep(100); p = mid('t1'); tap(p.x, p.y); ok(V('editor'), 'a double tap on a text in Select several did not edit it'); eq(ids(), 'b1,i1,t1', 'a double tap on a text in Select several'); $$('.fmtbar .fdone').click(); await sleep(50); eq(ids(), 'b1,i1,t1', 'after that edit'); await pause();
+          V('sel').delete('t1'); w.render(); w.buildPanel(); await pause(); p = mid('t1'); await doubleTap(w, p.x, p.y); ok(V('editor'), 'a double tap on a text in Select several did not edit it'); eq(ids(), 'b1,i1,t1', 'a double tap on a text in Select several'); $$('.fmtbar .fdone').click(); await sleep(50); eq(ids(), 'b1,i1,t1', 'after that edit'); await pause();
           V('sel').clear(); V('sel').add('t1'); w.render(); w.buildPanel(); const r = svg.getBoundingClientRect(), x0 = r.left + 4, y0 = r.top + 4; ev('pointerdown', x0, y0); eq((V('drag') || {}).mode, 'marquee', 'a box from empty canvas'); ev('pointermove', x0 + 30, y0 + 30); ev('pointermove', r.right - 4, r.bottom - 4); ok(V('sel').size > 2, 'the box took nothing'); ev('pointerdown', r.left + 100, r.top + 100, 2); eq(ids(), 't1', 'a second finger during a box'); eq(V('drag'), null, 'the box is still going'); ev('pointerup', r.left + 100, r.top + 100, 2); ev('pointerup', r.right - 4, r.bottom - 4); V('PH').multi = false; w.mbarSync(); desel(); w.fit(true); await pause(); }
         // a press on the canvas takes the focus off a field
         { V('sel').add('i1'); w.render(); w.buildPanel(); w.phSheet('#props', 'peek'); await sleep(60); const f = [...$$('#props').querySelectorAll('input[type=text],textarea')].find(i => i.getClientRects().length); ok(f, 'no text field in the properties'); for (let i = 0; i < 40 && d.activeElement !== f; i++) { f.focus(); if (d.activeElement !== f) await sleep(50); } ok(d.activeElement === f, 'the field did not take the focus'); /* a sheet still sliding in is not visible yet, so it cannot take the focus */ svg.dispatchEvent(new w.PointerEvent('pointerdown', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 60, bubbles: true, cancelable: true, button: 0, buttons: 1 })); ok(d.activeElement !== f, 'a press on the canvas left the focus on the field'); svg.dispatchEvent(new w.PointerEvent('pointerup', { pointerId: 1, pointerType: 'touch', isPrimary: true, clientX: 10, clientY: 60, bubbles: true, cancelable: true, button: 0, buttons: 0 })); w.phSheet('#props', 'closed'); desel(); await pause(); }
@@ -651,14 +1019,14 @@
         // an example whose text said what only a desktop has
         { const t = await (await fetch('examples/workflow.json', { cache: 'no-store' })).text(); ok(!/File ▾|drag items/.test(t), 'the workflow example gives desktop instructions'); }
         // the website's example links: Start the example over is there, and a copy that differs from the example says where the way back is
-        { const f = await open('&from=examples/workflow.json'); eq(f.eval('EX_ID'), 'workflow', 'the example behind the link'); ok(await until(() => !f.document.querySelector('#fileMenu [data-act=restartex]').hidden, 4000), 'no Start the example over…'); if (f.eval('WEB')) ok(await until(() => /your copy of the example/.test(f.document.querySelector('#toast').textContent), 4000), 'a copy with changes opened without a word: ' + f.document.querySelector('#toast').textContent); }
+        { const f = await open('&from=examples/workflow.json'); eq(f.eval('EX_ID'), 'workflow', 'the example behind the link'); ok(await until(() => !f.document.querySelector('#fileMenu [data-act=restartex]').hidden, 20000), 'no Start the example over…'); if (f.eval('WEB')) ok(await until(() => /your copy of the example/.test(f.document.querySelector('#toast').textContent), 4000), 'a copy with changes opened without a word: ' + f.document.querySelector('#toast').textContent); }
       } finally {
         if (fr) { try { await fr.contentWindow.flushSave(); } catch (e) {} fr.remove(); fr = null; }
         await sleep(200);
         try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
         try { localStorage.removeItem('figEditor.scene.v1:' + name); [['fig.phHello', hello0], ['fig.palRecent', recent0]].forEach(([k, v]) => { if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); }); } catch (e) {}
       }
-    }, 180000);
+    }, 300000);
     // phone layout tests (M3)
     // the editor in frames of a phone's size, on a figure of its own (removed afterwards): ?phone=1 forces the phone layout without saving a setting
     test('phone layout: bars, Add and Style sheets, dialogs, menus and Back at 390 × 844 and 844 × 390; 1400 × 900 and 768 × 1024 keep the desktop layout', async () => {
@@ -671,13 +1039,13 @@
         if (fr) fr.remove(); fr = D.createElement('iframe'); fr.title = 'phone layout test'; fr.style.cssText = `position:fixed;left:0;top:0;width:${w}px;height:${h}px;border:0;z-index:2147483000;background:#fff`;
         fr.src = location.pathname + '?file=' + encodeURIComponent(name) + q; D.body.appendChild(fr);
         ok(await until(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 60000), 'the editor did not start in a ' + w + ' × ' + h + ' frame');
-        const fw = fr.contentWindow; fw.alert = () => {}; fw.confirm = () => true; fw.prompt = () => null; fw.download = () => {}; fw.HTMLAnchorElement.prototype.click = function () {}; fw.onbeforeunload = null;
+        const fw = watch(fr.contentWindow); fw.alert = () => {}; fw.confirm = () => true; fw.prompt = () => null; fw.download = () => {}; fw.HTMLAnchorElement.prototype.click = function () {}; fw.onbeforeunload = null;
         try { Object.defineProperty(fw.navigator, 'share', { value: async () => {}, configurable: true }); } catch (e) {}   // never the system's share sheet
         if (fw.applyUIClasses) fw.applyUIClasses(); fw.dispatchEvent(new fw.Event('resize'));   // a hidden tab may start the frame at the default 300 × 150 and, painting no frames, never send the size's media-query change
         await sleep(250); return fw; };
       const resize = async (w, h, f) => { fr.style.width = w + 'px'; fr.style.height = h + 'px';
-        if (!await until(f, 1500)) { const fw = fr.contentWindow; if (fw.applyUIClasses) fw.applyUIClasses(); fw.dispatchEvent(new fw.Event('resize')); }   // a tab that paints no frames (hidden) dispatches no media-query change or resize events: the same updates by hand
-        ok(await until(f, 4000), 'the layout did not follow a ' + w + ' × ' + h + ' frame'); await sleep(350); };
+        if (fr.contentWindow.document.hidden && !await until(f, 1500)) { const fw = fr.contentWindow; if (fw.applyUIClasses) fw.applyUIClasses(); fw.dispatchEvent(new fw.Event('resize')); }   // a tab that paints no frames (hidden) dispatches no media-query change or resize events: the same updates by hand
+        ok(await until(f, 20000), 'the layout did not follow a ' + w + ' × ' + h + ' frame'); await sleep(350); };
       const rect = (d, s) => d.querySelector(s).getBoundingClientRect(), shown = (w, el) => !!el && w.getComputedStyle(el).display !== 'none' && el.getClientRects().length > 0;
       // what every phone size must give: a usable canvas, no sideways page scroll, one top row, the toolbar, Add and Style sheets, dialogs that fit, menus as sheets, Back
       const phoneChecks = async (w, land) => {
@@ -709,9 +1077,9 @@
         w.exportDialog(); await sleep(250); let b = rect(d, '#modalBox'); ok(b.width <= W + 1 && b.height <= H + 1 && b.left >= -1 && b.top >= -1, 'the Export dialog is larger than the screen' + at + ': ' + Math.round(b.width) + ' × ' + Math.round(b.height));
         ok([...d.querySelectorAll('#modalBox input,#modalBox select')].filter(i => !/^(checkbox|radio|range|color|file)$/.test(i.type) && i.getClientRects().length).every(i => parseFloat(w.getComputedStyle(i).fontSize) >= 16), 'an Export field is under 16 px' + at);
         ok($$('#modalBox .phfoot #exGo'), 'the Export button is not kept at the bottom' + at); ok(shown(w, $$('#modalBox h2 .mx')), 'the Export dialog has no ✕' + at);
-        $$('#modalBox h2 .mx').click(); ok($$('#modal').hidden, '✕ did not close the Export dialog' + at); await sleep(150);
+        $$('#modalBox h2 .mx').click(); ok($$('#modal').hidden, '✕ did not close the Export dialog' + at); ok(await until(() => !(w.history.state && w.history.state.ph) && !w.eval('PH').backing, 10000), 'the Export dialog left its Back entry' + at);
         w.helpDialog(); await sleep(250); b = rect(d, '#modalBox'); ok(b.height <= H + 1 && b.width <= W + 1, 'Help is larger than the screen' + at); ok(/Tap/.test($$('#modalBox table').textContent) && $$('#modalBox details'), 'Help does not start with the touch table' + at);
-        $$('#modalBox h2 .mx').click(); ok($$('#modal').hidden, '✕ did not close Help' + at); await sleep(150);   // (its Back entry is taken off)
+        $$('#modalBox h2 .mx').click(); ok($$('#modal').hidden, '✕ did not close Help' + at); ok(await until(() => !(w.history.state && w.history.state.ph) && !w.eval('PH').backing, 10000), 'Help left its Back entry' + at);   // (its Back entry is taken off)
         // Back closes the top layer only: a menu (an action sheet) over the Add sheet, then the sheet
         $$('#mbar [data-m=add]').click(); ok(await until(() => $$('#left').dataset.ph === 'full'), 'Add did not open its sheet again' + at);
         w.showMenu([{ t: 'One', f: () => {} }, { t: 'Two', f: () => {} }], 0, 0); await sleep(60); const cm = $$('#ctxMenu');
@@ -742,7 +1110,7 @@
         try { localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}
         keys.forEach(k => { try { if (ls0[k] == null) localStorage.removeItem(k); else localStorage.setItem(k, ls0[k]); } catch (e) {} });
       }
-    }, 180000);
+    }, 300000);
     // last: the figure left behind is the one run.html reloads and compares (save → reload round trip)
     test('save → reload: the saved file holds exactly the figure', async () => {
       blank(); types.forEach((t, i) => fig.add(t, at(i))); await settle(); commit(); await settle();

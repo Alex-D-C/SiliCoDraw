@@ -37,7 +37,7 @@ Options for the browser tests:
 |---|---|---|
 | `--only icons,examples` | `-Only icons,examples` | only the tests whose names start with these words |
 | `--show` | `-Show` | a visible browser window instead of headless |
-| `--timeout 600` | `-Timeout 600` | give up after this many seconds (default 1800) |
+| `--timeout 600` | `-Timeout 600` | give up after this many seconds (default 1800). A run also stops as soon as the browser has exited or the page has shown no progress for 720 s, and says which test it was at |
 | `--browser firefox` | `-Browser firefox` | Firefox (headless, with a fresh profile of its own; your open Firefox windows are not touched) |
 | `--browser safari` | | Safari on macOS, through `safaridriver`: it opens a separate automation window (Safari has no headless mode). Turn it on once: Safari → Settings → Advanced → Show features for web developers, then Develop → Allow Remote Automation (or `sudo safaridriver --enable`) |
 | `SILICODRAW_BROWSER=/path/to/chrome` | `-Browser C:\path\to\msedge.exe` | use this browser: a path, or `chrome` / `edge` / `firefox` (default: Chrome, then Chromium, then Edge on macOS / Linux; Edge, then Chrome, then Firefox on Windows) |

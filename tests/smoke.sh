@@ -41,8 +41,10 @@ if [ "$(uname -s)" = Darwin ]; then
   [ -x "$APP/Contents/MacOS/applet" ] && ok "app shortcut has an executable" || bad "app shortcut not runnable"
 fi
 
-# 3. the server
-"$PY" "$ROOT/serve.py" --no-browser --port $PORT >"$TMP/server.log" 2>&1 &
+# 3. the server (free ports: never a SiliCoDraw you are using)
+free_port() { "$PY" -c 'import socket; s = socket.socket(); s.bind(("127.0.0.1", 0)); print(s.getsockname()[1]); s.close()'; }
+PORT=$(free_port)
+"$PY" "$ROOT/serve.py" --no-browser --port $PORT --data "$ROOT" >"$TMP/server.log" 2>&1 &
 SRV=$!
 i=0; until curl -fs "http://localhost:$PORT/api/files" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 40 ] && break; sleep 0.25; done
 if curl -fs "http://localhost:$PORT/" | grep -q '<title>SiliCoDraw</title>'; then ok "editor page served"; else bad "editor page not served"; cat "$TMP/server.log"; fi
@@ -64,6 +66,42 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data x "http://localhost
 if "$PY" "$ROOT/serve.py" --no-browser --port $PORT >"$TMP/second.log" 2>&1; then ok "second start reports the running editor"; else bad "second start failed: $(cat "$TMP/second.log")"; fi
 kill "$SRV" 2>/dev/null; SRV=''
 rm -rf "$ROOT/$NM.json" "$ROOT/$NM-evil.json" "$ROOT/history/$NM"
+
+# the figures folder: in a copy of the server of its own, so a folder you chose is left alone
+APP="$TMP/app"; CLOUD="$TMP/Sync folder/SiliCoDraw"; P2=$(free_port); B2="http://localhost:$P2"; mkdir -p "$APP"; cp "$ROOT/serve.py" "$APP/"
+SYNC="$TMP/OneDrive - Test"; mkdir -p "$SYNC"   # a sync app's folder it must find
+start_copy() { OneDrive="$SYNC" "$PY" "$APP/serve.py" --no-browser --port $P2 >"$TMP/server2.log" 2>&1 & SRV=$!; i=0; until curl -fs --max-time 5 "$B2/api/storage?brief=1" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 40 ] && return 1; sleep 0.25; done; }
+stop_copy() { kill "$SRV" 2>/dev/null; wait "$SRV" 2>/dev/null; SRV=''; }
+post() { curl -s -o /dev/null -w '%{http_code}' -X POST "$@"; }
+ENC=$("$PY" -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$CLOUD")
+start_copy && ok "figures folder: a server of its own" || { bad "figures folder: server did not start"; cat "$TMP/server2.log"; }
+curl -fs "$B2/api/storage" | grep -q '"isDefault": true' && ok "figures folder: this folder by default" || bad "figures folder: api/storage"
+curl -fs "$B2/api/storage" | "$PY" -c 'import json, sys; o = json.load(sys.stdin)["options"]; sys.exit(0 if any(x["name"] == "OneDrive" and x["path"] == sys.argv[1] for x in o) else 1)' "$SYNC" && ok "figures folder: a sync app's folder is found, as a name and a path" || bad "figures folder: the sync folders"
+post --data "$FIG" "$B2/before.json" >/dev/null; post --data "$FIG" "$B2/before.json" >/dev/null
+[ "$(post -H 'Origin: https://evil.example' "$B2/api/storage?dir=$ENC&copy=1")" = 403 ] && ok "figures folder: another website cannot change it" || bad "figures folder: changed from another website"
+[ "$(post "$B2/api/storage?dir=relative/path")" = 400 ] && ok "figures folder: a partial path is refused" || bad "figures folder: partial path"
+[ "$(post "$B2/api/storage?dir=$ENC&copy=1")" = 200 ] && [ -f "$CLOUD/before.json" ] && ok "figures folder: set, and the figures copied" || bad "figures folder: set and copy"
+[ -f "$APP/before.json" ] && ok "figures folder: the old copy stays" || bad "figures folder: the old copy went"
+post --data "$FIG" "$B2/after.json" >/dev/null
+[ -f "$CLOUD/after.json" ] && [ ! -f "$APP/after.json" ] && ok "figures folder: saves go there" || bad "figures folder: saved in the wrong place"
+post --data '{}' "$B2/assets/a.json" >/dev/null; [ -f "$CLOUD/assets/a.json" ] && ok "figures folder: its assets go there too" || bad "figures folder: assets in the wrong place"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$B2/serve.py")" = 200 ] && ok "figures folder: program files stay served from the program folder" || bad "figures folder: program file"
+stop_copy; start_copy; curl -fs "$B2/api/files" | grep -q 'after.json' && ok "figures folder: remembered after a restart" || bad "figures folder: forgotten after a restart"
+[ "$(post -H 'Origin: http://localhost:1234' "$B2/api/storage?dir=$ENC")" = 403 ] && ok "figures folder: another page on this computer cannot change it" || bad "figures folder: changed from another local page"
+[ "$(curl -s -o /dev/null -w '%{http_code}' "$B2/not-there.json")" = 404 ] && ok "figures folder: a figure not there: 404" || bad "figures folder: not there"
+stop_copy; mv "$CLOUD" "$CLOUD-moved"; start_copy; curl -fs "$B2/api/storage" | grep -q '"missing": "/' && [ ! -d "$CLOUD" ] && ok "figures folder: gone at the start: says so, and no empty folder appears" || bad "figures folder: gone: not reported"
+c1=$(curl -s -o /dev/null -w '%{http_code}' "$B2/before.json"); c2=$(post --data "$FIG" "$B2/before.json"); c3=$(post --data x "$B2/exports/a.png")
+[ "$c1$c2$c3" = 503503503 ] && [ ! -d "$CLOUD" ] && ok "figures folder: while gone: figures wait (503), nothing goes elsewhere" || bad "figures folder: while gone: read $c1, save $c2, export $c3"
+mv "$CLOUD-moved" "$CLOUD"; [ "$(curl -s -o /dev/null -w '%{http_code}' "$B2/before.json")" = 200 ] && ok "figures folder: back by itself, no restart" || bad "figures folder: not back"
+: > "$CLOUD/.moved.json.icloud"; [ "$(curl -s -o /dev/null -w '%{http_code}' "$B2/moved.json")" = 503 ] && [ "$(post --data "$FIG" "$B2/moved.json")" = 503 ] && [ ! -f "$CLOUD/moved.json" ] && ok "figures folder: an iCloud figure away from this Mac is not treated as new" || bad "figures folder: an iCloud figure away"; rm -f "$CLOUD/.moved.json.icloud"
+echo '{"objects":[]}' > "$CLOUD/my figure (conflicted copy).json"; OTHER="$TMP/Other [2026]"; ENC2=$("$PY" -c 'import sys, urllib.parse; print(urllib.parse.quote(sys.argv[1], safe=""))' "$OTHER")
+curl -s -X POST "$B2/api/storage?dir=$ENC2&copy=1" | grep -q 'my figure (conflicted copy).json' && ok "figures folder: a file with no figure's name is reported as left behind" || bad "figures folder: left behind without a word"
+curl -fs "$B2/api/files" | grep -q 'before.json' && ok "figures folder: a path with [ ] works" || bad "figures folder: a path with [ ] looks empty"
+post --data "$FIG" "$B2/snap.json" >/dev/null; post --data "$FIG" "$B2/snap.json" >/dev/null; curl -fs "$B2/api/history?file=snap.json" | grep -q 'json' && ok "figures folder: its history is listed with [ ] in the path" || bad "figures folder: history with [ ] in the path"
+[ "$(post --data "$FIG" "$B2/...json")" != 204 ] && ok "a name that is only dots is no figure" || bad "a name that is only dots was saved"
+stop_copy; start_copy
+[ "$(post "$B2/api/storage?dir=")" = 200 ] && curl -fs "$B2/api/storage" | grep -q '"isDefault": true' && [ ! -f "$APP/.silicodraw-folder" ] && ok "figures folder: back to the program folder" || bad "figures folder: back"
+stop_copy
 
 # 4. installer (into a temporary home) and the updater's dry run
 if [ "${SILICODRAW_TEST_ONLINE:-1}" != 0 ] || [ -n "${SILICODRAW_TEST_ZIP:-}" ]; then

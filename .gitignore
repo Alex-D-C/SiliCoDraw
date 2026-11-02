@@ -5,6 +5,7 @@ assets/
 archive/
 trash/
 updates/
+.silicodraw-folder
 .claude/
 
 # private-folder tooling (never part of the public version)

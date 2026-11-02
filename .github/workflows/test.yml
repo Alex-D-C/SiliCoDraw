@@ -18,12 +18,15 @@ jobs:
       - name: Smoke test (installer, first start, server, updater)
         run: sh tests/smoke.sh
       - name: Browser tests (every element type, icon and example; exports; undo/redo; save and reload)
+        timeout-minutes: 45   # above the script's own 30 minutes; a step that hangs would hold the job for 6 hours
         run: sh tests/browser.sh
       - name: Browser tests in Firefox (headless)
         if: ${{ !cancelled() && matrix.os == 'ubuntu-latest' }}   # Firefox comes with the Ubuntu runner
+        timeout-minutes: 45
         run: sh tests/browser.sh --browser firefox
       - name: Browser tests in Safari
         if: ${{ !cancelled() && matrix.os == 'macos-latest' }}
+        timeout-minutes: 45
         continue-on-error: true   # new: reported, but not yet allowed to turn the run red; remove this line once it has passed on GitHub
         run: |
           sudo safaridriver --enable
@@ -42,9 +45,11 @@ jobs:
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\smoke.ps1
       - name: Browser tests (headless Edge)
+        timeout-minutes: 45
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\browser.ps1
       - name: Browser tests in Firefox (headless)
         if: ${{ !cancelled() }}
+        timeout-minutes: 45
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\browser.ps1 -Browser firefox

@@ -142,6 +142,7 @@ button[hidden]{display:none}   /* so did a button's inline-flex: Export's "Give 
 .rangef input[type=range]{flex:1;min-width:0;accent-color:var(--accent-strong);height:4px;margin:0}
 .rangef input[type=number]{width:62px!important}
 .btns{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 10px}
+.stList{display:flex;flex-direction:column;gap:6px;margin:8px 0}.stOpt{display:block;width:100%;height:auto;min-height:40px;padding:8px 10px;text-align:left;white-space:normal;line-height:1.35}
 .tag{display:inline-block;background:var(--hover);border-radius:5px;padding:1px 7px;font-size:11px;color:var(--muted)}
 .swatches{display:flex;flex-wrap:wrap;gap:5px;margin:4px 0 8px}.swatches span{width:22px;height:22px;border-radius:6px;border:1px solid var(--swatch-ring);cursor:pointer;transition:transform .12s}.swatches span:hover{transform:scale(1.15)}
 /* the figure palette under every color field (Firefox shows no <datalist> swatches in its color picker) */
@@ -164,6 +165,7 @@ footer kbd{margin:0 3px}
 .pop{display:none;position:fixed;z-index:50;background:var(--elev);border:1px solid var(--line);border-radius:var(--r-pop);box-shadow:var(--shadow-pop);padding:5px;min-width:210px;transform-origin:top left}
 .pop.open{display:block;animation:pop .14s var(--ease)}
 @keyframes pop{from{opacity:0;transform:scale(.96) translateY(-4px)}to{opacity:1;transform:none}}
+@keyframes skIn{from{opacity:0;transform:translateX(-50%) translateY(-4px) scale(.96)}to{opacity:1;transform:translateX(-50%) translateY(0) scale(1)}}   /* the sketch bar keeps its centering (with pop it sat half its width to the right, then jumped) */
 .pop button{display:flex;width:100%;height:30px;text-align:left;border:0;border-radius:var(--r-sm);padding:0 10px;justify-content:space-between;gap:20px;background:transparent}
 .pop button[hidden]{display:none}   /* display:flex outweighed the hidden attribute (Load the example poster showed for every figure) */
 .pop button:hover{background:var(--accent-soft);color:var(--accent)}
@@ -212,7 +214,7 @@ footer kbd{margin:0 3px}
 .inline-edit{position:fixed;z-index:60;background:rgba(255,255,255,.94);border:1.5px solid var(--accent);box-shadow:0 0 0 4px rgba(37,99,235,.15);border-radius:4px;padding:4px;margin:0;resize:none;overflow:hidden;outline:none;box-sizing:border-box;color-scheme:light}
 #fbPrev{color:#111827}   /* the formula preview is a white box: MathJax draws in the current text color, so pin a dark ink */
 .inline-edit::selection,#fbPrev ::selection{background:#cfe0ff}   /* these boxes stay white in every theme, so their selection does too */
-#sketchBar{position:fixed;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--elev);border:1px solid var(--line);border-radius:var(--r-pop);box-shadow:var(--shadow-bar);animation:pop .16s var(--ease)}
+#sketchBar{position:fixed;z-index:30;transform:translateX(-50%);display:flex;align-items:center;gap:6px;padding:6px 8px;background:var(--elev);border:1px solid var(--line);border-radius:var(--r-pop);box-shadow:var(--shadow-bar);animation:skIn .16s var(--ease)}
 #sketchBar[hidden]{display:none}
 #sketchBar .sep{width:1px;height:20px;background:var(--line);margin:0 2px}
 #sketchBar .lbl{font-weight:600;margin-right:2px}
@@ -226,6 +228,7 @@ kbd{font:11px/1 ui-monospace,Consolas,monospace;background:var(--hover);border:1
    Every rule is under html.phone, so tablets and desktops keep the layout above; "body" sits in selectors where a later Appearance rule would otherwise win.
    The JS sets --vvh / --vvt (the visible part of the window), --kb (what the on-screen keyboard covers), --ph-sheet (the properties sheet's peek) and --ph-side ===== */
 #mbar,#bMore,#zoomChip,#phScrim,.sgrab,#modal .mx{display:none}
+html.phone{-webkit-text-size-adjust:100%;text-size-adjust:100%}   /* iOS may enlarge text when the phone is turned sideways: it crowded the fixed bars */
 html.phone{overflow:hidden;overscroll-behavior:none}
 html.phone body{--lw:0px!important;--rw:0px!important;--fh:0px;--hh:calc(48px + env(safe-area-inset-top));--ph-bar:calc(56px + env(safe-area-inset-bottom));--ph-bot:max(var(--ph-bar),var(--kb,0px));--ph-full:calc(var(--vvh,100vh) - var(--ph-bot) + var(--kb,0px) - env(safe-area-inset-top) - 6px)}
 html.phone body,html.phone.lay-swap body,html.phone.lay-right body,html.phone.hwrap body{grid-template-columns:minmax(0,1fr);grid-template-rows:var(--hh) minmax(0,1fr) var(--ph-sheet,0px) var(--ph-bar);grid-template-areas:"head" "stage" "sheet" "bar";height:var(--ph-h,100vh);height:100dvh;overscroll-behavior:none}   /* --ph-h: the window's height from the JS where dvh is missing (iOS 15.0-15.3: 100vh ran under Safari's bottom bar) */
@@ -446,7 +449,7 @@ html.tb-labels header button.ib[data-label]::after{content:attr(data-label);font
 html.tb-labels header button.ib.on[data-label]::after{color:var(--accent)}
 @media (max-width:1400px){html.tb-labels{--hh:52px}html.tb-labels.ui-compact{--hh:42px}html.tb-labels header button.ib[data-label]{flex-direction:row;height:30px;width:30px;min-width:0;padding:0}html.tb-labels.ui-compact header button.ib[data-label]{height:26px;width:26px}html.tb-labels header button.ib[data-label]::after{content:none}}
 /* ===== fewer animations ===== */
-html.ui-still *,html.ui-still *::before,html.ui-still *::after{animation-duration:.001ms!important;animation-iteration-count:1!important;transition-duration:.001ms!important;transition-delay:0s!important;scroll-behavior:auto!important}
+html.ui-still *,html.ui-still *::before,html.ui-still *::after{animation:none!important;transition:none!important;scroll-behavior:auto!important}   /* none, not a tiny duration: that made every property of every element a transition, and in Firefox a new size only counted from the next frame (after a zoom the canvas still measured its old size, so a press landed beside its element) */
 html.ui-still button:active,html.ui-still .pitem:hover,html.ui-still .pitem:active,html.ui-still .swatches span:hover,html.ui-still #sketchBar .sw:hover{transform:none}
 /* switching a setting: no transitions for that moment, so the whole interface changes at once */
 html.ui-switching *,html.ui-switching *::before,html.ui-switching *::after{transition:none!important}
@@ -526,7 +529,8 @@ html.focus #focusExit{display:inline-flex}
   <button id="bHelp" class="ib" data-label="Help" title="Shortcuts (?)"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 0 1 5 0c0 1.7-2.5 2-2.5 4"/><path d="M12 17h.01"/></svg></button>
   <button id="bMore" class="ib" title="More: file, comments, find, appearance, help" aria-label="More" aria-haspopup="menu"><svg viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></svg></button>
   <input id="fileIn" type="file" accept=".json,application/json" hidden>
-  <input id="restoreIn" type="file" accept=".zip,.json,application/zip,application/json" multiple hidden>
+  <input id="restoreIn" type="file" accept=".zip,.json,application/zip,application/json,.png,.jpg,.jpeg,.gif,.webp,.svg,image/png,image/jpeg,image/gif,image/webp,image/svg+xml" multiple hidden>
+  <input id="folderIn" type="file" webkitdirectory multiple hidden>
 </header>
 <div class="pop" id="fileMenu">
   <button data-act="new">New figure…</button>
@@ -535,10 +539,11 @@ html.focus #focusExit{display:inline-flex}
   <button data-act="history">Version history…</button>
   <button data-act="batch">Export several figures…</button>
   <hr>
-  <button data-act="savejson">Download a copy (.json)</button>
+  <button data-act="storage" title="This computer's folder, a folder synced by Dropbox, OneDrive, Google Drive, iCloud Drive or Box, or a cloud service directly">Where figures are kept…</button>
+  <button data-act="savejson">Save a copy (.json)…</button>
   <button data-act="loadjson">Load from a .json file…</button>
-  <button data-act="backup" hidden title="Download every figure kept in this browser as one .zip">Back up all figures…</button>
-  <button data-act="restore" hidden title="Bring figures back from a backup .zip or .json files (here or in another browser)">Restore from backup…</button>
+  <button data-act="saveall" title="Every figure as .json files in a folder you choose (or one .zip), to move them to another device or keep them safe">Save all figures to a folder…</button>
+  <button data-act="openfolder" title="Bring in the figures of such a folder, a .zip of it, or .json files: here, in another browser, on a phone or in a copy run from a computer">Open a folder of figures…</button>
   <button data-act="reset">Load the example poster…</button>
   <button data-act="restartex" hidden title="Put the original example back in place of this copy (Undo brings your changes back)">Start the example over…</button>
   <hr>
@@ -669,7 +674,7 @@ const phSay=s=>!PHONE()?s:String(s).replace(/File ▾ →/g,'⋯ → File ▸ �
   .replace(/(^|[\s(“"])([Cc])lick(s|ed|ing)?(?=[\s,;:)”"]|\.(?:\s|$)|$)/g,(m,a,c,x)=>a+(c==='C'?'T':'t')+'ap'+(x==='ed'?'ped':x==='ing'?'ping':x||'')).replace(/\(Esc: done\)/,'(tap it again: done)').replace(/ \(Shift snaps to 15°\)/,'').replace(/^Esc or the ✕/,'The ✕')
   .replace(/ \(or (Ctrl|⌘)\+Z outside the two fields\)/,'').replace(/(Ctrl|⌘)\+Z/g,'↶').replace(/(Ctrl|⌘)\+Shift\+C copies a picture/,'press and hold → Copy as picture').replace(/ \(Shift\+click them in order\)/,' (Select several, then tap them in order)').replace(/ \((Alt|⌥ Option) while dragging keeps it free\)/,'');
 function phWords(root){root.querySelectorAll('p').forEach(p=>{const w=document.createTreeWalker(p,NodeFilter.SHOW_TEXT);for(let n=w.nextNode();n;n=w.nextNode()){const v=phSay(n.nodeValue);if(v!==n.nodeValue)n.nodeValue=v}})}
-const NO_SERVER=WEB?'This browser’s storage for figures cannot be reached (a private window, or site data blocked for this site). Allow site data for this site and reload the page.':'The SiliCoDraw server is not running. To fix it, '+START_HINT+'.',
+const NO_SERVER=()=>{const c=WEB&&window.SiliCoDrawWeb&&SiliCoDrawWeb.storage?SiliCoDrawWeb.storage.current():null;return c&&c.kind!=='browser'?placeName()+' could not be reached. Your figures there are not touched; try again in a moment.':WEB?'This browser’s storage for figures cannot be reached (a private window, or site data blocked for this site). Allow site data for this site and reload the page.':'The SiliCoDraw server is not running. To fix it, '+START_HINT+'.'},
   STILL_UP=WEB?'is this browser’s storage full or blocked?':'is the SiliCoDraw server still running?';
 const FONTS=[[FONT,'Helvetica / Arial'],['Arial, sans-serif','Arial'],['Calibri, Carlito, sans-serif','Calibri'],['Segoe UI, sans-serif','Segoe UI'],['Verdana, sans-serif','Verdana'],['Georgia, serif','Georgia'],['Times New Roman, serif','Times'],['Courier New, Courier, monospace','Courier (monospace)']];   // monospace: sequences, code. No quotes: the loader strips " from every field (scrubDeep), so a quoted value never matched after a reload (valid CSS unquoted)
 // fonts this computer does not have (Segoe UI on a Mac, Calibri without Office, a font typed by hand or by an assistant): the text silently took another font, so wrapped text
@@ -763,7 +768,7 @@ const DEF={
   funnel:{stages:'First filter|n drugs|#5b74b8\nSecond filter|n candidates|#7f95cf\nThird filter|n hits|#4f9a6f',wTop:560,wBottom:200,band:110,gap:12,size:22,countSize:21,textColor:'#ffffff',labelDy:0,countAt:'band',topCount:''},
   qr:{url:'https://example.com',modules:'',encodedUrl:'',size:120,fg:'#1f2328',bg:'#ffffff'},
   legend:{items:'circle|#6f86c8|Condition A\ncircle|#ffffff|Condition B',dir:'v',size:16,gap:30},
-  gradbar:{w:440,h:28,c1:'#f0a030',c2:'#4caf50',labelL:'Age-accelerating (pAGE < 0)',labelR:'Pro-longevity (pAGE > 0)',labelM:'',labelSize:14},
+  gradbar:{w:440,h:28,c1:'#f0a030',c2:'#4caf50',labelL:'Low',labelR:'High',labelM:'',labelSize:14},
   worm:{len:190,width:16,amp:10,waves:1.1,phase:0,color:'#eadcbc',stroke:'#8a7652',details:true},
   dna:{len:150,width:36,turns:2,c1:'#4f6bb8',c2:'#d9824a'},
   plate:{seed:1,worms:7,agar:'#f3e7c6',ringOn:false,ring:'#6f86c8',status:'none',label:''},
@@ -19083,7 +19088,7 @@ function template(){
 /* ---------- state ---------- */
 // which figure file to edit: ?file=abstract.json (default figure.json, the poster figure)
 // a figure name: letters of any script, digits, _ . - (what both servers' \w accepts; the ASCII-only \w here silently opened figure.json for ?file=ålder.json)
-const FIG_RE=/^[\p{L}\p{Nd}_.\-]+\.json$/u;
+const FIG_RE=/^[\p{L}\p{Nd}_\-][\p{L}\p{Nd}_.\-]*\.json$/u;
 const FILE=(()=>{const f=new URLSearchParams(location.search).get('file')||'figure.json';if(FIG_RE.test(f))return f;
   try{history.replaceState(null,'',location.pathname);sessionStorage.setItem('fig.badName',f)}catch(e){}return 'figure.json'})();   // it said nothing, and the address still named the other file
 // the message survives the jump from a missing figure.json to the first active figure
@@ -19112,10 +19117,20 @@ const FILE_SYNC=location.protocol.startsWith('http');
 let fileText=null,pushTimer,serverOk=FILE_SYNC,fileReady=false;   // fileReady: the file has been read once; before that the page shows the copy kept in this browser, which must never be written over the file
 // the figure file holds text that is no figure (a broken hand or assistant edit): the last good version stays on the canvas, and the status line says so until a valid text arrives or a change here is saved over it
 var badText=null,badMsg='',badKeep=false;   // badKeep: opened broken with nothing good to show (see fileSame)
-function setStatus(state,msg){const s=$('#status');if(WEB&&msg==='Server offline')msg='Not saved';if(badText!==null&&state==='saved'){s.className='st-offline';s.textContent='File has an error';s.title=badMsg;return}s.className='st-'+state;s.textContent=msg;s.title=state==='new'?`A new figure (${FILE}): it is saved ${WEB?'in this browser':'to the figure folder'} at your first change`:WEB?{saved:`Saved in this browser (${FILE}). Nothing is uploaded; File ▾ → Back up all figures… keeps a copy on your computer`,saving:'Saving…',offline:'This browser’s storage could not be reached (site data blocked, or the storage is full): changes are kept in this tab and saved as soon as it works again. File ▾ → Download a copy (.json) keeps them safe meanwhile'}[state]||'':{saved:`Saved to ${FILE} in the figure folder`,saving:'Saving…',offline:'The SiliCoDraw server is not running (its window was closed): changes are kept in this browser and saved to the file as soon as it is back. To '+START_HINT,local:'Opened directly from disk: changes are only kept in this browser'}[state]}
-async function readFile(same){const ft=fileText,fv=same&&ft!==null?fileVer:null;try{const r=await fetch(FILE,fv?{cache:'no-store',headers:{'If-None-Match':fv}}:{cache:'no-store'});const nm=fv&&r.status===304;readFile.st=nm?200:r.status;readFile.ver=nm?fv:r.headers.get('ETag');setServer(true);
+const placeName=()=>{const c=WEB&&window.SiliCoDrawWeb&&SiliCoDrawWeb.storage?SiliCoDrawWeb.storage.current():null;return!c||c.kind==='browser'?(WEB?'this browser':'the figure folder'):c.kind==='folder'?`your folder “${c.name}”`:c.name},placeId=()=>{const c=WEB&&window.SiliCoDrawWeb&&SiliCoDrawWeb.storage?SiliCoDrawWeb.storage.current():null;return c?c.kind+':'+c.name:''};
+// the website: what the status line's tooltip says, by where the figures are kept (File ▾ → Where figures are kept…)
+function webWhere(){const S=window.SiliCoDrawWeb&&SiliCoDrawWeb.storage,c=S?S.current():{kind:'browser',name:'',needs:''};
+  if(c.needs)return{saved:'',offline:(c.needs==='permission'?`This browser needs your permission again for the folder “${c.name}”`:`${c.name} needs you to sign in again`)+': changes are kept in this tab and saved as soon as that is done. Click here, or File ▾ → Where figures are kept…'};
+  if(c.kind==='folder')return{saved:`Saved in your folder “${c.name}” (${FILE}). It stays on this computer, and its sync app, if there is one, takes it from there`,offline:`The folder “${c.name}” could not be written: changes are kept in this tab and saved as soon as it works again. File ▾ → Save a copy (.json) keeps them safe meanwhile`};
+  if(c.kind!=='browser')return{saved:`Saved in ${c.name} (${FILE}), sent directly from this browser`,offline:`${c.name} could not be reached: changes are kept in this tab and saved as soon as it works again. File ▾ → Save a copy (.json) keeps them safe meanwhile`};
+  return{saved:`Saved in this browser (${FILE}). Nothing is uploaded; File ▾ → Save all figures to a folder… keeps a copy on your computer`,offline:'This browser’s storage could not be reached (site data blocked, or the storage is full): changes are kept in this tab and saved as soon as it works again. File ▾ → Save a copy (.json) keeps them safe meanwhile'}}
+function setStatus(state,msg){const s=$('#status');if(WEB&&msg==='Server offline')msg='Not saved';if(badText!==null&&state==='saved'){s.className='st-offline';s.textContent='File has an error';s.title=badMsg;return}s.className='st-'+state;s.textContent=msg;s.title=state==='new'?`A new figure (${FILE}): it is saved ${WEB?'in '+placeName():'to the figure folder'} at your first change`:WEB?{saved:webWhere().saved,saving:'Saving…',offline:webWhere().offline}[state]||'':{saved:`Saved to ${FILE} in the figure folder`,saving:'Saving…',offline:'The SiliCoDraw server is not running (its window was closed): changes are kept in this browser and saved to the file as soon as it is back. To '+START_HINT,local:'Opened directly from disk: changes are only kept in this browser'}[state]}
+// a request that is never answered gives up (a stuck server, a suspended storage): it held the tab on "Saving…" for good, and stopped its polling and every later save. As a failed request, it says "Server offline" and is tried again
+const FETCH_MS={read:60000,save:60000};
+function fetchTxt(u,o,ms){const c=window.AbortController?new AbortController():null;let tm;return Promise.race([(async()=>{const r=await fetch(u,c?{...o,signal:c.signal}:o);return{r,t:await r.text()}})(),new Promise((_,no)=>{tm=setTimeout(()=>{if(c)c.abort();no(new Error('no answer'))},ms)})]).finally(()=>clearTimeout(tm))}   // (the race: a fetch replacement may not know the signal)
+async function readFile(same){const ft=fileText,fv=same&&ft!==null?fileVer:null;try{const{r,t}=await fetchTxt(FILE,fv?{cache:'no-store',headers:{'If-None-Match':fv}}:{cache:'no-store'},FETCH_MS.read);const nm=fv&&r.status===304;readFile.st=nm?200:r.status;readFile.ver=nm?fv:r.headers.get('ETag');readFile.chosen=r.headers.get('X-SiliCoDraw-Chosen')==='1';setServer(true);
   if(nm)return ft;   // same: the poll asks with the version it has; unchanged = 304 and no download (the whole file came every 1.5 s per tab; the website's storage and older servers just send it)
-  return r.ok?await r.text():null}catch(e){readFile.st=0;setServer(false);return null}}   // ver: the file's version (none from the website's storage or an older server)
+  return r.ok?t:null}catch(e){readFile.st=0;setServer(false);return null}}   // ver: the file's version (none from the website's storage or an older server)
 // the file was archived, trashed, renamed or deleted elsewhere (another tab, Claude, the file browser): autosave would write it back as an active figure,
 // so saving stops (also the browser's copy) until the user chooses on the status line; another tab of this browser says so before it moves the file (holdSave)
 let fileGone=null,holdSave=0;const fileBC=typeof BroadcastChannel==='function'?new BroadcastChannel('silicodraw-files'):null;
@@ -19123,25 +19138,36 @@ const goneMsg=g=>g==='archive'?'Moved to Archive':g==='trash'?'Moved to trash':g
 function markGone(g){fileGone=g||'gone';clearTimeout(pushTimer);forgetLocal(FILE);setStatus('offline',goneMsg(fileGone));$('#status').title=`${FILE} is no longer an active figure (${goneMsg(fileGone).toLowerCase()} outside this tab), so changes here are not saved. Click to choose what to do.`;$('#status').style.cursor='pointer'}
 async function findGone(){for(const sc of ['archive','trash']){const xs=await listFiles(sc);if(xs&&xs.some(x=>x.name===FILE))return sc}return'gone'}
 function unGone(){fileGone=null;$('#status').style.cursor='';setStatus('saved','Saved');if(!fileSame())pushFile()}
-if(fileBC)fileBC.onmessage=e=>{const d=e.data||{};if(d.moving===FILE){holdSave=Date.now()+5000;clearTimeout(pushTimer);if(!fileSame())pushFile()}else if(d.gone===FILE){holdSave=0;markGone(d.to)}
+if(fileBC)fileBC.onmessage=e=>{const d=e.data||{};if(d.dir===DIR&&d.switching){const tell=()=>{if(tabUnsaved())storeTell({busy:true})};if(fileReady&&!fileGone&&!fileSame()){Promise.race([flushSave().catch(()=>{}),new Promise(r=>setTimeout(r,450))]).then(tell)}else tell();return}if(d.dir===DIR&&d.busy)return;if(d.dir===DIR&&d.switched){storeLeaving=true;storeClear();try{sessionStorage.setItem('fig.switchHold','1')}catch(x){}storeReload();return}if(d.place!==undefined&&d.place!==placeId())return;if(d.moving===FILE){holdSave=Date.now()+5000;clearTimeout(pushTimer);if(!fileSame())pushFile()}else if(d.gone===FILE){holdSave=0;markGone(d.to)}
   else if(d.dir===DIR&&typeof d.text==='string'&&(d.saved===FILE||d.closing===FILE))mgIn(d.text,d.saved?d.ver:null,d.saved?'tab':'closing',d.base)};   // another tab saved this figure, or closed with a change not saved yet: merged here at once
 $('#status').onclick=async()=>{const g=fileGone;
   if(!g&&badKeep&&badText!==null){if(await askYes('File has an error',`${FILE} could not be read (${fileBad.er}), and this browser has no earlier version of it. Save this tab's version over the file? What the file holds now is replaced (fixing the file instead loads it here by itself).`,'Save over it')&&badKeep){badKeep=false;fileBad(badText,fileBad.er);pushFile()}return}   // opened broken with nothing to show: a change was kept off the file until now
+  if(!g&&WEB&&webWhere().saved===''){storageDialog();return}   // a folder or service waiting for the user: the status line's click leads there
   if(!g)return;
   if(g.startsWith('rename:')){if(await askYes('Figure renamed',`This figure was renamed to “${g.slice(7).replace(/\.json$/,'')}” in another tab. Open it under its new name? Changes made here since then are not in it.`,'Open'))openFile(g.slice(7));return}
   if(g==='archive'||g==='trash'){if(!(await askYes(g==='archive'?'Figure archived':'Figure in the trash',`“${BASE}” was moved to ${g==='archive'?'the Archive':'the trash'} outside this tab. Move it back to the active figures and save this tab's version into it?`,'Restore and save')))return;
     if(await moveFile(FILE,g,'active')){fileText=null;unGone()}else alert('Could not restore it: a figure with that name is already active.');return}
   if(await askYes('Figure file removed',`${FILE} was renamed or deleted outside this tab. Save this tab's version as ${FILE} again?`,'Save it'))unGone()};
 function setServer(ok){if(ok===serverOk)return;serverOk=ok;if(ok){if(fileGone)markGone(fileGone);else if(!fileSame())pushFile();else setStatus('saved','Saved')}else setStatus('offline','Server offline')}
+// the panel field typed in since its last change event: only that one is committed by hand when the page goes away. A field just clicked into may have side effects when "changed" (width px rescales from its rounded value, print width drops the journal size)
+var storeLeaving=false;let propTyped=null;document.addEventListener('input',e=>{if(e.target.closest&&e.target.closest('#props')&&/^(INPUT|TEXTAREA)$/.test(e.target.tagName))propTyped=e.target},true);document.addEventListener('change',e=>{if(e.target===propTyped)propTyped=null},true);
 // if the page is closed or reloaded while a save is still pending, send it right away
-addEventListener('pagehide',()=>{
+addEventListener('pagehide',()=>{if(storeLeaving)return;   // the place has changed: nothing of this page goes to the new one
   // text still being typed (a comment, a label in the panel, a text on the canvas) is only committed when the field is left: a reload or closed tab lost it
-  try{const a=document.activeElement;if(editor)finishEdit();else if(a&&a.closest&&a.closest('#props')&&/^(INPUT|TEXTAREA)$/.test(a.tagName))a.dispatchEvent(new Event('change'))}catch(e){}
+  try{const a=document.activeElement;if(editor)finishEdit();else if(a&&a===propTyped)a.dispatchEvent(new Event('change'))}catch(e){}
   try{figEnd()}catch(e){}   // a fig.batch still running: what it did so far is a step and goes with the beacon
   if(FILE_SYNC&&pushTimer&&!fileGone&&!newHeld()&&Date.now()>=holdSave&&!fileSame()){clearTimeout(pushTimer);
     // with the version it was made from: refused when someone else wrote the file since (their newer work is not overwritten); a save still on its way would change the version first, so then it goes as it is
-    navigator.sendBeacon(FILE+(fileVer&&!pushBusy?'?base='+encodeURIComponent(fileVer):''),figLines(lastSaved));   /* as text (not a Blob): the website's storage keeps exactly this text for its next start */
-    if(fileBC)try{fileBC.postMessage({closing:FILE,dir:DIR,text:lastSaved,base:fileText})}catch(e){}}});   // another tab on this figure merges the change in and saves it
+    let sent=false;try{sent=navigator.sendBeacon(FILE+(fileVer&&!pushBusy?'?base='+encodeURIComponent(fileVer):''),figLines(lastSaved))}catch(e){}   /* as text (not a Blob): the website's storage keeps exactly this text for its next start */
+    try{const mk=CLOSING_KEY();if((!sent||saveFailed||!serverOk)&&fileVer)localStorage.setItem(mk,fileVer);else localStorage.removeItem(mk)}catch(e){}   // browsers refuse a beacon over 64 KB, and the change was then gone (the next start read the file over this browser's copy): closingRetry
+    if(fileBC)try{fileBC.postMessage({closing:FILE,dir:DIR,place:placeId(),text:lastSaved,base:fileText})}catch(e){}}});   // another tab on this figure merges the change in and saves it
+const CLOSING_KEY=()=>'fig.closing:'+DIR+FILE;
+// the next start sends what the closing page could not, with the version it was made from: written if the file is still at that version, else refused (the server keeps it in the version history). A file that is gone stays gone
+async function closingRetry(){let v=null,s=null;try{v=localStorage.getItem(CLOSING_KEY());s=localStorage.getItem(KEY)}catch(e){}if(!v)return;
+  let done=!s;try{if(s){const{r}=await fetchTxt(FILE,{cache:'no-store'},FETCH_MS.read);if(r.status===404)done=true;else if(r.ok){const{r:p}=await fetchTxt(FILE+'?base='+encodeURIComponent(v),{method:'POST',body:figLines(s)},FETCH_MS.save+s.length/10);done=p.ok||p.status===409}}}catch(e){}   // written, or refused and kept in the version history; a file that is gone stays gone
+  if(done)try{localStorage.removeItem(CLOSING_KEY())}catch(e){}else closingRetry.keep=v}   // not delivered (a locked file, the server busy): firstRead keeps this browser's copy, and the normal saving and its status take over
+// a page brought back from the browser's back/forward cache: what pagehide held back goes on (the status stayed on "Saving…"), and closed sheets give up their Back entries again
+addEventListener('pageshow',e=>{if(!e.persisted)return;PH.leaving=0;try{localStorage.removeItem(CLOSING_KEY());if(WEB)localStorage.removeItem('silicodraw.pending:'+FILE)}catch(x){}if(FILE_SYNC&&fileReady&&!fileGone&&!fileSame())pushFile()});
 // the server is running but refused the write (file locked by a sync tool, disk full…): it was never tried again until the next edit, and the tooltip said the server was not running → retried on each poll, own tooltip
 let saveFailed=false;function saveFail(){if(!saveFailed&&typeof srSay==='function')srSay(WEB?'Not saved: this browser could not store the figure. Saving is retried.':'Not saved: the server could not write the figure. Saving is retried.',true);/* read out once (the retries every few seconds stay quiet) */saveFailed=true;setStatus('offline','Not saved');$('#status').title=WEB?`This browser could not store ${FILE} (its storage may be full: back up and delete figures you no longer need). Changes are kept in this tab; saving is retried every few seconds.`:`The server could not write ${FILE} (is the file open or locked in another program, or the disk full?). Changes are kept in this browser; saving is retried every few seconds.`}
 let fillPair=null,pushSeq=0,pushBusy=0;   // saves started / still on their way: a file read that overlaps one may return an older text and must not be loaded over newer edits
@@ -19171,7 +19197,7 @@ function scrubObj(o,W=1600,H=900){const sc=SCHEMA[o.type]||[],D=DEF[o.type]||{},
   for(const k of ['x','y','x1','y1','x2','y2'])if(typeof o[k]==='number'&&!isFinite(o[k]))o[k]=0;
   for(const k of ['s','r','op'])if(k in o&&(o[k]===''||o[k]===null||typeof o[k]==='boolean'||!isFinite(+o[k])))delete o[k];
   if(Array.isArray(o.pts))o.pts=o.pts.filter(p=>Array.isArray(p)&&isFinite(+p[0])&&isFinite(+p[1])&&p[0]!==null&&p[1]!==null).map(p=>[+p[0],+p[1]]);   // a broken point broke the drawing and the point handles
-  if(o.type==='sketch')o.strokes=o.strokes.filter(t=>t&&typeof t==='object'&&Array.isArray(t.p)).map(t=>({...t,p:t.p.filter(q=>Array.isArray(q)&&isFinite(+q[0])&&isFinite(+q[1])).map(q=>[+q[0],+q[1]])}));
+  if(o.type==='sketch')o.strokes=(Array.isArray(o.strokes)?o.strokes:[]).filter(t=>t&&typeof t==='object'&&Array.isArray(t.p)).map(t=>({...t,p:t.p.filter(q=>Array.isArray(q)&&isFinite(+q[0])&&isFinite(+q[1])).map(q=>[+q[0],+q[1]])}));
   if(o.type==='image'&&o.fit!=='crop'&&o.fit!=='stretch')o.fit='stretch';   // pictures from before `fit` (files, pasted copies) were drawn at exactly w × h: they keep that look
   return o}
 function healScene(s){s.objects=s.objects.filter(o=>o&&typeof o==='object'&&typeof o.type==='string');s.objects.forEach(o=>delete o._pending);   // older files may carry this transient flag, which would block re-encoding
@@ -19204,19 +19230,35 @@ let startBase0=null;const startBase=lastSaved;
 const lastKey=()=>'fig.lastFile:'+DIR;function noteLast(){if(noteLast.done||/-example\.json$/i.test(FILE))return;noteLast.done=1;try{localStorage.setItem(lastKey(),FILE)}catch(e){}}
 // a website example link that opens the copy this browser already has: what shows may be the visitor's changes, not the example (and Undo starts empty), so it says where the way back is
 async function exBack(t){try{const r=await fetch(`examples/${encodeURIComponent(EX_ID)}.json`,{cache:'no-store'}),x=r.ok?await r.text():null;if(x!=null&&!sameFig(t,x)){toast('This is your copy of the example, as you left it. File ▾ → Start the example over… brings back the original.');clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),9000)}}catch(e){}}
-function firstRead(t){if(PHONE())requestAnimationFrame(()=>{if(!phZoomed())fit(true)});   /* phones: the page fills the small screen once the figure is in (the start showed this browser's copy) */if(FROM_EX&&WEB&&EX_ID)exBack(t);if(PHONE())setTimeout(phHello,1200);fileReady=true;noteLast();const ver=readFile.ver||null;fileText=t;fileVer=ver;setStatus('saved','Saved');const edited=startBase0!==null&&JSON.stringify(scene)!==startBase0;if(!edited){const er=figErr(t);if(er){badKeep=blankScene(scene);fileBad(t,er)}else loadText(t);setBase(t,ver,lastSaved);return}
+// the figure's file is there but cannot be read right now (a sync app holding it, an online-only file, a folder away): it is no new figure, so nothing goes over it; the poll tries again
+function fileUnread(){setStatus('offline','Not saved');$('#status').title=`${FILE} cannot be read at the moment (is the folder's drive connected, or its sync app running?). It is not touched; this keeps trying, and your changes wait in this browser.`}
+// a real "not found": a new figure. Written at once only where this browser is the only place it can be; in a chosen folder or a service the browser's copy may be stale or another figure of that name, so it waits for a change (and a figure moved to the archive or trash on another device stays there)
+async function firstMissing(){let switched=false;try{switched=!!sessionStorage.getItem('fig.switchHold');sessionStorage.removeItem('fig.switchHold')}catch(e){}const edited=startBase0!==null&&JSON.stringify(scene)!==startBase0,held=switched||(WEB?!!(window.SiliCoDrawWeb&&SiliCoDrawWeb.storage&&SiliCoDrawWeb.storage.current().kind!=='browser'):!!readFile.chosen);
+  if(held&&!(MAIN&&blankScene(scene))){const g=await findGone();if(g!=='gone'){markGone(g);return}}
+  fileReady=true;base0Forget();if(PHONE())setTimeout(phHello,1200);
+  if((WEB&&blankScene(scene)||held)&&!edited){const blank=blankScene(scene);newHold=baseState=lastSaved;holdNew();   // website: nothing is written until the first change (see newHold); the blank is the base a figure another tab saves meanwhile is merged against
+    if(!MAIN||!blank){const nm=BASE,pl=placeName();toast(!blank?`“${nm}” is not in ${pl} yet. What you see is this browser’s copy of it; it is saved there at your first change.`:FROM_EX?`Could not load the example for “${nm}” (no internet connection?): this is an empty figure for now. Open the example link again once you are online.`:`No figure named “${nm}” in ${pl}, so this is a new, empty one (saved at your first change).`+(pl==='this browser'?` Figures stay in the browser that made them: to share one, use File ▾ → Save a copy (.json) and send that file.`:''));clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),12000)}}
+  else{noteLast();pushFile()}}
+// changes made before the file could be read, across a reload or a sign-in: the start compares with what the file was then, so they are merged and not read over
+const BASE0=()=>'fig.base0:'+DIR+FILE,base0Forget=()=>{try{localStorage.removeItem(BASE0())}catch(e){}};
+function firstRead(t){base0Forget();try{sessionStorage.removeItem('fig.switchHold')}catch(e){}if(PHONE())requestAnimationFrame(()=>{if(!phZoomed())fit(true)});   /* phones: the page fills the small screen once the figure is in (the start showed this browser's copy) */if(FROM_EX&&WEB&&EX_ID)exBack(t);if(PHONE())setTimeout(phHello,1200);fileReady=true;noteLast();const ver=readFile.ver||null;fileText=t;fileVer=ver;setStatus('saved','Saved');const edited=startBase0!==null&&JSON.stringify(scene)!==startBase0;if(closingRetry.keep){const k0=closingRetry.keep;closingRetry.keep=0;if(!figErr(t)){try{localStorage.removeItem(CLOSING_KEY())}catch(e){}   // a change that could not be saved before the last close, also with more edits since (a merge against a base that holds it would count it as deleted in the file)
+    if(ver===k0){base0Forget();setBase(t,ver,flat(t));pushFile();return}   // the file is still the version it was made from: it simply goes on
+    fetchTxt(FILE+'?base='+encodeURIComponent(k0),{method:'POST',body:figLines(lastSaved)},FETCH_MS.save).catch(()=>{})}}   // the file moved on: this browser's version goes to the version history, not lost
+  if(!edited){const er=figErr(t);if(er){badKeep=blankScene(scene);fileBad(t,er)}else try{loadText(t)}catch(e){console.error(e);badKeep=blankScene(scene);fileBad(t,'it could not be loaded: '+(e&&e.message||e))}   /* a figure that made the load throw ended the start: no polling, no message, and the next change went over the file */setBase(t,ver,lastSaved);return}
   let same=t===startBase;if(!same)try{same=JSON.stringify(healScene(JSON.parse(t)))===startBase}catch(e){}
   if(same){setBase(t,ver,startBase);if(lastSaved!==t)pushFile();return}
   commit();let T=null;try{T=JSON.parse(t)}catch(e){}if(!T||!Array.isArray(T.objects)){fileBad(t,figErr(t));setBase(t,ver,lastSaved);return}   // not a figure (a broken hand edit): left as it is until a change here is saved over it
-  const mine=lastSaved;T=healScene(T);const th=JSON.stringify(T),m=mgMerge(JSON.parse(startBase0),JSON.parse(mine),T);setBase(t,ver,th);syncGen++;hist.push(mine);histCap();fut.length=0;loadText(JSON.stringify(m.scene));pushFile();mgSay('first',m.conflicts)}
+  const mine=lastSaved;try{T=healScene(T)}catch(e){console.error(e);fileBad(t,'it could not be loaded: '+(e&&e.message||e));setBase(t,ver,lastSaved);return}const th=JSON.stringify(T),m=mgMerge(JSON.parse(startBase0),JSON.parse(mine),T);setBase(t,ver,th);syncGen++;hist.push(mine);histCap();fut.length=0;loadText(JSON.stringify(m.scene));pushFile();mgSay('first',m.conflicts)}
 // one error in a poll (a file that made the load throw) ended the loop: no more file sync or save retries for the rest of the session
 // a tab in the background asks every 6 s (every open tab downloaded the figure every 1.5 s), and at once when it is shown again
 async function pollFile(){pollFile.tm=0;try{await pollOnce()}catch(e){console.error(e)}pollFile.tm=setTimeout(pollFile,document.hidden?6000:1500)}
-document.addEventListener('visibilitychange',()=>{if(!document.hidden&&pollFile.tm){clearTimeout(pollFile.tm);pollFile()}});   // tm is 0 while a poll is on its way: never two at once
+document.addEventListener('visibilitychange',()=>{if(document.hidden){   // text still being typed is saved now: a phone may discard a tab in the background without any pagehide (not figEnd: an assistant's batch in a background tab goes on)
+    try{const a=document.activeElement;if(editor)finishEdit(true);else if(a&&a===propTyped)a.dispatchEvent(new Event('change'))}catch(e){}return}
+  if(pollFile.tm){clearTimeout(pollFile.tm);pollFile()}});   // tm is 0 while a poll is on its way: never two at once
 async function pollOnce(){if(mgPend.length)mgTake();if(saveFailed&&serverOk&&fileReady&&!fileGone&&!pushBusy&&!fileSame())pushFile();if(!syncBusy()){const seq=pushSeq,sg=syncGen,t=await readFile(fileReady);
   if(fileReady&&!t&&readFile.st===404&&fileText!==null&&!fileGone){const g=await findGone();if(!fileGone)markGone(g)}   /* it was there (read or saved) and is gone now */
   else if(fileGone&&t)unGone();   /* restored meanwhile (Archive/Trash menu in another tab): saving resumes */
-  if(fileGone);else if(!fileReady){if(t)firstRead(t);else if(serverOk){fileReady=true;pushFile()}}else if(t&&t!==fileText&&seq===pushSeq&&sg===syncGen&&!pushBusy&&!syncBusy())mgIn(t,readFile.ver,'file')}}   /* the file changed (another window, Claude, a hand edit): taken or merged; a version that came in from another tab during the read is newer than this one */
+  if(fileGone);else if(!fileReady){if(t!==null)firstRead(t);else if(serverOk&&readFile.st===404)await firstMissing();else if(serverOk)fileUnread()}else if(t&&t!==fileText&&seq===pushSeq&&sg===syncGen&&!pushBusy&&!syncBusy())mgIn(t,readFile.ver,'file')}}   /* the file changed (another window, Claude, a hand edit): taken or merged; a version that came in from another tab during the read is newer than this one */
 /* ---------- no lost work: versions and merging ---------- */
 // fileVer is the server's version (ETag: a hash of the content) of fileText, the file as this tab last read or wrote it; baseState is the editor's own text of that version (a file written
 // in another layout, by hand or by Claude, differs from it: that is no change here). A save carries fileVer back (If-Match) and the server refuses it (409, with the file as it is now) when
@@ -19296,19 +19338,19 @@ const flat=t=>typeof t==='string'&&t.indexOf('\n')>=0?t.replace(/\n/g,''):t;
 let flatMemo=[null,null];const fileSame=()=>{if(fileText===null)return false;if(badText!==null&&fileText===badText)return badKeep||lastSaved===baseState;if(lastSaved===fileText)return true;if(flatMemo[0]!==fileText)flatMemo=[fileText,flat(fileText)];return lastSaved===flatMemo[1]};
 // one save at a time (two on their way at once carried the same version, and the second was refused as a conflict with the first)
 const postLocked=fn=>!fileVer&&fileText!==null&&navigator.locks&&navigator.locks.request?navigator.locks.request('silicodraw-save:'+DIR+FILE,fn):fn();
-async function postFig(){while(pushBusy)await new Promise(r=>setTimeout(r,40));if(fileGone||!fileReady)return'skip';pushBusy++;let res;
+async function postFig(){while(pushBusy)await new Promise(r=>setTimeout(r,40));if(fileGone||!fileReady)return'skip';pushBusy++;let res,sentBody=null;
   try{res=await postLocked(async()=>{const b=fileText,g=syncGen;
-      if(!fileVer&&b!==null){const c=await fetch(FILE,{cache:'no-store'});if(c.ok){const cur=await c.text();if(cur!==b)return{st:409,cur,ver:c.headers.get('ETag')}}}   // no versions here: read it first (inside the lock: no other tab writes in between)
-      const t=lastSaved,body=figLines(t),r=await fetch(FILE,{method:'POST',body,headers:fileVer?{'If-Match':fileVer}:{}});   // body: one element per line (t is the editor's own one-line text of it)
-      return r.status===409?{st:409,cur:await r.text(),ver:r.headers.get('ETag')}:{st:r.ok?'ok':'fail',t,body,b,g,ver:r.headers.get('ETag')}})}
-  catch(e){res={st:'offline'}}finally{pushBusy--}
+      if(!fileVer&&b!==null){const{r:c,t:cur}=await fetchTxt(FILE,{cache:'no-store'},FETCH_MS.read);if(c.ok&&cur!==b)return{st:409,cur,ver:c.headers.get('ETag')}}   // no versions here: read it first (inside the lock: no other tab writes in between)
+      const t=lastSaved,body=figLines(t);sentBody=body;const{r,t:ans}=await fetchTxt(FILE,{method:'POST',body,headers:fileVer?{'If-Match':fileVer}:{}},FETCH_MS.save+body.length/10);   // body: one element per line (t is the editor's own one-line text of it); the limit grows by 10 kB/s of figure
+      return r.status===409?{st:409,cur:ans,ver:r.headers.get('ETag')}:{st:r.ok?'ok':'fail',t,body,b,g,ver:r.headers.get('ETag')}})}
+  catch(e){res={st:'offline'};if(sentBody)mgLate=sentBody}finally{pushBusy--}   // (a save given up on may still have been written: this tab's own text, not someone else's edit, when a poll brings it)
   if(res.st==='offline'){serverOk=false;setStatus('offline','Server offline');return'offline'}
   serverOk=true;saveFailed=false;
   if(res.st===409){const n=Date.now();mgRun=mgRun&&n-mgRun.t<5000?{t:mgRun.t,n:mgRun.n+1}:{t:n,n:1};if(mgRun.n>6)mgHold=n+2000;mgIn(res.cur,res.ver,'file');return'merged'}   // someone else wrote it since: merged, then saved again (a pause if that keeps happening)
   if(res.st!=='ok'){saveFail();return'fail'}
   if(newHold!==null){newHold=null;noteLast()}   // the first write of a new figure: from now on it is saved like any other (undoing back to blank is saved too)
   if(WEB&&!safariNote.done){safariNote.done=1;setTimeout(safariNote,1500)}
-  if(res.g===syncGen){setBase(res.body,res.ver,res.t);mgLate=null;if(fileBC)try{fileBC.postMessage({saved:FILE,dir:DIR,text:res.body,ver:fileVer})}catch(e){}}else{mgKnow(res.body,res.t);mgLate=res.body}   // a merge came in meanwhile: its version stays the base (the file may still hold this save: mgLate). The message carries only the saved text (its base, a second full copy of the figure to every tab, was never used)
+  if(res.g===syncGen){setBase(res.body,res.ver,res.t);mgLate=null;if(fileBC)try{fileBC.postMessage({saved:FILE,dir:DIR,place:placeId(),text:res.body,ver:fileVer})}catch(e){}}else{mgKnow(res.body,res.t);mgLate=res.body}   // a merge came in meanwhile: its version stays the base (the file may still hold this save: mgLate). The message carries only the saved text (its base, a second full copy of the figure to every tab, was never used)
   if(res.t===lastSaved)setStatus('saved','Saved');return'ok'}
 // what was merged: a toast (Details lists the fields both sides changed, where this tab's value was kept)
 function mgSay(src,cf){const n=cf.length,msg=(src==='first'?'The figure file had changed: your first edits were merged into it':src==='closing'?'Merged the last changes of a closed window':src==='tab'||window.SiliCoDrawWeb?'Merged changes from another window':'Merged changes made to the figure file')+(n?` · ${n} conflict${n>1?'s':''}, yours kept`:'')+` · ${MODK}+Z undoes the merge`;
@@ -19330,14 +19372,15 @@ function mgDetails(cf){const nm=o=>{if(o==='page')return'Page';const n=layerName
   const box=modal(`<h2>Merged changes</h2><p class="muted">Both versions changed these, and this window’s values were kept. Everything else from the other version was added. ${MODK}+Z undoes the whole merge.</p><div style="max-height:52vh;overflow:auto">${cf.map(([o,k])=>`<div class="hrow"><span>${esc(nm(o))}<br><span class="muted">${esc(fl(k))}</span></span></div>`).join('')}</div><div class="btns"><button class="primary" id="mgOk">OK</button></div>`);box.querySelector('#mgOk').onclick=closeModal}
 // a toast with a button: it stays longer and takes clicks while it shows
 function toastAct(msg,label,fn){toast(msg);const t=$('#toast'),b=document.createElement('button');b.type='button';b.className='tact';b.textContent=label;t.classList.add('act');/* a toast with a button takes the pointer (hovering holds it); plain ones let clicks through to the canvas */b.onclick=()=>{t.classList.remove('show');toastBack(t);/* a dialog it opens gives the focus back there, not to the hidden button */fn()};t.append(' ',b);clearTimeout(toast.tm);toast.tm=setTimeout(()=>t.classList.remove('show'),Math.max(9000,toastMs(msg)+3000))}
-function save(){if(!fileGone)lsKeep(lastSaved);pushFile()}
+function save(){if(!fileGone)lsKeep(lastSaved);if(FILE_SYNC&&!fileReady&&startBase0!==null)try{if(localStorage.getItem(KEY)===null)base0Forget();else if(localStorage.getItem(BASE0())===null)localStorage.setItem(BASE0(),startBase0)}catch(e){}pushFile()}
 // the browser keeps one copy per figure ever opened (~5 MB for all): once full, the copy of the figure being edited silently stopped updating, and the stale one was shown at the next start
 // → with the server the other figures' copies (only a start-up view: their files win) make room; what still does not fit is dropped; without the server (the copy is all there is) a toast says so
 function lsKeep(v){try{localStorage.setItem(KEY,v);return}catch(e){}
   if(FILE_SYNC){try{Object.keys(localStorage).forEach(k=>{if(k.startsWith('figEditor.scene.v1')&&k!==KEY)localStorage.removeItem(k)});localStorage.setItem(KEY,v);return}catch(e){}}
   if(FILE_SYNC){try{localStorage.removeItem(KEY)}catch(e){}}else if(!lsKeep.told){lsKeep.told=1;toast('This figure is too large for the browser to keep: changes are lost when the tab closes (start the SiliCoDraw server to save it as a file)')}}   // a moved figure keeps no browser copy (it would come back as an active file when the name is opened again)
 // Ctrl+S: write to the file right away (the editor also saves automatically); without the server, download a copy instead
-async function saveNow(){
+async function saveNow(){if(FILE_SYNC&&fileReady&&!fileGone&&badText!==null&&fileSame()){if(badKeep)$('#status').click();else toast(badMsg);return}   // nothing changed here: Ctrl+S does not write over a broken file (a blank canvas over it, or the last good version over a repair on its way)
+
   if(document.activeElement&&document.activeElement.closest('#props'))document.activeElement.dispatchEvent(new Event('change'));
   commit();clearTimeout(pushTimer);
   if(FILE_SYNC&&!fileReady){toast(serverOk?'Still opening the figure file…':WEB?'This browser’s storage cannot be reached: changes are kept in this tab':'Server offline: changes are kept in this browser');return}   // never write the browser's copy over a file not read yet
@@ -19465,7 +19508,7 @@ function applyRoom(){if(drag){queueRoom();return}let bb;try{bb=$('#content').get
   const b=roomBase(),hx=Math.max(ex[0],ex[2])*zoom,vy=Math.max(ex[1],ex[3])*zoom,px=[b+vy,b+hx,b+vy,b+hx];   // top right bottom left
   if(roomPx&&px.every((v,i)=>v===roomPx[i]))return;const st=$('#stage'),r0=svg.getBoundingClientRect();roomPx=px;
   $('#wrap').style.padding=ex.some(v=>v)?px.map(v=>v+'px').join(' '):'';
-  const r1=svg.getBoundingClientRect();st.scrollLeft+=r1.left-r0.left;st.scrollTop+=r1.top-r0.top}
+  const r1=svg.getBoundingClientRect(),l0=st.scrollLeft,t0=st.scrollTop;st.scrollLeft+=r1.left-r0.left;st.scrollTop+=r1.top-r0.top;if(pan){pan.sl+=st.scrollLeft-l0;pan.st+=st.scrollTop-t0}}   // (a finger panning on after a pinch: the view jumped by the change in room)
 const offPage=b=>!!b&&(b.x>scene.w+1||b.y>scene.h+1||b.x+b.w<-1||b.y+b.h<-1);   // drawn bounds (bbox) entirely outside the page: parked there, left out of SVG/PNG/PPTX (1 px slack: the bounds leave out strokes, and a line along a page edge has zero height; <=0 dropped it)
 const offPageId=id=>{try{return offPage(bbox(id))}catch(e){return false}};
 function toSvg(cx,cy){const p=svg.createSVGPoint();p.x=cx;p.y=cy;return p.matrixTransform(svg.getScreenCTM().inverse())}
@@ -19571,6 +19614,7 @@ svg.addEventListener('pointerdown',e=>{
   // middle button, or Space + drag, pans the view
   if(e.button===1||(e.button===0&&spaceDown)){const st=$('#stage');drag={mode:'pan',sx:e.clientX,sy:e.clientY,sl:st.scrollLeft,st:st.scrollTop,moved:false};try{svg.setPointerCapture(e.pointerId)}catch(err){}e.preventDefault();return}
   if(e.button!==0)return;
+  if(e.pointerType==='pen')try{svg.setPointerCapture(e.pointerId)}catch(err){}   // its lift must reach the window (iOS sends it to the node a render just removed: penId stayed set and the canvas ignored every finger)
   if(IS_MAC&&e.ctrlKey&&e.pointerType==='mouse')return;   // on a Mac, Ctrl+click is the right-click: the context menu handles it, the selection stays
   {const st=$('#stage');if(!editor&&document.activeElement!==st)st.focus({preventScroll:true,focusVisible:false})}   // the preventDefault calls below kept the focus where it was (Delete and the arrows then went to the Add search field)
   const p=toSvg(e.clientX,e.clientY),h=phNear(e.target.closest('[data-h]'),p,e);hoverId=null;   // phones: a finger beside a handle takes the nearest one (its larger unseen twin was hit), on the selection itself the element
@@ -19611,10 +19655,10 @@ svg.addEventListener('pointerdown',e=>{
     if(k0===null||[...sel].join()!==k0)buildPanel()}
   // touch: pressing and holding an element (without sliding it) opens the menu, as right-click does (phones: the touch code's own timer, in every drag mode and on empty canvas: phLong)
   if(e.pointerType==='touch'&&drag&&drag.mode==='move'&&!PHONE()){clearTimeout(longTm);const sx=e.clientX,sy=e.clientY,ev={clientX:sx,clientY:sy,altKey:false};lastPt={x:sx,y:sy};
-    longTm=setTimeout(()=>{if(!drag||drag.mode!=='move'||Math.hypot(lastPt.x-sx,lastPt.y-sy)>10)return;const d=drag;drag=null;d.starts.forEach(([o,s])=>Object.assign(o,s));render();longPressAt=Date.now();ctxMenuAt(ev)},550)}
+    longTm=setTimeout(()=>{if(!drag||drag.mode!=='move'||Math.hypot(lastPt.x-sx,lastPt.y-sy)>10)return;const d=drag;drag=null;d.starts.forEach(([o,s])=>Object.assign(o,s));render();longPressAt=Date.now();longPid=e.pointerId;ctxMenuAt(ev)},550)}   // (longPid: the click iOS sends when this finger lifts must not run the menu row under it: touchEnd)
   try{svg.setPointerCapture(e.pointerId)}catch(err){}if(k0===null||[...sel].join()!==k0)render();else if(drag)drag.k0=k0;e.preventDefault();
 });
-let longTm=0,longPressAt=0,lastPt={x:0,y:0},lastTap={};
+let longTm=0,longPressAt=0,longPid=null,lastPt={x:0,y:0},lastTap={};
 // hover outline on the element under the pointer (also used by the Layers list)
 let hoverRaf=0;
 svg.addEventListener('pointermove',e=>{if(drag||e.pointerType==='touch'||sk.on)return;if(hoverRaf)return;hoverRaf=requestAnimationFrame(()=>{hoverRaf=0;const g=e.target.closest('[data-h]')?null:pickAt(e);const id=g?g.dataset.id:null;if(id!==hoverId){hoverId=id;drawOverlay()};svg.style.cursor=id&&!sel.has(id)?'pointer':id?'move':''})});
@@ -19874,6 +19918,7 @@ svg.addEventListener('contextmenu',e=>{e.preventDefault();
   // Android fires this on a long touch too: skip it when our own long-press handler just opened the menu, otherwise cancel the pending drag
   if(Date.now()-longPressAt<800)return;clearTimeout(longTm);
   if(drag&&drag.mode==='move'){const d=drag;drag=null;d.starts.forEach(([o,s])=>Object.assign(o,s));render()}
+  if(touches.size)pan=null;   // Android tablets: the long press in a selection's gap ends here (lifting cleared the selection behind the open menu, so Delete did nothing)
   ctxMenuAt(e)});
 function ctxMenuAt(e){if(sk.on)return;   /* Sketch mode: a right-click selected the element under the drawing and offered Delete, Select all… for the figure behind it */const g=e.kbd?null:e.g!==undefined?e.g:pickAt(e);   // from the keyboard: the menu for the selection as it is (phones: e.g = what the touch code picked)
   let lk=null;if(!g&&!e.kbd){for(const el of document.elementsFromPoint(e.clientX,e.clientY)){const h=el.closest&&el.closest('#content [data-id]'),o=h&&get(h.dataset.id);if(o&&o.locked&&!o.hidden){lk=o;break}}   // a locked element under the pointer: the menu offers Unlock (it could not be unlocked from the canvas)
@@ -20535,7 +20580,7 @@ const USER_REMOVED=new Set();   // icons taken out of My icons in this session: 
 const saveUserIcons=async()=>{if(FILE_SYNC){try{const r=await fetch(USER_FILE+'?t='+Date.now(),{cache:'no-store'});if(r.ok){const d=await r.json();if(d&&typeof d==='object'&&!Array.isArray(d))for(const k of Object.keys(d))if(!USER[k]&&!USER_REMOVED.has(k)){USER[k]=d[k];if(!ICONS[k]||ICONS[k].user)registerIcon(k,d[k])}}}catch(e){}}
   const t=JSON.stringify(USER,null,1);try{localStorage.setItem(USER_KEY,t)}catch(e){}if(FILE_SYNC)fetch(USER_FILE,{method:'POST',body:t}).catch(()=>{})};
 async function loadUserIcons(){let d={},missing=false;if(FILE_SYNC){try{const r=await fetch(USER_FILE+'?t='+Date.now(),{cache:'no-store'});if(r.ok)d=await r.json();else if(r.status===404)missing=true}catch(e){}}else{try{d=JSON.parse(localStorage.getItem(USER_KEY)||'{}')}catch(e){}}
-  if(!d||typeof d!=='object'||Array.isArray(d))d={};const extra=Object.keys(USER).filter(k=>!d[k]);USER={...d,...USER};Object.keys(USER).forEach(k=>registerIcon(k,USER[k]));if(extra.length||missing)saveUserIcons();refreshUserPalette()}   // a missing file is created (empty) so later loads do not 404
+  if(!d||typeof d!=='object'||Array.isArray(d))d={};const extra=Object.keys(USER).filter(k=>!d[k]);USER={...d,...USER};Object.keys(USER).forEach(k=>registerIcon(k,USER[k]));if(extra.length||missing&&!(WEB&&window.SiliCoDrawWeb&&SiliCoDrawWeb.storage&&SiliCoDrawWeb.storage.current().kind!=='browser'))saveUserIcons();refreshUserPalette()}   // a missing file is created (empty) so later loads do not 404
 const recolorSvg=(svg,k,a,b)=>svg.replace(/(fill|stroke)="(#[0-9a-fA-F]{3,6})"/g,(m,p,c)=>{const cc=c.toLowerCase();return cc===k[0]?`${p}="${a}"`:cc===k[1]?`${p}="${b}"`:m});
 function registerIcon(key,def){if(!def||typeof def!=='object')return;const svg=svgScrub(def.svg),c=Array.isArray(def.c)?def.c.map(x=>scrubStr(String(x))):['#6f86c8','#3f5a9e'],k=Array.isArray(def.k)?def.k.map(x=>String(x).toLowerCase()):[];   /* recolorSvg compares lowercased colors: a "#6F86C8" key (hand-written or AI-made file) never recolored */   // an icon carried by a figure file is data too: no scripts, no attribute break-outs
   ICONS[key]={n:String(def.n||key),t:String(def.t||''),c,user:true,def:{...def,svg,c,k},d:(a,b,o)=>recolorSvg(svg,k,a,b)}}   // def: copied elements carry it, so they draw in a tab/figure that does not know the icon
@@ -21241,6 +21286,9 @@ stage.addEventListener('dragover',e=>{if([...e.dataTransfer.types].some(t=>t==='
 stage.addEventListener('dragleave',e=>{if(!stage.contains(e.relatedTarget))stage.classList.remove('dropping')});
 stage.addEventListener('drop',e=>{e.preventDefault();stage.classList.remove('dropping');const p=toSvg(e.clientX,e.clientY);
   const it=e.dataTransfer.getData('text/figure-item');if(it){const{type,preset,key}=JSON.parse(it);addObjAt(type,preset,sn(p.x),sn(p.y));/* lands on the grid when Snap is on, like a dragged element */if(key)noteRecent(key);return}
+  // a folder (one saved with Save all figures to a folder…): its figures come in as Open a folder of figures… brings them (the entries are taken now: after the event they are gone)
+  const ents=[...(e.dataTransfer.items||[])].map(i=>{try{return i.kind==='file'&&i.webkitGetAsEntry?i.webkitGetAsEntry():null}catch(err){return null}}).filter(Boolean);   // (files dropped beside a folder come along)
+  if(ents.some(x=>x.isDirectory)){(async()=>{const out=[];for(const en of ents)await wsWalkEntry(en,'',out);return wsPick(out)})().then(fs=>fs.length?webRestore(fs):toast('No SiliCoDraw figures found in that folder')).catch(err=>alert('Could not open the figures: '+err.message));return}
   const all=[...e.dataTransfer.files],figs=all.filter(f=>/\.json$/i.test(f.name)),zips=all.filter(f=>/\.zip$/i.test(f.name));   // a figure file or a backup dropped here did nothing (only pictures were taken)
   if(zips.length||figs.length>1){webRestore([...zips,...figs]).catch(err=>alert('Could not restore: '+err.message));return}if(figs.length){loadFigFile(figs[0]);return}
   const files=all.filter(isImgFile);if(files.length)insertImages(files,p)});
@@ -21358,7 +21406,7 @@ async function insertImages(files,at){
 }
 
 /* ---------- export / io ---------- */
-function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},1000)}
+function download(name,blob){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.style.display='none';document.body.appendChild(a);a.click();setTimeout(()=>a.remove(),1000);setTimeout(()=>URL.revokeObjectURL(a.href),60000)}   // (an iPhone asks about every download: answered later than a second, the file was already gone)
 // standalone SVG of the figure: inserted images are embedded as data so the file works anywhere; transparent = no background
 async function embedImages(c){for(const im of c.querySelectorAll('image')){const h=im.getAttribute('href')||'';if(h&&!h.startsWith('data:')){try{const r=await fetch(h);if(r.ok){const b=await r.blob();im.setAttribute('href',await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(b)}))}}catch(e){}}
     const v=im.getAttribute('href');if(v){im.removeAttribute('href');im.setAttributeNS('http://www.w3.org/1999/xlink','xlink:href',v)}}}
@@ -21890,7 +21938,7 @@ function sceneSvg(sc,w,h){   // small standalone picture of a figure file (no si
     return c.type==='arrow'?`<g${op}>${d}</g>`:`<g${op} transform="translate(${f(c.x)},${f(c.y)}) rotate(${f(c.r||0)}) scale(${c.flip?-(c.s||1):(c.s||1)},${c.s||1})">${d}</g>`}).join('')}finally{SER_SC=keep}   /* series colors from that figure's own series palette */
   return`<svg xmlns="${NS}" viewBox="0 0 ${sc.w||1600} ${sc.h||900}" width="${w}" height="${h}" preserveAspectRatio="xMidYMid meet"><rect width="${sc.w||1600}" height="${sc.h||900}" fill="${sc.bg||'#ffffff'}" stroke="#d1d5db"/>${inner}</svg>`}
 async function batchExportDialog(){
-  const fs=await listFiles();if(!fs){alert(NO_SERVER);return}
+  const fs=await listFiles();if(!fs){alert(NO_SERVER());return}
   await flushSave();const scenes={};
   for(const fl of fs){try{const t=await (await fetch(fl.name+'?t='+Date.now(),{cache:'no-store'})).text();const s=JSON.parse(t);if(s&&Array.isArray(s.objects))scenes[fl.name]=healScene(MAIN&&(s.version||1)<SCENE_VERSION?migrate(s):s)}catch(e){}}   /* hand-edited files get the same repairs as when they are opened */
   const names=fs.map(x=>x.name).filter(n=>scenes[n]);
@@ -21963,8 +22011,8 @@ const openFile=(n,jump)=>{PH.leaving=1;if(history.state&&history.state.ph)jump=t
 // the plain address without figure.json: the figure last opened in this browser if it is still active, else the most recently changed one that is not a copy of an example, else none (a new blank figure)
 function startPick(fs){let last=null;try{last=localStorage.getItem(lastKey())}catch(e){}if(last&&last!=='figure.json'&&fs.some(f=>f.name===last))return last;
   const own=fs.filter(f=>f.name!=='figure.json'&&FIG_RE.test(f.name)&&!/-example\.json$/i.test(f.name)).sort((a,b)=>String(b.modified).localeCompare(String(a.modified))||(a.name<b.name?-1:1));return own.length?own[0].name:null}
-async function listFiles(scope){try{const r=await fetch('api/files'+(scope?'?scope='+scope:''),{cache:'no-store'});return r.ok?await r.json():null}catch(e){return null}}
-async function flushSave(force){commit();clearTimeout(pushTimer);if(!fileReady||fileGone||!force&&newHeld())return;   /* the file was not read yet: the browser's copy must not replace it; an untouched new figure is written only when the caller needs the file (rename, archive, trash) */for(let i=0;i<4&&await postFig()==='merged';i++);}   // a newer version written meanwhile is merged in first
+async function listFiles(scope){try{const{r,t}=await fetchTxt('api/files'+(scope?'?scope='+scope:''),{cache:'no-store'},FETCH_MS.read);return r.ok?JSON.parse(t):null}catch(e){return null}}
+async function flushSave(force){commit();clearTimeout(pushTimer);if(!fileReady||fileGone||badKeep&&fileSame()||!force&&newHeld())return;if(!force&&fileSame()){if($('#status').className==='st-saving')setStatus('saved','Saved');return}   /* the file was not read yet: the browser's copy must not replace it; an untouched new figure is written only when the caller needs the file (rename, archive, trash) */for(let i=0;i<4&&await postFig()==='merged';i++);}   // a newer version written meanwhile is merged in first
 async function moveFile(name,from,to){const r=await fetch(`api/move?file=${encodeURIComponent(name)}&from=${from}&to=${to}`,{method:'POST'});
   if(r.status===404)alert('The running editor server is older than this editor and does not know how to move files.\nClose its window and '+START_HINT+', then try again.');return r.ok}
 // the copy this browser keeps of a figure: once the file is archived, trashed, renamed or deleted it must go too, or opening that name again (figure.json after the last figure was trashed) writes the old figure back as an active file
@@ -21975,14 +22023,14 @@ async function fillFileSel(){const s=$('#fileSel'),fs=FILE_SYNC?await listFiles(
   const names=fs?fs.map(x=>x.name):[];if(!names.includes(FILE))names.push(FILE);
   s.innerHTML=names.sort().map(n=>FIG_RE.test(n)?`<option value="${esc(n)}"${n===FILE?' selected':''}>${esc(n.replace(/\.json$/,''))}</option>`:`<option disabled title="Rename this file in the folder: a figure name may only hold letters, digits, - _ and .">${esc(n.replace(/\.json$/,''))} (name not allowed)</option>`).join('');s.disabled=!fs}   // a file named with spaces (made outside the editor) opened figure.json instead
 $('#fileSel').onchange=e=>openFile(e.target.value);
-async function askNewName(title,def,same){const fs=await listFiles();if(!fs){alert(NO_SERVER);return null}
+async function askNewName(title,def,same){const fs=await listFiles();if(!fs){alert(NO_SERVER());return null}
   const typed=await askText(title,def),n=cleanName(typed);if(!n){if(typed&&String(typed).trim())alert(WEB&&/[^\x00-\x7f]/.test(typed)?'The website keeps figures under names made of Latin letters (a–z), digits, - and _ only. Pick another name.':'That name has no letters or digits. Pick another name.');return null}if(same&&n===FILE)return null;   /* Rename, OK on the unchanged name: it said the name "already exists" */if(fs.some(x=>x.name.toLowerCase()===n.toLowerCase())){alert(`“${n}” already exists. Pick another name.`);return null}
   // an archived or trashed figure keeps its version history under the same name: reusing it would mix the two histories
   for(const [sc,where] of [['archive','Archived'],['trash','Trash']]){const xs=await listFiles(sc);if(xs&&xs.some(x=>x.name.toLowerCase()===n.toLowerCase())){alert(`“${n}” is already used by a figure in ${where}. Pick another name.`);return null}}
   return n}
 const menuActs={
   prefs(){appearanceDialog()},
-  async new(){const fs=await listFiles();if(!fs){alert(NO_SERVER);return}
+  async new(){const fs=await listFiles();if(!fs){alert(NO_SERVER());return}
     const exs=(await listFiles('examples'))||[];const exName=n=>n.replace(/\.json$/,'').replace(/[-_]+/g,' ').replace(/^\w/,c=>c.toUpperCase());
     // archived and trashed names are taken too (they keep their version history under that name, as in askNewName); the suggested name is a free one
     const taken=new Set(fs.map(x=>x.name.toLowerCase())),where={};for(const [sc,w] of [['archive','Archived'],['trash','Trash']])((await listFiles(sc))||[]).forEach(x=>{const k=x.name.toLowerCase();if(!taken.has(k)){taken.add(k);where[k]=w}});
@@ -22009,16 +22057,23 @@ const menuActs={
   async history(){let list=null;try{const r=await fetch('api/history?file='+encodeURIComponent(FILE),{cache:'no-store'});if(r.ok)list=await r.json()}catch(e){}   // server down: say so (it said "No snapshots yet")
     if(list&&!Array.isArray(list))list=[list];const kb=n=>n<1024?'< 1 KB':Math.round(n/1024).toLocaleString()+' KB';   /* a small figure showed "0 KB" */
     const box=modal(`<h2>Version history · ${esc(BASE)}</h2><p class="muted">The editor keeps a snapshot of this figure at most every 5 minutes while you work (the newest 60). Restoring is undoable.</p>
-      ${!list?`<p>${WEB?esc(NO_SERVER):`The SiliCoDraw server is not running, so the snapshots cannot be listed. To fix it, ${esc(START_HINT)}.`}</p>`:list.length?list.map(h=>`<div class="hrow"><span>${esc(h.modified)}${/-closed-window\.json$/.test(h.name)?' · <b>the last change of a window closed while the figure changed elsewhere</b>':''}<br><span class="muted">${esc(h.name)} · ${kb(+h.size||0)}</span></span><button data-n="${esc(h.name)}">Restore</button></div>`).join(''):'<p>No snapshots yet: they appear after you have been editing for a while.</p>'}
+      ${!list?`<p>${WEB?esc(NO_SERVER()):`The SiliCoDraw server is not running, so the snapshots cannot be listed. To fix it, ${esc(START_HINT)}.`}</p>`:list.length?list.map(h=>`<div class="hrow"><span>${esc(h.modified)}${/-closed-window\.json$/.test(h.name)?' · <b>the last change of a window closed while the figure changed elsewhere</b>':''}<br><span class="muted">${esc(h.name)} · ${kb(+h.size||0)}</span></span><button data-n="${esc(h.name)}">Restore</button></div>`).join(''):'<p>No snapshots yet: they appear after you have been editing for a while.</p>'}
       <div class="btns"><button id="hClose">Close</button></div>`);
     box.querySelector('#hClose').onclick=closeModal;
     box.querySelectorAll('[data-n]').forEach(b=>b.onclick=async()=>{let t=null;try{const r=await fetch(`history/${encodeURIComponent(BASE)}/${encodeURIComponent(b.dataset.n)}`,{cache:'no-store'});if(r.ok)t=await r.text()}catch(e){}   /* offline: the click did nothing at all */
       if(t===null){alert('Could not load that snapshot: '+STILL_UP);return}
       commit();const before=lastSaved;if(loadText(t)){hist.push(before);fut.length=0;pushFile();closeModal();toast('Restored the version of '+b.closest('.hrow').querySelector('span').firstChild.textContent+' (Ctrl+Z undoes it)')}else alert('Could not read that snapshot.')})},
-  savejson(){download(FILE,new Blob([JSON.stringify(scene,null,1)],{type:'application/json'}))},
+  // the browser's own Save dialog where there is one (any folder, a synced one too); on a phone the share sheet, which offers Save to Files (iCloud Drive and the other services' apps), else a download
+  async savejson(){const blob=new Blob([JSON.stringify(scene,null,1)],{type:'application/json'});
+    if(window.showSaveFilePicker&&!PHONE()){try{const h=await window.showSaveFilePicker({suggestedName:FILE,types:[{description:'Figure (.json)',accept:{'application/json':['.json']}}]}),w=await h.createWritable();await w.write(blob);await w.close();toast(`Saved a copy as ${h.name}`);return}catch(e){if(e&&e.name==='AbortError')return}}
+    const f=PHONE()?phShareFile(FILE,blob,'application/json'):null;if(f){try{await navigator.share({files:[f]})}catch(e){if(!e||e.name!=='AbortError')download(FILE,blob)}return}
+    download(FILE,blob)},
+  storage(){storageDialog()},
   batch(){batchExportDialog()},
-  backup(){webBackup()},
-  restore(){$('#restoreIn').click()},
+  saveall(){saveAllDialog()},
+  openfolder(){openFolderDialog()},
+  backup(){saveAllDialog()},   // (older names of the two above)
+  restore(){openFolderDialog()},
   loadjson(){$('#fileIn').click()},
   // a copy of an example (the website's links open examples/x.json as x-example.json, and open that copy again later): the only way back to the original was File ▾ → New figure
   async restartex(){if(!EX_ID||!(await askYes('Start the example over',`Put the original example back in place of “${BASE}”? Your changes to it go, and ${MODK}+Z brings them back.`,'Start over')))return;
@@ -22026,6 +22081,66 @@ const menuActs={
     commit();const before=lastSaved;sel.clear();if(t&&loadText(t)){hist.push(before);histCap();fut.length=0;save();buildPanel();requestAnimationFrame(()=>fit(true));toast(`The original example is back (${MODK}+Z undoes it)`)}else alert('Could not load the example: '+(WEB?'is the internet connection working?':STILL_UP))},
   async reset(){if(!(await askYes('Load the example poster','Replace this figure with the example poster? Undo brings your figure back.','Replace')))return;commit();hist.push(lastSaved);fut.length=0;scene=template();sel.clear();lastSaved=JSON.stringify(scene);save();applyCanvas();render();buildPanel()}
 };
+// File ▾ → Where figures are kept…. Running from this folder: any folder for the figures (the server's api/storage), so one a sync app keeps is the whole answer, iCloud Drive and Box too.
+// The website: this browser, a linked folder (Chrome and Edge on a computer) or a service directly (silicodraw-web.js); nothing goes through a server of SiliCoDraw
+const storeReload=()=>{if(storeReload.fn)return storeReload.fn();PH.leaving=1;location.reload()};   // (leaving: closing a dialog takes its Back entry off with history.back(), which on a phone cancelled this reload)
+function storeMsg(res,where){const n=res.copied||0,d=(res.differ||[]),sk=(res.skipped||[]),L=x=>`: ${x.slice(0,5).join(', ')}${x.length>5?` and ${x.length-5} more`:''}`;return`Figures are now kept ${where}`+(n?`. ${n} file${n>1?'s':''} copied there`:'')+(d.length?`. Already there and different, so left as they are${L(d)} (your earlier copies stay where they were)`:'')+(sk.length?`. Not figure names, so left in the old folder${L(sk)}`:'')+(res.noCopy?`. Nothing was copied: ${res.noCopy}`:'')}
+function storeGo(msg){storeLeaving=true;storeClear();storeTell({switched:true});try{sessionStorage.setItem('fig.storeMsg',msg);sessionStorage.setItem('fig.switchHold','1')}catch(e){}storeReload()}
+function storeClear(){try{Object.keys(localStorage).forEach(k=>{if(k.startsWith('fig.base0:'))localStorage.removeItem(k);else if(k.startsWith('figEditor.scene.v1')){const f=k.slice(19)||'figure.json';if(!localStorage.getItem('fig.closing:'+DIR+f))localStorage.removeItem(k)}})}catch(e){}}   // the browser's copies of figures of the old place: in the new place they would count as stale or as another figure of that name (one with a change on its way stays: closingRetry delivers it with its version)
+function storeTell(m){if(fileBC)try{fileBC.postMessage(Object.assign({dir:DIR},m))}catch(e){}}
+// this tab holds work not saved yet
+const tabUnsaved=()=>!!editor||(fileReady?!fileSame()&&!newHeld():startBase0!==null&&JSON.stringify(scene)!==startBase0);
+// before a switch: the other tabs save what they can, and one that cannot says so. A switch would take the copy its work waits in
+function storeAsk(){return new Promise(res=>{if(!fileBC)return res(false);let busy=false;const ch=new BroadcastChannel('silicodraw-files'),on=e=>{const d=e.data||{};if(d.dir===DIR&&d.busy)busy=true};ch.onmessage=on;storeTell({switching:true});setTimeout(()=>{ch.close();res(busy)},700)})}
+const BUSY_MSG='Another tab holds a change that is not saved yet. Save it there, or close that tab, then choose again.';
+async function storageDialog(){await Promise.race([flushSave().catch(()=>{}),new Promise(r=>setTimeout(r,3000))]);
+  const unsaved=fileReady?!fileSame()&&!newHeld():startBase0!==null&&JSON.stringify(scene)!==startBase0,unsavedLine=unsaved?`<p><b>The last change is not saved yet.</b> Use File ▾ → Save a copy (.json), or wait until the status line says Saved, before choosing another place.</p>`:'';
+  const copyBox=(t)=>`<p><label><input type="checkbox" id="stCopy" checked> ${t}</label></p>`,bye=()=>{closeModal()},wire=(box,id,f)=>{const b=box.querySelector('#'+id);if(b)b.onclick=f};
+  if(!WEB){let j=null,st=0;try{const{r,t}=await fetchTxt('api/storage',{cache:'no-store'},30000);st=r.status;if(r.ok)j=JSON.parse(t)}catch(e){}
+    if(!j){const box=modal(`<h2>Where figures are kept</h2><p>${st===404||st===405?`The SiliCoDraw server that is running is older than this editor. Close its window and ${esc(START_HINT)}, then try again.`:esc(NO_SERVER())}</p><div class="btns"><button class="primary" id="stOk">OK</button></div>`);box.querySelector('#stOk').onclick=bye;return}
+    const sep=j.dir.indexOf('\\')>=0?'\\':'/',sub=p=>p.replace(/[\\/]+$/,'')+sep+'SiliCoDraw';
+    const box=modal(`<h2>Where figures are kept</h2><p><b>Now:</b> ${j.isDefault?'the program’s own folder':'your chosen folder'}<br><span class="muted" style="word-break:break-all">${esc(j.dir)}</span></p>
+      ${j.missing?`<p>The folder you chose cannot be reached: <span style="word-break:break-all">${esc(j.missing)}</span>. Is its drive connected, or its sync app running? Figures in it wait until it is back, and nothing goes anywhere else.</p>`:''}
+      ${j.canChange?`<p class="muted">Choose a folder that Dropbox, OneDrive, Google Drive, iCloud Drive, Box or a similar app keeps in sync. Your figures, their history and exports then live there, and the program stays where it is. A folder named SiliCoDraw is made inside a sync folder you pick from the list. A path you type is used as it is, so give a folder of its own: every .json in it is listed as a figure.</p>${unsavedLine}
+      ${copyBox('Copy my figures there (nothing there is replaced, and the copies here stay)')}
+      <div class="stList">${j.options.map((o,i)=>`<button class="stOpt" data-i="${i}"${unsaved?' disabled':''}><b>${esc(o.name)}</b><br><span class="muted" style="word-break:break-all">${esc(sub(o.path))}</span></button>`).join('')}</div>
+      ${j.options.length?'':'<p class="muted">No sync app’s folder was found on this computer. Give its path below.</p>'}
+      <p style="display:flex;gap:6px;align-items:center"><input id="stPath" style="flex:1;min-width:0" placeholder="The whole path of another folder" spellcheck="false" autocomplete="off"><button id="stUse"${unsaved?' disabled':''}>Use it</button></p><p id="stErr" role="alert" style="color:var(--danger,#b42318)"></p>`:'<p class="muted">This server was started with a fixed folder (--data), or for your whole network, so it is not changed from here.</p>'}
+      <div class="btns">${!j.isDefault&&j.canChange&&!unsaved?'<button id="stBack">Back to the program’s folder</button>':''}<button class="primary" id="stOk">Close</button></div>`);
+    const set=async(dir,label)=>{const c=box.querySelector('#stCopy'),er=box.querySelector('#stErr');er.textContent='';if(await storeAsk()){er.textContent=BUSY_MSG;return}let r=null;try{r=await fetch(`api/storage?dir=${encodeURIComponent(dir)}&copy=${c&&c.checked?1:0}`,{method:'POST'})}catch(e){}
+      if(!r||!r.ok){er.textContent=(r?await r.text():'')||NO_SERVER();return}const a=await r.json();closeModal();storeGo(storeMsg(a,label||`in ${a.dir}`))};
+    box.querySelectorAll('.stOpt').forEach(b=>b.onclick=()=>{const o=j.options[+b.dataset.i];set(sub(o.path),`in ${o.name}`)});
+    wire(box,'stUse',()=>{const v=box.querySelector('#stPath').value.trim().replace(/^"(.*)"$/,'$1');if(v)set(v)});wire(box,'stBack',()=>set('','in the program’s own folder'));wire(box,'stOk',bye);return}
+  const S=window.SiliCoDrawWeb&&SiliCoDrawWeb.storage;
+  if(S&&S.whenReady){let done=false;await Promise.race([S.whenReady.then(()=>{done=true}),new Promise(r=>setTimeout(r,3000))]);if(!done){const box=modal(`<h2>Where figures are kept</h2><p>Still connecting to where your figures are kept… Try again in a moment.</p><div class="btns"><button class="primary" id="stOk">Close</button></div>`);box.querySelector('#stOk').onclick=bye;return}}
+  const c=S?S.current():{kind:'browser',name:'',needs:''},svc=S?S.services():[],can=!unsaved&&!c.needs,where=c.kind==='browser'?'this browser':c.kind==='folder'?`your folder “${c.name}”`:c.name;
+  const FOLDER_OF={dropbox:'Apps/SiliCoDraw',google:'SiliCoDraw',onedrive:'Apps/SiliCoDraw'};
+  const box=modal(`<h2>Where figures are kept</h2><p><b>Now:</b> ${esc(where)}</p>
+    ${c.needs?`<p>${esc(c.needs==='permission'?'This browser asks for your permission again each time it starts.':`Your sign-in to ${c.name} has run out.`)} Changes wait in this tab until then.${''}</p><div class="btns"><button class="primary" id="stAgain">${c.needs==='permission'?'Allow the folder again':`Sign in to ${esc(c.name)}`}</button></div>`:''}
+    ${unsavedLine}${c.needs?`<p class="muted">${esc(where)} cannot be copied from until then. You can still move on to another place below; your figures stay there.</p>`:''}${can&&((S&&S.canFolder)||svc.length)?copyBox(`Copy my figures from ${esc(where)} there (nothing there is replaced, and these copies stay)`):''}
+    <div class="stList">${S&&S.canFolder&&c.kind!=='folder'&&!unsaved?'<button class="stOpt" id="stFolder"><b>A folder on this computer…</b><br><span class="muted">One that Dropbox, OneDrive, Google Drive, iCloud Drive, Box or a similar app keeps in sync, for example. Every change is saved there; the same folder works with a copy of SiliCoDraw run from your computer.</span></button>':''}
+    ${svc.filter(x=>x.kind!==c.kind&&!unsaved).map(x=>`<button class="stOpt" data-k="${x.kind}"><b>${esc(x.name)}</b><br><span class="muted">Sign in, and every change is saved in ${esc(FOLDER_OF[x.kind])} there, from any device, phones too. SiliCoDraw can only reach that folder.</span></button>`).join('')}
+    ${c.kind!=='browser'&&!unsaved?'<button class="stOpt" id="stBrowser"><b>Back to this browser</b><br><span class="muted">Figures stay in this browser only.</span></button>':''}${S&&S.copyFailed&&S.copyFailed()?'<button class="stOpt" id="stRetry"><b>Copy my figures again</b><br><span class="muted">The copy stopped before it was done. Nothing there is replaced.</span></button><button class="stOpt" id="stStop"><b>Stop copying</b><br><span class="muted">What was not copied stays where it was.</span></button>':''}</div>
+    <p class="muted"><b>By hand, anywhere:</b> File ▾ → Save all figures to a folder… and Open a folder of figures… move every figure at once (Save a copy (.json) and Load from a .json file move one). On a phone they open the share sheet and the Files app, which list iCloud Drive, Box and the other services whose apps you have.</p>
+    <p class="muted">Your figures go directly from this browser to the place you choose. SiliCoDraw has no server in between.</p><p id="stErr" role="alert" style="color:var(--danger,#b42318)"></p>
+    <div class="btns"><button class="primary" id="stOk">Close</button></div>`);
+  const copy=()=>{const k=box.querySelector('#stCopy');return!!(k&&k.checked)},er=m=>{box.querySelector('#stErr').textContent=m};
+  wire(box,'stOk',bye);
+  wire(box,'stAgain',async()=>{try{if(await S.reconnect()){closeModal();setStatus('saving','Saving…')}}catch(e){er(String(e&&e.message||e))}});   /* no reload: the running poll reads the file and merges what waits in this tab */
+  wire(box,'stRetry',()=>{closeModal();S.copyAgain()});wire(box,'stStop',async()=>{await S.copyStop();closeModal()});
+  wire(box,'stFolder',async()=>{try{const a=await S.linkFolder(copy(),async()=>{if(await storeAsk())throw new Error(BUSY_MSG)});closeModal();storeGo(storeMsg(a,`in your folder “${a.name}”`))}catch(e){if(!e||e.name!=='AbortError')er(`The folder could not be used: ${e&&e.message||e}`)}});
+  wire(box,'stBrowser',async()=>{try{if(await storeAsk()){er(BUSY_MSG);return}const a=await S.useBrowser(copy());closeModal();storeGo(storeMsg(a,'in this browser'))}catch(e){er(`Could not switch: ${e&&e.message||e}`)}});
+  box.querySelectorAll('[data-k]').forEach(b=>b.onclick=async()=>{try{if(await storeAsk()){er(BUSY_MSG);return}await S.connect(b.dataset.k,copy())}catch(e){er(`Could not start signing in: ${e&&e.message||e}`)}})}
+// what happened to the storage, at the start: a message from the switch before the reload, a folder or service that needs the user, a folder that is gone
+function storeStart(){let m=null;try{m=sessionStorage.getItem('fig.storeMsg');if(m)sessionStorage.removeItem('fig.storeMsg')}catch(e){}if(m){toast(m);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),8000)}
+  if(!FILE_SYNC)return;$('#fileMenu [data-act=storage]').hidden=false;
+  if(!WEB){fetchTxt('api/storage?brief=1',{cache:'no-store'},30000).then(({r,t})=>r.ok?JSON.parse(t):null).then(j=>{if(j&&j.missing)toastAct(`The figures folder ${j.missing} cannot be reached at the moment. Figures in it wait until it is back, and nothing goes anywhere else`,'Options',storageDialog)}).catch(()=>{});return}
+  const S=window.SiliCoDrawWeb&&SiliCoDrawWeb.storage;if(!S)return;let told=0;
+  const say=()=>{const c=S.current();if(!c.needs||Date.now()-told<60000)return;told=Date.now();toastAct(c.needs==='permission'?`Allow SiliCoDraw to use your folder “${c.name}” again: changes wait in this tab until then`:`Sign in to ${c.name} again: changes wait in this tab until then`,c.needs==='permission'?'Allow':'Sign in',async()=>{try{if(await S.reconnect())setStatus('saving','Saving…')}catch(e){alert(String(e&&e.message||e))}});setStatus('offline','Not saved')};
+  // what signing in leaves behind: the change waiting here, in the browser's own store (a large figure does not fit in the place a closing page uses)
+  S.beforeLeave=()=>fileReady&&!fileSame()&&!newHeld()?{name:FILE,text:figLines(lastSaved),base:fileVer||''}:null;
+  S.onCopy=m=>{if(m.done){if(m.error)alert(m.error);else{toast(storeMsg(m.res,`in ${m.to}`));clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),8000)}fillFileSel()}else{toast(`Copying your figures to ${m.to}: ${m.n} of ${m.of}…`);clearTimeout(toast.tm)}};
+  S.onNeeds=say;S.whenReady.then(()=>{if(S.switchedHere)storeTell({switched:true});if(S.lastError)alert(S.lastError);say()})}
 function newTemplate(kind){
   const s={version:SCENE_VERSION,w:1600,h:900,bg:'#ffffff',objects:[]};let n=0;const o=(type,p)=>{const x={id:'o'+(++n),type,x:0,y:0,s:1,r:0,...JSON.parse(JSON.stringify(DEF[type])),...p};s.objects.push(x);return x};
   if(kind==='poster'){const t=template();t.objects.push(creditObj(t.w,t.h));return t}
@@ -22100,17 +22215,17 @@ const dateOf=f=>`<span class="muted">${esc(String(f.modified).slice(0,10))}</spa
 // other tabs with this figure open hold their autosave while it moves and then stop saving (else their next autosave wrote it back as an active figure); this tab stops too until it leaves
 async function moveAway(to){if(fileBC)fileBC.postMessage({moving:FILE});const ok=await moveFile(FILE,'active',to).catch(()=>false);if(ok){markGone(to);if(fileBC)fileBC.postMessage({gone:FILE,to})}return ok}
 // website: an untouched new figure (a missing ?file= link) was never written; archiving or trashing it used to write it first, leaving a blank file there
-const dropNew=to=>{commit();if(!newHeld())return false;fileGone=to;clearTimeout(pushTimer);toast(`“${BASE}” was never saved, so there is nothing to ${to==='trash'?'move to the trash':'archive'}`);setTimeout(openNext,1500);return true};
-async function archiveCurrent(){if(!(await listFiles())){alert(NO_SERVER);return}if(dropNew('archive'))return;await flushSave(true);if(await moveAway('archive')){toast(`${BASE} archived`);setTimeout(openNext,400)}else alert('Could not archive this figure.')}
-async function trashCurrent(){if(!(await listFiles())){alert(NO_SERVER);return}if(dropNew('trash'))return;if(!(await askYes('Move to trash',`Move “${BASE}” to the trash? You can restore it later from the trash icon in the toolbar.`,'Move to trash')))return;
+const dropNew=to=>{commit();if(!newHeld()||!blankScene(scene))return false;fileGone=to;clearTimeout(pushTimer);toast(`“${BASE}” was never saved, so there is nothing to ${to==='trash'?'move to the trash':'archive'}`);setTimeout(openNext,1500);return true};
+async function archiveCurrent(){if(!(await listFiles())){alert(NO_SERVER());return}if(dropNew('archive'))return;await flushSave(true);if(await moveAway('archive')){toast(`${BASE} archived`);setTimeout(openNext,400)}else alert('Could not archive this figure.')}
+async function trashCurrent(){if(!(await listFiles())){alert(NO_SERVER());return}if(dropNew('trash'))return;if(!(await askYes('Move to trash',`Move “${BASE}” to the trash? You can restore it later from the trash icon in the toolbar.`,'Move to trash')))return;
   await flushSave(true);if(await moveAway('trash')){toast(`${BASE} moved to trash`);setTimeout(openNext,400)}else alert('Could not move this figure to the trash.')}
 async function showArchive(btn){const m=$('#archMenu');if(m.classList.contains('open')){m.classList.remove('open');return}const fs=await listFiles('archive');
-  m.innerHTML=(fs===null?`<p class="empty">${esc(NO_SERVER)}</p>`:fs.length?fs.map(f=>`<div class="frow"><span class="nm" data-open="${esc(f.name)}" tabindex="0" role="button" title="Open it (it becomes an active figure again)">${esc(f.name.replace(/\.json$/,''))}</span>${dateOf(f)}</div>`).join(''):'<p class="empty">Nothing archived yet.</p>')+`<hr><button data-act="arc">Archive “${esc(BASE)}”</button>`;
+  m.innerHTML=(fs===null?`<p class="empty">${esc(NO_SERVER())}</p>`:fs.length?fs.map(f=>`<div class="frow"><span class="nm" data-open="${esc(f.name)}" tabindex="0" role="button" title="Open it (it becomes an active figure again)">${esc(f.name.replace(/\.json$/,''))}</span>${dateOf(f)}</div>`).join(''):'<p class="empty">Nothing archived yet.</p>')+`<hr><button data-act="arc">Archive “${esc(BASE)}”</button>`;
   m.querySelectorAll('[data-open]').forEach(el=>el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();e.stopPropagation();el.click()}});   // the names were mouse-only
   m.querySelectorAll('[data-open]').forEach(el=>el.onclick=async()=>{m.classList.remove('open');if(await moveFile(el.dataset.open,'archive','active'))openFile(el.dataset.open);else alert('Could not open it: a figure with that name is already active.')});
   m.querySelector('[data-act=arc]').onclick=()=>{m.classList.remove('open');archiveCurrent()};openPop(m,btn)}
 async function showTrash(btn){const m=$('#trashMenu');if(m.classList.contains('open')){m.classList.remove('open');return}const fs=await listFiles('trash');
-  m.innerHTML=(fs===null?`<p class="empty">${esc(NO_SERVER)}</p>`:fs.length?fs.map(f=>`<div class="frow"><span class="nm" title="${esc(f.name)}">${esc(f.name.replace(/\.json$/,''))}</span>${dateOf(f)}<button data-restore="${esc(f.name)}" title="Move it back to the active figures">Restore</button><button class="danger" data-del="${esc(f.name)}" title="Delete permanently">✕</button></div>`).join(''):'<p class="empty">The trash is empty.</p>')+`<hr><button data-act="trash">Move “${esc(BASE)}” to trash</button>`+(fs&&fs.length?`<button data-act="empty">Empty trash…</button>`:'');
+  m.innerHTML=(fs===null?`<p class="empty">${esc(NO_SERVER())}</p>`:fs.length?fs.map(f=>`<div class="frow"><span class="nm" title="${esc(f.name)}">${esc(f.name.replace(/\.json$/,''))}</span>${dateOf(f)}<button data-restore="${esc(f.name)}" title="Move it back to the active figures">Restore</button><button class="danger" data-del="${esc(f.name)}" title="Delete permanently">✕</button></div>`).join(''):'<p class="empty">The trash is empty.</p>')+`<hr><button data-act="trash">Move “${esc(BASE)}” to trash</button>`+(fs&&fs.length?`<button data-act="empty">Empty trash…</button>`:'');
   m.querySelectorAll('[data-restore]').forEach(b=>b.onclick=async()=>{m.classList.remove('open');if(await moveFile(b.dataset.restore,'trash','active'))openFile(b.dataset.restore);else alert('Could not restore it: a figure with that name is already active.')});
   m.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{m.classList.remove('open');const n=b.dataset.del;if(!(await askYes('Delete permanently',`Delete “${n.replace(/\.json$/,'')}” for good, together with its version history? This cannot be undone.`,'Delete',true)))return;
     const r=await fetch(`api/delete?file=${encodeURIComponent(n)}`,{method:'POST'});if(r.ok){forgetLocal(n);toast('Deleted')}else alert('Could not delete it.')});
@@ -22142,11 +22257,11 @@ function zipStore(files){const enc=new TextEncoder(),d=new Date(),tm=(d.getHours
   const cs=cen.reduce((s,x)=>s+x.byteLength,0),e=new DataView(new ArrayBuffer(22));e.setUint32(0,0x06054b50,true);e.setUint16(8,files.length,true);e.setUint16(10,files.length,true);e.setUint32(12,cs,true);e.setUint32(16,off,true);
   return new Blob([...parts,...cen,e.buffer],{type:'application/zip'})}
 // the files in a .zip: [{name, data: Uint8Array or null when it cannot be read}]; stored or deflated entries (a backup zipped again by the system's own tool opens too)
-async function unzip(buf){const u=new Uint8Array(buf),v=new DataView(buf),dec=new TextDecoder();let e=-1;for(let i=u.length-22;i>=Math.max(0,u.length-65557);i--)if(v.getUint32(i,true)===0x06054b50){e=i;break}
+async function unzip(buf,want){const u=new Uint8Array(buf),v=new DataView(buf),dec=new TextDecoder();let e=-1;for(let i=u.length-22;i>=Math.max(0,u.length-65557);i--)if(v.getUint32(i,true)===0x06054b50){e=i;break}
   if(e<0)throw new Error('not a .zip file');const out=[];let p=v.getUint32(e+16,true);
   for(let k=v.getUint16(e+10,true);k>0;k--){if(p+46>u.length||v.getUint32(p,true)!==0x02014b50)break;   // damaged: what was read so far is kept
     const fl=v.getUint16(p+8,true),m=v.getUint16(p+10,true),cs=v.getUint32(p+20,true),nl=v.getUint16(p+28,true),lo=v.getUint32(p+42,true),name=dec.decode(u.subarray(p+46,p+46+nl));p+=46+nl+v.getUint16(p+30,true)+v.getUint16(p+32,true);
-    if(name.endsWith('/'))continue;let data=null;
+    if(name.endsWith('/')||want&&!want(name))continue;let data=null;   // want: the names worth unpacking (a folder's .zip holds other things too)
     if(!(fl&1)&&lo+30<=u.length){const ds=lo+30+v.getUint16(lo+26,true)+v.getUint16(lo+28,true),raw=u.subarray(ds,ds+cs);   // bit 0: encrypted
       if(m===0)data=raw;else if(m===8)try{data=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new DecompressionStream('deflate-raw'))).arrayBuffer())}catch(err){}}   // (a browser without DecompressionStream: null)
     out.push({name,data})}
@@ -22163,47 +22278,176 @@ const ITP_SAF=(ua=>/Safari\//.test(ua)&&!/CriOS|FxiOS|EdgiOS|OPiOS|GSA\//.test(u
 // how much this browser keeps, and whether it may clear it by itself (navigator.storage is missing in some browsers and on insecure addresses: then just the count)
 async function storeInfo(){const i={n:0,mb:null,kept:false};for(const sc of ['','archive','trash'])i.n+=((await listFiles(sc))||[]).length;   /* archived and trashed ones too, as in the backup */try{const S=navigator.storage;if(S&&S.estimate){const e=await S.estimate();if(e&&isFinite(e.usage))i.mb=e.usage/1048576}if(S&&S.persisted)i.kept=!!(await S.persisted())}catch(e){}return i}
 const storeLine=i=>`${i.n} figure${i.n===1?'':'s'} in this browser${i.mb!=null?` (this site uses ${i.mb<0.1?'< 0.1':i.mb.toFixed(1)} MB here)`:''}; ${PH.inapp&&PHONE()?'this app’s built-in browser keeps them apart from Safari and Chrome and may lose them':ITP?`${ITP_SAF?'Safari':'this browser'} deletes them after 7 days without a visit`:i.kept?'kept until you clear this site’s data':'the browser may clear them when the disk runs low'}`;
-async function webBackup(){await flushSave();const files=[];let bad=0;
-  for(const sc of ['','archive','trash']){const fs=await listFiles(sc);if(!fs){if(!sc){alert(NO_SERVER);return}continue}
-    for(const fl of fs){const p=(sc?sc+'/':'')+fl.name;try{const r=await fetch((sc?sc+'/':'')+encodeURIComponent(fl.name),{cache:'no-store'});if(r.ok)files.push({name:p,data:await r.text()});else bad++}catch(e){bad++}}}
+// every figure here (archived and trashed ones too), My icons, and the pictures the figures use that are kept beside them in assets/ (a copy run from a computer
+// keeps inserted pictures there; the website puts them in the figure itself): {files: [{name: the path in a SiliCoDraw folder, data: text or bytes}], counts}; null = no server
+const WS_PICREF=/("src"\s*:\s*"|href=\\")assets\/([^"\\/]+)(?=\\?")/g;   // a picture a figure names: an image's src, or an <image href> inside a fused element or an icon (escaped in the JSON)
+async function wsGather(){await flushSave();const files=[],scopeBad=[];let n=0,arch=0,tr=0,bad=0,pics=0,picBad=0;
+  for(const sc of ['','archive','trash']){let fs=await listFiles(sc);if(!fs)fs=await listFiles(sc);   // (once more: a service's listing can fail once)
+    if(!fs){if(!sc)return null;scopeBad.push(sc);continue}
+    for(const fl of fs){const p=(sc?sc+'/':'')+fl.name;try{const r=await fetch((sc?sc+'/':'')+encodeURIComponent(fl.name),{cache:'no-store'});if(r.ok){files.push({name:p,data:await r.text()});n++;if(sc==='archive')arch++;else if(sc==='trash')tr++}else bad++}catch(e){bad++}}}
   try{const r=await fetch(USER_FILE,{cache:'no-store'});if(r.ok){const t=await r.text();if(!/^\s*(\{\s*\})?\s*$/.test(t))files.push({name:USER_FILE,data:t})}}catch(e){}   // My icons, unless empty
-  const n=files.filter(x=>x.name!==USER_FILE).length;if(!n){toast('There are no figures in this browser to back up yet');return}
-  const d=new Date(),nm=`silicodraw-backup-${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}.zip`,zip=zipStore(files),cnt=`${n} figure${n>1?'s':''}${bad?` (${bad} could not be read)`:''}`,fm=PHONE()?'⋯ → File ▸':'File ▾';
-  // asked here, at a moment the user chose, to keep this site's storage (the website's script asked at every page load, which Firefox answers with an unexplained prompt)
-  const kept=async()=>{backupSt({at:Date.now()});try{const S=navigator.storage;if(S&&S.persist&&S.persisted&&!(await S.persisted()))await S.persist()}catch(e){}};
+  const seen=new Set();
+  for(const f of files.slice())for(const m of f.data.matchAll(WS_PICREF)){const a='assets/'+m[2];if(a===USER_FILE||seen.has(a))continue;seen.add(a);
+    if(WEB){picBad++;continue}   // the website keeps no pictures of its own (they are in the figures), and asking for one would send its name to the web host
+    try{const r=await fetch('assets/'+encodeURIComponent(m[2]),{cache:'no-store'});if(r.ok&&/^image\//.test(r.headers.get('Content-Type')||'image/')){files.push({name:a,data:new Uint8Array(await r.arrayBuffer())});pics++}else picBad++}catch(e){picBad++}}   // (picBad: named in a figure, not here; the figure shows it as missing here too)
+  return{files,n,arch,tr,bad,pics,picBad,scopeBad}}
+const wsWhole=g=>!g.bad&&!g.scopeBad.length;   // every figure was read: only then does it count as a backup
+const wsCount=g=>`${g.n} figure${g.n===1?'':'s'}`+(g.arch||g.tr?` (${[g.arch?`${g.arch} archived`:'',g.tr?`${g.tr} in the trash`:''].filter(Boolean).join(', ')})`:'')+(g.pics?`, ${g.pics} picture${g.pics>1?'s':''}`:'')+(g.bad?`; ${g.bad} could not be read`:'')+(g.scopeBad.length?`; ${g.scopeBad.map(s=>s==='archive'?'the archived figures':'the trash').join(' and ')} could not be listed, so ${g.scopeBad.length>1?'they are':'it is'} not included`:'');
+const ymd=()=>{const d=new Date();return`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`};
+// asked at a moment the user chose, to keep this site's storage (the website's script asked at every page load, which Firefox answers with an unexplained prompt); a whole copy counts for the backup reminder
+const wsKept=async()=>{if(!WEB)return;backupSt({at:Date.now()});try{const S=navigator.storage;if(S&&S.persist&&S.persisted&&!(await S.persisted()))await S.persist()}catch(e){}};
+const wsStoreLine=async()=>WEB?' '+storeLine(await storeInfo())+'.':'';
+// a phone or tablet (its share sheet saves to Files; it picks files, not folders): the device, not the layout, which a narrow window on a computer also gets
+const WS_MOBILE=/iP(hone|ad|od)|Android/.test(navigator.userAgent||'')||navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1;
+const WS_IMG=/\.(png|jpe?g|gif|webp|svg)$/i,WS_MIME={png:'image/png',jpg:'image/jpeg',jpeg:'image/jpeg',gif:'image/gif',webp:'image/webp',svg:'image/svg+xml',json:'application/json'},wsMime=n=>WS_MIME[(String(n).split('.').pop()||'').toLowerCase()]||'application/octet-stream';
+// File ▾ → Save all figures to a folder…: a folder chosen here (Chrome and Edge on a computer), the share sheet of a phone (Save to Files puts the files in a folder you pick), or one .zip (unpacked, it is that folder)
+async function saveAllDialog(){const g=await wsGather();if(!g){alert(NO_SERVER());return}if(!g.n){toast(WEB?'There are no figures in this browser to save yet':'There are no figures to save yet');return}
+  const fm=PHONE()?'⋯ → File ▸':'File ▾',canDir=typeof window.showDirectoryPicker==='function';
+  // the share sheet makes no folders: the active figures, My icons and the pictures, side by side (Open a folder of figures… takes them so)
+  const flat=g.files.filter(f=>!/^(archive|trash)\//.test(f.name)),figsOnly=flat.filter(f=>!f.name.includes('/')),shareF=WS_MOBILE?phShareFiles(flat)||phShareFiles(figsOnly):null,shareAll=shareF&&shareF.length===flat.length;
+  const box=modal(`<h2>Save all figures to a folder</h2><p><b>${esc(wsCount(g))}</b>${g.picBad?` · ${g.picBad} picture${g.picBad>1?'s':''} the figures name ${WEB?'are not kept in this browser':'could not be found here'}`:''}.</p>
+    <p class="muted">Each figure is saved as its own .json file, laid out like SiliCoDraw’s own folder (archived figures in archive/, the trash in trash/, My icons and pictures in assets/). ${fm} → Open a folder of figures… brings them into SiliCoDraw anywhere: another browser, a phone, the website, or a copy run from a computer.</p>
+    <div class="stList">${canDir?`<button class="stOpt" id="saFolder"><b>Choose a folder…</b><br><span class="muted">On this computer, or one that Dropbox, OneDrive, Google Drive, iCloud Drive or Box keeps in sync. A file already there that is the same is left alone; a figure that differs is only replaced if you say so.</span></button>`:''}
+    ${shareF?`<button class="stOpt" id="saShare"><b>Share the files…</b><br><span class="muted">Save to Files puts them in a folder you pick (iCloud Drive, Google Drive, Dropbox…). ${g.arch||g.tr?'Archived figures and the trash are only in the .zip. ':''}${shareAll?'':'Only the figures: the .zip also holds My icons and the pictures.'}</span></button>`:''}
+    <button class="stOpt" id="saZip"><b>${canDir||shareF?'Or as one .zip file':'Download as one .zip file'}</b><br><span class="muted">${canDir||shareF?'Everything in one file.':'This browser cannot write into a folder itself.'} Unpacked, it is the folder (${/Mac/.test(navigator.platform||'')&&!WS_MOBILE?'Safari unpacks it by itself; ':''}double-click it, or tap it in the Files app). Open a folder of figures… takes the .zip as it is, too.</span></button></div>
+    <p id="saMsg" role="alert"></p><div class="btns"><button id="saClose">Close</button></div>`);
+  const msg=box.querySelector('#saMsg'),say=t=>{msg.textContent=t};box.querySelector('#saClose').onclick=closeModal;
+  box.querySelector('#saZip').onclick=()=>{closeModal();webBackup(g)};
+  if(canDir)box.querySelector('#saFolder').onclick=async e=>{const b=e.currentTarget;b.disabled=true;try{const r=await wsToFolder(g);if(!r)return;closeModal();if(wsWhole(g)&&!r.failed&&!r.kept)await wsKept();
+      const m=`Saved in “${r.name}”: ${r.wrote} file${r.wrote===1?'':'s'} written`+(r.same?`, ${r.same} already the same`:'')+(r.kept?`, ${r.kept} different one${r.kept>1?'s':''} left as ${r.kept>1?'they were':'it was'}`:'')+(r.failed?`. ${r.failed} could not be written`:'')+(wsWhole(g)?'':`. ${wsCount(g).replace(/^[^;]*;\s*/,'')}`)+'.';
+      if(!r.stale.length){toast(m+await wsStoreLine());return}
+      // figures the folder still holds from an earlier save (renamed, deleted or archived here since): Open a folder of figures… would bring them back
+      const L=r.stale.map(x=>x.p),list=L.slice(0,5).join(', ')+(L.length>5?` and ${L.length-5} more`:'');
+      toastAct(`${m} The folder also holds ${L.length===1?'a figure':`${L.length} figures`} you do not have here (${list}): opening the folder brings ${L.length===1?'it':'them'} in again`,'Remove…',async()=>{
+        if(!(await askYes('Remove figures from the folder',`Delete ${list} from the folder “${r.name}”? Only those files in that folder go; nothing in SiliCoDraw changes.`,'Delete them',true)))return;
+        let k=0;for(const x of r.stale){try{await x.d.removeEntry(x.name);k++}catch(err){}}toast(`Deleted ${k} file${k===1?'':'s'} from “${r.name}”`+(k<r.stale.length?`; ${r.stale.length-k} could not be deleted`:''))});clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),20000)}
+    catch(err){say(`The folder could not be written: ${err&&err.message||err}`)}finally{b.disabled=false}};
+  if(shareF)box.querySelector('#saShare').onclick=async()=>{try{await navigator.share({files:shareF});closeModal();if(wsWhole(g)&&shareAll&&!g.arch&&!g.tr)await wsKept();toast(`Shared ${shareF.length} file${shareF.length>1?'s':''}`)}catch(e){if(!e||e.name!=='AbortError')say('This browser could not share them: use the .zip instead.')}}}
+// files for the share sheet, or null when it takes none (Firefox, most computers) or not these; pictures keep only their own name (the share sheet makes no folders)
+function phShareFiles(list){try{if(!navigator.share||!navigator.canShare||!list.length)return null;const fs=list.map(f=>{const nm=f.name.split('/').pop();return new File([f.data],nm,{type:wsMime(nm)})});return navigator.canShare({files:fs})?fs:null}catch(e){return null}}
+// writes the gathered files into a folder the user picks: the same file is skipped, a figure that differs is replaced only after asking, My icons are merged (the folder's
+// own icons stay). null = the picker was closed. stale: figures in the folder's top, archive/ and trash/ that this save did not write
+async function wsToFolder(g){let h;try{h=await window.showDirectoryPicker({id:'silicodraw-save',mode:'readwrite'})}catch(e){if(e&&e.name==='AbortError')return null;throw e}
+  const enc=new TextEncoder(),dec=new TextDecoder(),dirs={'':h},dirOf=async p=>{let d=h,k='';for(const x of p.split('/').slice(0,-1)){k+=x+'/';d=dirs[k]||(dirs[k]=await d.getDirectoryHandle(x,{create:true}))}return d};
+  const same=(a,b)=>{if(a.length!==b.length)return false;for(let i=0;i<a.length;i++)if(a[i]!==b[i])return false;return true},json=t=>{try{const o=JSON.parse(t);return o&&typeof o==='object'&&!Array.isArray(o)?o:{}}catch(e){return{}}};
+  const todo=[],differ=[];let nSame=0;
+  for(const f of g.files){const d=await dirOf(f.name),base=f.name.split('/').pop();let nb=typeof f.data==='string'?enc.encode(f.data):f.data,old=null;
+    try{old=new Uint8Array(await (await (await d.getFileHandle(base)).getFile()).arrayBuffer())}catch(e){}   // NotFoundError: not there yet
+    if(old&&f.name===USER_FILE){const mine=json(f.data),theirs=json(dec.decode(old)),add=Object.keys(mine).filter(k=>!(k in theirs));if(!add.length){nSame++;continue}
+      add.forEach(k=>theirs[k]=mine[k]);nb=enc.encode(JSON.stringify(theirs));todo.push({f,d,base,nb});continue}   // icons only that folder has stay in it
+    if(old){if(same(old,nb)||typeof f.data==='string'&&sameFig(dec.decode(old),f.data)){nSame++;continue}differ.push(f)}todo.push({f,d,base,nb})}
+  let keep=new Set();
+  if(differ.length){const L=differ.map(f=>f.name),list=L.slice(0,6).join(', ')+(L.length>6?` and ${L.length-6} more`:''),ans=await new Promise(res=>{
+      const box=modal(`<h2>Replace files in “${esc(h.name)}”?</h2><p>${differ.length===1?'One file there is':`${differ.length} files there are`} different from yours: <b>${esc(list)}</b>.</p><p class="muted">Replace them with yours, or leave those as they are and save the rest.</p><div class="btns"><button class="primary dangerbtn" id="rfYes">Replace them</button><button id="rfNo">Leave them as they are</button></div>`);
+      const done=v=>{closeModal.onClose=null;closeModal();res(v)};closeModal.onClose=()=>res(false);box.querySelector('#rfYes').onclick=()=>done(true);box.querySelector('#rfNo').onclick=()=>done(false)});
+    if(!ans)keep=new Set(differ)}
+  let wrote=0,failed=0;for(const t of todo){if(keep.has(t.f))continue;try{const w=await (await t.d.getFileHandle(t.base,{create:true})).createWritable();await w.write(t.nb);await w.close();wrote++}catch(e){failed++}}
+  const mine=new Set(g.files.map(f=>f.name.toLowerCase())),stale=[];
+  if(wsWhole(g))for(const sc of ['','archive','trash']){   // (only when every figure here was read: one that was not would look like one the folder holds from before)
+   let d=null;try{d=sc?await h.getDirectoryHandle(sc):h}catch(e){continue}
+    try{for await(const en of d.values())if(en.kind==='file'&&/\.json$/i.test(en.name)&&en.name.toLowerCase()!=='my-icons.json'){const p=(sc?sc+'/':'')+en.name;if(mine.has(p.toLowerCase()))continue;
+      try{const s=JSON.parse(await (await en.getFile()).text());if(s&&Array.isArray(s.objects))stale.push({p,d,name:en.name})}catch(e){}}}catch(e){}}   // (only figures: other .json files there are not ours to mention)
+  return{name:h.name,wrote,same:nSame,kept:keep.size,failed,stale}}
+// one .zip of every figure (Save all figures… and the backup reminders); g: what wsGather found, else it is gathered here
+async function webBackup(g){g=g||await wsGather();if(!g){alert(NO_SERVER());return}const{files,n}=g;if(!n){toast(WEB?'There are no figures in this browser to back up yet':'There are no figures to save yet');return}
+  const nm=`silicodraw-${WEB?'backup':'figures'}-${ymd()}.zip`,zip=zipStore(files),cnt=wsCount(g),fm=PHONE()?'⋯ → File ▸':'File ▾',kept=()=>wsWhole(g)?wsKept():Promise.resolve();
   // phones: the .zip waits for Share… (Files, iCloud Drive, Google Drive, an e-mail to yourself) or Download, as an export does; it counts as a backup once it went somewhere
   const sf=PHONE()?phShareFile(nm,zip,'application/zip'):null;
-  if(sf){const box=modal(`<h2>Back up all figures</h2><p><b>${esc(nm)}</b>: ${cnt}, ${fileSize(zip.size)}.</p><p id="bkMsg"></p><p class="muted">Keep it somewhere safe: save it to Files or a cloud drive, or mail it to yourself. ${fm} → Restore from backup… brings the figures back, also in another browser.</p><p class="muted" id="bkStore"></p><div class="btns"><button id="bkClose">Close</button></div>`);
-    box.querySelector('#bkClose').onclick=closeModal;saveExport.sh={f:sf,dl:true,done:how=>{kept();toast(`${how} ${nm}`)}};phShareAdd(box.querySelector('#bkMsg'));storeInfo().then(i=>{const e=box.querySelector('#bkStore');if(e)e.textContent=storeLine(i)+'.'}).catch(()=>{});return}
+  if(sf){const box=modal(`<h2>Save all figures</h2><p><b>${esc(nm)}</b>: ${esc(cnt)}, ${fileSize(zip.size)}.</p><p id="bkMsg"></p><p class="muted">Keep it somewhere safe: save it to Files or a cloud drive, or mail it to yourself. ${fm} → Open a folder of figures… brings the figures back, also in another browser or on a computer.</p><p class="muted" id="bkStore"></p><div class="btns"><button id="bkClose">Close</button></div>`);
+    box.querySelector('#bkClose').onclick=closeModal;saveExport.sh={f:sf,dl:true,done:how=>{kept();toast(`${how} ${nm}`)}};phShareAdd(box.querySelector('#bkMsg'));if(WEB)storeInfo().then(i=>{const e=box.querySelector('#bkStore');if(e)e.textContent=storeLine(i)+'.'}).catch(()=>{});return}
   phDownload(nm,zip);
-  if(PH.inapp&&PHONE()){toast(`This app’s built-in browser may not have saved ${nm}, so it does not count as a backup: open this page in Safari or Chrome. ${storeLine(await storeInfo())}.`);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),10000);return}   // (a download it ignored said "Downloaded" and put off the reminder)
+  if(PH.inapp&&PHONE()){toast(`This app’s built-in browser may not have saved ${nm}, so it does not count as a backup: open this page in Safari or Chrome.${await wsStoreLine()}`);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),10000);return}   // (a download it ignored said "Downloaded" and put off the reminder)
   await kept();
-  toast(`Downloaded ${nm}: ${cnt}. Keep it somewhere safe: ${fm} → Restore from backup… brings them back, also in another browser. ${storeLine(await storeInfo())}.`);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),10000)}
-// a figure already here unchanged is skipped; a different figure with the same name stays, and the backup's one comes in beside it as name-restored.json
-async function webRestore(list){const items=[];let unread=0;await flushSave();
-  const txtOf=async(sc,n)=>{const r=await fetch((sc?sc+'/':'')+encodeURIComponent(n),{cache:'no-store'}).catch(()=>null);return r&&r.ok?await r.text():null};   // sameFig: a figure opened since the backup was saved again with its repairs is still the same figure
-  for(const f of list){try{if(/\.zip$/i.test(f.name)||/zip/.test(f.type)){for(const x of await unzip(await f.arrayBuffer())){if(x.data)items.push({path:x.name,text:new TextDecoder().decode(x.data)});else if(/\.json$/i.test(x.name))unread++}}else items.push({path:f.name,text:await f.text()})}catch(e){unread++}}
-  const have={},open1=[];for(const sc of ['','archive','trash']){const fs=await listFiles(sc);if(!fs&&!sc){alert(NO_SERVER);return}have[sc]=new Set((fs||[]).map(x=>x.name.toLowerCase()))}
-  const taken=n=>Object.values(have).some(s=>s.has(n.toLowerCase()));let added=0,same=0,copies=0,icons=0,other=0;
-  for(const it of items){const parts=it.path.replace(/\\/g,'/').split('/').filter(Boolean),base=parts[parts.length-1]||'',dir=parts[parts.length-2]||'';
-    if(parts.some(x=>['__MACOSX','history','examples','exports','updates','.git'].includes(x))||base.startsWith('.'))continue;   // not figures (a zipped desktop folder holds these too)
-    if(base==='my-icons.json'&&dir==='assets'){icons+=restoreIcons(it.text);continue}
-    if(!/\.json$/i.test(base))continue;let s=null;try{s=JSON.parse(it.text)}catch(e){}
-    const sc=dir==='archive'||dir==='trash'?dir:'',n0=cleanName(base);if(!s||!Array.isArray(s.objects)||!n0){other++;continue}
-    let n=n0,repl=false;if(have[sc].has(n0.toLowerCase())){const t=await txtOf(sc,n0);if(sameFig(t,it.text)){same++;continue}repl=!sc&&blankFig(t)&&!blankFig(it.text)}   // an untouched blank figure (editors before 2026-10-30 saved figure.json at the first visit) is replaced: else the backup's main figure came back as figure-restored
-    if(taken(n)&&!repl){const b=n0.replace(/\.json$/,'')+'-restored';let dup=false;n=b+'.json';for(let i=2;taken(n);i++){if(have[sc].has(n.toLowerCase())&&sameFig(await txtOf(sc,n),it.text)){dup=true;break}n=`${b}-${i}.json`}   // restored before: the same copy is not made again
+  toast(`Downloaded ${nm}: ${cnt}. Keep it somewhere safe: ${fm} → Open a folder of figures… brings them back, also in another browser.${await wsStoreLine()}`);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),10000)}
+// File ▾ → Open a folder of figures…: a folder (a computer's browser), or files: .json figures, their pictures, a .zip (phones and tablets pick files, not folders)
+function openFolderDialog(){const dirOk=typeof window.showDirectoryPicker==='function'||!WS_MOBILE&&'webkitdirectory' in document.createElement('input');
+  const box=modal(`<h2>Open a folder of figures</h2><p class="muted">The figures in it are added to ${WEB?'the ones here':'your figures'}: one that is already here unchanged is skipped, and a different figure with the same name comes in beside it as “name-restored”, so nothing here is replaced.${dirOk?' Archived figures, the trash, My icons and pictures come along.':''}</p>
+    <div class="stList">${dirOk?`<button class="stOpt" id="ofDir"><b>Choose a folder…</b><br><span class="muted">One saved with Save all figures to a folder…, or a SiliCoDraw folder from a computer.</span></button>`:''}
+    <button class="stOpt" id="ofFiles"><b>${dirOk?'Or choose files…':'Choose files…'}</b><br><span class="muted">${dirOk?'.json figures (select several at once), their pictures, or a .zip made by Save all figures.':'In the Files app, Select picks several: the .json figures and the pictures beside them, or a .zip made by Save all figures. Archived figures and the trash of a folder from a computer come along only in its .zip (in Files, press and hold the folder → Compress).'}</span></button></div>
+    ${dirOk?'<p class="muted">Dropping a folder, a .zip or several .json files onto the canvas does the same.</p>':''}<div class="btns"><button id="ofClose">Close</button></div>`);
+  box.querySelector('#ofClose').onclick=closeModal;box.querySelector('#ofFiles').onclick=()=>{closeModal();$('#restoreIn').click()};
+  if(dirOk)box.querySelector('#ofDir').onclick=async()=>{if(typeof window.showDirectoryPicker!=='function'){closeModal();$('#folderIn').click();return}
+    let h;try{h=await window.showDirectoryPicker({id:'silicodraw-open',mode:'read'})}catch(e){if(!e||e.name!=='AbortError')alert('Could not open the folder: '+(e&&e.message||e));return}
+    closeModal();try{const fs=wsPick(await wsWalk(h));if(fs.length)await webRestore(fs);else toast('No SiliCoDraw figures found in that folder')}catch(err){alert('Could not open the figures: '+(err&&err.message||err))}}}
+// what a folder holds that can be part of SiliCoDraw's own folder: .json files, pictures in an assets/ folder, and at its top a .zip made by Save all figures
+// (taken only when the folder has no .json figures: an older backup kept beside the figures would bring their old versions in as copies)
+const WS_SKIP=['__MACOSX','history','examples','exports','updates','.git','node_modules','lib','tests','dev','release'];
+const wsWanted=p=>{const k=p.split('/');return/\.json$/i.test(p)||k.length===1&&/^silicodraw-[^/]*\.zip$/i.test(p)||k.length>=2&&k[k.length-2]==='assets'&&WS_IMG.test(p)};
+const wsLoose=p=>/\.(json|zip)$/i.test(p)||WS_IMG.test(p);   // a file the user chose or dropped by itself: taken as it is
+const wsPick=list=>{list=list.filter(x=>x.loose||x.file.size<=(/\.zip$/i.test(x.path)?500:200)*1048576);const figs=list.some(x=>!x.loose&&/\.json$/i.test(x.path));return figs?list.filter(x=>x.loose||!/\.zip$/i.test(x.path)):list};   // (a data file of gigabytes in a chosen folder is no figure: it would fill the memory)
+// the folder's files with their paths in it: [{path, file}]; two levels deep (archive/, trash/, assets/; or one folder further), no history or exports, at most 5000
+async function wsWalk(h,pre='',out=[],depth=0){for await(const en of h.values()){if(out.length>=5000)break;if(en.name.startsWith('.'))continue;const p=pre+en.name;
+    if(en.kind==='directory'){if(depth<2&&!WS_SKIP.includes(en.name))await wsWalk(en,p+'/',out,depth+1)}else if(wsWanted(p))out.push({path:p,file:await en.getFile()})}return out}
+// the same for what is dropped on the canvas (DataTransfer entries): a dropped folder's own name is not part of the paths; files dropped beside it are taken as they are
+async function wsWalkEntry(en,pre='',out=[],depth=0){if(out.length>=5000||en.name.startsWith('.'))return out;
+  if(en.isFile){const p=pre+en.name;if(depth?wsWanted(p):wsLoose(p))out.push({path:p,file:await new Promise((r,j)=>en.file(r,j)),loose:!depth})}
+  else if(en.isDirectory&&depth<3&&!(depth&&WS_SKIP.includes(en.name))){const q=depth?pre+en.name+'/':'',rd=en.createReader();
+    for(;;){const b=await new Promise((r,j)=>rd.readEntries(r,j));if(!b.length)break;for(const c of b)await wsWalkEntry(c,q,out,depth+1)}}
+  return out}
+// names compared as the website keeps them (Försök.json there is Forsok.json)
+const wsFold=n=>String(n).normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/[^\w.\-]+/g,'-').toLowerCase();
+// a figure already here unchanged (in any of the three places: archived on one device, still active on the other) is skipped; a different figure with the same name stays,
+// and the folder's one comes in beside it as name-restored.json. list: Files (a chosen folder's carry webkitRelativePath) or {path, file}; .zip files are unpacked.
+// Pictures from the assets/ next to the figures (or chosen with them) come along: a copy run from a computer keeps them in its assets/ (under a name made from the
+// picture itself when a different one has the name, so a second import finds it again), the website puts them into the figure (it keeps no pictures of its own)
+async function webRestore(list){const items=[],pics={};let unread=0;await flushSave();
+  const norm=p=>String(p||'').replace(/\\/g,'/').split('/').filter(Boolean);   // (a .zip made by Windows PowerShell has backslashes in its names)
+  const addPic=(parts,bytes)=>{const nm=parts[parts.length-1];if(parts.some(x=>WS_SKIP.includes(x)||x.startsWith('.')))return;const k=parts.length===1?'*|'+nm:parts[parts.length-2]==='assets'?parts.slice(0,-2).join('/')+'|'+nm:null;if(k&&!(k in pics))pics[k]=bytes};
+  for(const x of list){const f=x.file||x,parts=norm(x.path||(f.webkitRelativePath?f.webkitRelativePath.replace(/^[^/]*\//,''):f.name));   // (a chosen folder's own name leads its files' paths: a folder called "examples" or "history" is no reason to skip them)
+    if(!parts.length)continue;const base=parts[parts.length-1];
+    try{if(/\.zip$/i.test(base)||/zip/.test(f.type)){
+        const ents=(await unzip(await f.arrayBuffer(),n=>/\.json$/i.test(n)||WS_IMG.test(n))).map(z=>({parts:norm(z.name),data:z.data})).filter(z=>z.parts.length&&z.parts[0]!=='__MACOSX');
+        // a folder zipped by the system's own tool (Finder's Compress, Send to → Compressed folder) puts the folder's name in front of every entry
+        const top=ents.length&&ents.every(z=>z.parts.length>1&&z.parts[0]===ents[0].parts[0])&&(!['archive','trash','assets'].includes(ents[0].parts[0])||ents.some(z=>z.parts.length>2));   // (a folder named archive holding assets/ is such a folder; one holding only figures stays the archive)
+        for(const z of ents){const p=top?z.parts.slice(1):z.parts;if(!z.data){if(/\.json$/i.test(p[p.length-1]))unread++}else if(WS_IMG.test(p[p.length-1]))addPic(p,z.data);else items.push({parts:p,text:new TextDecoder().decode(z.data)})}}
+      else if(WS_IMG.test(base))addPic(parts,new Uint8Array(await f.arrayBuffer()));else if(/\.json$/i.test(base))items.push({parts,text:await f.text()})}catch(e){unread++}}
+  const have={},open1=[];for(const sc of ['','archive','trash']){const fs=await listFiles(sc);if(!fs&&!sc){alert(NO_SERVER());return}have[sc]=new Map((fs||[]).map(x=>[x.name.toLowerCase(),x.name]))}   // lower case → the name as it is
+  const SCOPES=['','archive','trash'],txtOf=async(sc,k)=>{const n=have[sc].get(k)||k,r=await fetch((sc?sc+'/':'')+encodeURIComponent(n),{cache:'no-store'}).catch(()=>null);return r&&r.ok?await r.text():null};   // sameFig: a figure opened since was saved again with its repairs, still the same figure
+  const taken=n=>SCOPES.some(s=>have[s].has(n.toLowerCase()));let added=0,same=0,copies=0,icons=0,other=0,picsIn=0;
+  const scOf=parts=>{const d=parts[parts.length-2]||'';return d==='archive'||d==='trash'?d:''},preOf=parts=>{const p=parts.slice(0,-1);if(p.length&&(p[p.length-1]==='archive'||p[p.length-1]==='trash'))p.pop();return p.join('/')};
+  items.sort((a,b)=>SCOPES.indexOf(scOf(a.parts))-SCOPES.indexOf(scOf(b.parts)));   // the folder's own figures first, then archive/, then trash/: a name both have stays the active figure's
+  // a picture the folder brings: its address in the figure here; cached per picture
+  const picAt={},sameB=(a,b)=>a.length===b.length&&a.every((v,i)=>v===b[i]);
+  const hex=async b=>{try{return[...new Uint8Array(await crypto.subtle.digest('SHA-256',b)).slice(0,4)].map(v=>v.toString(16).padStart(2,'0')).join('')}catch(e){let h=0;for(const v of b)h=(h*31+v)>>>0;return h.toString(16)}};   // (crypto.subtle only on https and localhost)
+  const picSrc=async(key,nm)=>{if(key in picAt)return picAt[key];const b=pics[key];let at=null;
+    if(!WEB){const n2=nm.replace(/[^\w.\-]+/g,'-').replace(/^[.\-]+/,'')||'picture'+(/\.\w+$/.exec(nm)||[''])[0];
+      for(const t of [...new Set([n2,(await hex(b))+'-'+n2])]){let r=null;try{r=await fetch('assets/'+encodeURIComponent(t),{cache:'no-store'})}catch(e){}
+        if(r&&r.ok){if(sameB(new Uint8Array(await r.arrayBuffer()),b)){at='assets/'+t;break}continue}   // the same picture is here already; a different one has that name: the next name (made from the picture, so the same one finds it next time)
+        const w=await fetch('assets/'+encodeURIComponent(t),{method:'POST',body:new Blob([b],{type:wsMime(t)})}).catch(()=>null);if(w&&w.ok){at='assets/'+t;picsIn++}break}}
+    if(!at)at=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.onerror=()=>r(null);fr.readAsDataURL(new Blob([b],{type:wsMime(nm)}))});   // the website, or the server refused it: in the figure
+    return picAt[key]=at};
+  const withPics=async(parts,t)=>{if(!Object.keys(pics).length)return t;const pre=preOf(parts),rep={};
+    for(const m of t.matchAll(WS_PICREF)){const nm=m[2];if(nm in rep)continue;const k=(pre+'|'+nm) in pics?pre+'|'+nm:('*|'+nm) in pics?'*|'+nm:null;rep[nm]=k?await picSrc(k,nm):null}
+    return t.replace(WS_PICREF,(all,a,nm)=>rep[nm]&&rep[nm]!=='assets/'+nm?a+rep[nm]:all)};
+  for(const it of items){const parts=it.parts,base=parts[parts.length-1]||'';
+    if(parts.some(x=>WS_SKIP.includes(x)||x.startsWith('.')))continue;   // not figures (a zipped desktop folder holds these too)
+    let s=null;try{s=JSON.parse(it.text)}catch(e){}
+    if(base.toLowerCase()==='my-icons.json'&&!(s&&Array.isArray(s.objects))){if(parts.length===1||parts[parts.length-2]==='assets')icons+=restoreIcons(await withPics(parts,it.text));continue}   // (shared from a phone, it sits beside the figures; a figure of that name is a figure)
+    if(!/\.json$/i.test(base))continue;
+    const sc=scOf(parts);let n0=cleanName(base);if(!n0&&s&&Array.isArray(s.objects))n0='imported-figure.json';   // a name with nothing this place can keep (another script on the website): the figure still comes in
+    if(!s||!Array.isArray(s.objects)||!n0){other++;continue}
+    it.text=await withPics(parts,it.text);
+    let repl=false,dupe=false;const k0=n0.toLowerCase();
+    for(const s2 of [sc,...SCOPES.filter(x=>x!==sc)])if(have[s2].has(k0)){const t=await txtOf(s2,k0);if(sameFig(t,it.text)){dupe=true;break}if(s2===sc)repl=!sc&&blankFig(t)&&!blankFig(it.text)}   // an untouched blank figure (editors before 2026-10-30 saved figure.json at the first visit) is replaced: else the backup's main figure came back as figure-restored
+    if(!dupe){const f0=wsFold(n0);for(const s2 of SCOPES){for(const k of have[s2].keys())if(k!==k0&&wsFold(k)===f0&&sameFig(await txtOf(s2,k),it.text)){dupe=true;break}if(dupe)break}}   // Försök.json here, Forsok.json from the website
+    if(dupe){same++;continue}
+    let n=n0;if(taken(n)&&!repl){const b=n0.replace(/\.json$/,'')+'-restored';let dup=false;n=b+'.json';for(let i=2;taken(n);i++){if(have[sc].has(n.toLowerCase())&&sameFig(await txtOf(sc,n.toLowerCase()),it.text)){dup=true;break}n=`${b}-${i}.json`}   // restored before: the same copy is not made again
       if(dup){same++;continue}copies++}
     const w=await fetch(encodeURIComponent(n),{method:'POST',body:it.text}).catch(()=>null);if(!w||!w.ok){other++;continue}
-    have[''].add(n.toLowerCase());added++;if(sc&&await moveFile(n,'active',sc).catch(()=>false)){have[''].delete(n.toLowerCase());have[sc].add(n.toLowerCase())}else open1.push(n)}
+    have[''].set(n.toLowerCase(),n);added++;if(sc&&await moveFile(n,'active',sc).catch(()=>false)){have[''].delete(n.toLowerCase());have[sc].set(n.toLowerCase(),n)}else open1.push(n)}
   if(icons){await saveUserIcons();refreshUserPalette()}fillFileSel();
-  const pl=(k,w)=>`${k} ${w}${k===1?'':'s'}`,bits=[added?`Restored ${pl(added,'figure')}`+(copies?` (${copies} beside a different figure of the same name, as “…-restored”)`:''):'',same?`${pl(same,'figure')} already here`:'',icons?`${pl(icons,'icon')} added to My icons`:'',other+unread?`${pl(other+unread,'file')} skipped (not a SiliCoDraw figure, or unreadable)`:''].filter(Boolean);
-  const msg=bits.length?bits.join(' · '):'No SiliCoDraw figures found in that file';if(open1.length===1&&open1[0]!==FILE)toastAct(msg,'Open',()=>openFile(open1[0]));else{toast(msg);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),8000)}}
+  const pl=(k,w)=>`${k} ${w}${k===1?'':'s'}`,bits=[added?`Added ${pl(added,'figure')}`+(copies?` (${copies} beside a different figure of the same name, as “…-restored”)`:''):'',same?`${pl(same,'figure')} already here`:'',picsIn?`${pl(picsIn,'picture')} added to assets`:'',icons?`${pl(icons,'icon')} added to My icons`:'',other+unread?`${pl(other+unread,'file')} skipped (not a SiliCoDraw figure, or unreadable)`:''].filter(Boolean);
+  const msg=bits.length?bits.join(' · '):`No SiliCoDraw figures found in ${list.length===1&&!(list[0].file||list[0]).webkitRelativePath?'that file':'there'}`;if(open1.length===1&&open1[0]!==FILE)toastAct(msg,'Open',()=>openFile(open1[0]));else{toast(msg);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),8000)}}
 function restoreIcons(t){let d=null,k=0;try{d=JSON.parse(t)}catch(e){}if(!d||typeof d!=='object'||Array.isArray(d))return 0;
-  for(const key of Object.keys(d))if(!USER[key]&&d[key]&&typeof d[key]==='object'){USER[key]=d[key];USER_REMOVED.delete(key);if(!ICONS[key]||ICONS[key].user)registerIcon(key,d[key]);k++}return k}   // icons this browser already has keep its version
-$('#restoreIn').onchange=e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)webRestore(fs).catch(err=>alert('Could not restore: '+err.message))};
+  for(const key of Object.keys(d)){const v=d[key];if(!USER[key]&&v&&typeof v==='object'&&!Array.isArray(v)&&typeof v.svg==='string'){USER[key]=v;USER_REMOVED.delete(key);if(!ICONS[key]||ICONS[key].user)registerIcon(key,v);k++}}return k}   // icons this browser already has keep its version; only real icon definitions
+$('#restoreIn').onchange=e=>{const fs=[...e.target.files];e.target.value='';if(fs.length)webRestore(fs).catch(err=>alert('Could not open the figures: '+err.message))};
+// a folder from the browser's own folder picker (Firefox, Safari): every file in it, so only the ones that can be figures; a browser that gave plain files instead: taken as they are
+$('#folderIn').onchange=e=>{const fs=wsPick([...e.target.files].map(f=>{const rel=f.webkitRelativePath,p=rel?rel.split('/').slice(1):[f.name];
+    return(rel?p.length<=3&&!p.slice(0,-1).some(x=>WS_SKIP.includes(x)||x.startsWith('.'))&&wsWanted(p.join('/')):wsLoose(f.name))?{path:p.join('/'),file:f,loose:!rel}:null}).filter(Boolean)).slice(0,5000);e.target.value='';
+  if(fs.length)webRestore(fs).catch(err=>alert('Could not open the figures: '+err.message));else toast('No SiliCoDraw figures found in that folder')};
 // Safari: once, after the first save, why backups matter there (its 7-day rule also deletes the reminder's own record, so the reminder alone never reached those users)
 function safariNote(){if(!WEB||!ITP||backupSt().safari)return;if($('#toast').classList.contains('show')||!$('#modal').hidden||document.hidden){setTimeout(safariNote,5000);return}backupSt({safari:Date.now()});
-  toastAct(`${ITP_SAF?'Safari deletes':'Like every browser on iPhone and iPad, this browser deletes'} this site’s data, your figures included, after 7 days without a visit (not when the site is added to the Home Screen${ITP_SAF?' or the Dock':''}): back up the figures you want to keep`,'Back up…',webBackup);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),15000)}
+  toastAct(`${ITP_SAF?'Safari deletes':'Like every browser on iPhone and iPad, this browser deletes'} this site’s data, your figures included, after 7 days without a visit (not when the site is added to the Home Screen${ITP_SAF?' or the Dock':''}): back up the figures you want to keep`,'Save them…',saveAllDialog);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),15000)}
 // the website keeps figures only in this browser: a reminder to back up when the last backup (or the first visit) is 14 days old (Safari: 3) and figures changed since; shown at most that often
 async function backupNag(){const o=backupSt(),now=Date.now(),every=(ITP?3:14)*864e5;if(!o.first){backupSt({first:now});return}if(now-Math.max(o.first,o.at||0,o.later||0)<every)return;
   if(!$('#modal').hidden||document.hidden||drag){setTimeout(backupNag,60000);return}   // not while a dialog is open, the tab is hidden or something is being dragged
@@ -22213,9 +22457,9 @@ async function backupNag(){const o=backupSt(),now=Date.now(),every=(ITP?3:14)*86
     if(+f.size<4000||ex){const r=await fetch(encodeURIComponent(f.name),{cache:'no-store'}).catch(()=>null),t=r&&r.ok?await r.text():null;if(t!=null&&blankFig(t))continue;
       if(ex&&t!=null){const e=await fetch(`examples/${encodeURIComponent(ex[1])}.json`,{cache:'no-store'}).catch(()=>null);if(e&&e.ok&&sameFig(t,await e.text()))continue}}ch.push(f)}   // an untouched blank figure needs no backup
   if(!ch.length)return;backupSt({later:now});const k=ch.length,days=o.at?Math.floor((now-o.at)/864e5):0;
-  toastAct(o.at?`${k} figure${k>1?'s':''} changed since your last backup ${days?`${days} day${days>1?'s':''} ago`:'today'} ${k>1?'are':'is'} kept only in this browser: download a backup now and then`:`Your ${k>1?k+' figures are':'figure is'} kept only in this browser: download a backup now and then`,'Back up…',webBackup);
+  toastAct(o.at?`${k} figure${k>1?'s':''} changed since your last backup ${days?`${days} day${days>1?'s':''} ago`:'today'} ${k>1?'are':'is'} kept only in this browser: download a backup now and then`:`Your ${k>1?k+' figures are':'figure is'} kept only in this browser: download a backup now and then`,'Save them…',saveAllDialog);
   const t=$('#toast'),b=document.createElement('button');b.type='button';b.className='tact';b.textContent='Later';b.onclick=()=>{t.classList.remove('show');toastBack(t)};t.append(' ',b);clearTimeout(toast.tm);toast.tm=0}   /* tm 0: no timer, so leaving it with the pointer does not start one */   // stays until answered (or another message replaces it): a 9 s toast missed once meant no reminder for 14 more days
-if(WEB){$('#fileMenu [data-act=backup]').hidden=$('#fileMenu [data-act=restore]').hidden=false;if(!backupSt().first)backupSt({first:Date.now()});setTimeout(backupNag,30000)}   // the first visit counts at once (short visits never started the 14 days)
+if(WEB){if(!backupSt().first)backupSt({first:Date.now()});setTimeout(backupNag,30000)}   // the first visit counts at once (short visits never started the 14 days)
 
 /* canvas size: width × height, shape presets, fit to content */
 const setCanvas=(w,h)=>{const p0=exportPreset(scene.exportSize,photoIn(scene),scene.h/scene.w),fitP=p0&&p0.sheet&&Math.abs(p0.mm-(+scene.exportMm||0))<1;scene.w=Math.max(100,Math.round(w));scene.h=Math.max(100,Math.round(h));
@@ -22364,7 +22608,7 @@ function phHelpRows(k){return k('Tap','Select an element (a group as a whole); o
   +k('Export','PNG for messages, slides and documents (also PDF, TIFF, SVG, PowerPoint); <b>Share…</b> then sends it to Photos, Files, Messages or another app where the phone offers that')
   +k('Back','The phone’s Back button or gesture closes the open sheet, menu or dialog, and ends Sketch or placing a comment')}
 function helpDialog(){const mk=s=>s.replace(/<kbd>Ctrl<\/kbd>/g,`<kbd>${MODK}</kbd>`).replace(/<kbd>Alt<\/kbd>/g,`<kbd>${ALTK}</kbd>`),k=(a,b)=>`<tr><td>${mk(a)}</td><td>${mk(b)}</td></tr>`,ph=PHONE();   // phones: the touch table first, the keyboard one folded away
-  const store=WEB?k('Where your figures are',`In this browser only: nothing is uploaded, and another browser or ${ph?'phone':'computer'} does not see them; clearing this site’s data deletes them. `+(ph?'<b>⋯ → File ▸ → Back up all figures…</b> makes one .zip to share or download, <b>Restore from backup…</b> brings them back (also in another browser); exports are shared or downloaded.':'<b>File ▾ → Back up all figures…</b> downloads them as one .zip, <b>Restore from backup…</b> brings them back (also in another browser); exports are downloaded.')+'<span id="hpStore"></span>'):'';
+  const store=WEB?k('Where your figures are',`In this browser only: nothing is uploaded, and another browser or ${ph?'phone':'computer'} does not see them; clearing this site’s data deletes them. `+(ph?'<b>⋯ → File ▸ → Save all figures to a folder…</b> puts them in a folder of the Files app (or one .zip), <b>Open a folder of figures…</b> brings them in (also in another browser, or on a computer); exports are shared or downloaded.':'<b>File ▾ → Save all figures to a folder…</b> saves them as .json files in a folder (or one .zip), <b>Open a folder of figures…</b> brings them in (also in another browser, on a phone, or in a copy run from your computer); exports are downloaded.')+'<span id="hpStore"></span>'):'';
   const box=modal(`<h2>${ph?'Help':'Shortcuts'}</h2>${ph?`<table>${store}${phHelpRows(k)}</table><details class="phkeys"><summary>Keyboard and mouse</summary>`:''}<table>
     ${k('<kbd>Ctrl</kbd> <kbd>S</kbd>','Save now (the editor also saves automatically)')}${ph?'':store}${k('Open a figure file','<b>File ▾ → Load from a .json file…</b>, or drop the .json on the canvas: it opens as a new figure under its own name, or replaces this one (<kbd>Ctrl</kbd> <kbd>Z</kbd> brings this one back). Several .json files or a backup .zip dropped there come in beside the figures already here')}${k('One figure in two windows',(window.SiliCoDrawWeb?'Changes made in another tab of this browser are merged':'Changes made in another window or tab, or by your AI in the file, are merged')+' into yours element by element; where both changed the same property, this window’s value stays (<b>Details</b> in the message lists them), and <kbd>Ctrl</kbd> <kbd>Z</kbd> undoes the merge')}${k('Text: drag the side handles','Change the box width; the text re-wraps, font size stays')}
     ${k('Double-click text, or <kbd>Enter</kbd> / <kbd>F2</kbd>','Edit the text in place (<kbd>Ctrl</kbd> <kbd>Enter</kbd> or click away to finish, <kbd>Esc</kbd> cancels); on a chip, label, legend… it jumps to the text field in the side panel')}${k('Double-click empty canvas','Start a new text right there')}${k('<kbd>Alt</kbd> + drag','Drag a copy of the selection')}
@@ -22467,13 +22711,14 @@ stageEl.addEventListener('pointerdown',e=>{
   if(e.isPrimary&&touches.size){if(drag)dragCancel();[...touches.keys()].forEach(id=>touchEnd({type:'pointercancel',pointerType:'touch',pointerId:id,timeStamp:e.timeStamp,clientX:e.clientX,clientY:e.clientY}))}
   touches.set(e.pointerId,{x:e.clientX,y:e.clientY});
   document.querySelectorAll('.pop.open').forEach(m=>m.classList.remove('open'));   // the document's close-on-press never sees a touch that pans or pinches (stopped below): an open menu stayed open
+  longPid=null;
   if(touches.size===1&&sk.on)return;   // in sketch mode one finger draws (handled by the canvas), two fingers still zoom / pan
   if(touches.size===2){clearTimeout(phTouch.lp);phTouch.t=null;   // phones: no press and hold, and no tap, for the first finger
     if(sk.cur)endStroke(true);
     // a second finger cancels a move in progress; a handle drag (resize, rotate, vertex, bar…) is undone too (it stayed changed without an undo step), an eraser pass is kept as one
     // (phones: a box selection goes back to what was selected, it stayed half made; and nothing changed: no render, it held up the pinch in a big figure and took the finger's node away)
     if(drag){const d=drag;drag=null;let ch=true;if(d.mode==='move'){if(d.moved)d.starts.forEach(([o,s])=>Object.assign(o,s));else ch=false}else if(d.mode==='erase')commit();else if(d.mode==='marquee'){if(PHONE()&&d.base){sel=new Set(d.base);buildPanel()}ch=false}else if(d.mode!=='pan'&&(d.moved||d.newBox))restore(lastSaved);else ch=false;if(ch||!PHONE())render();else drawOverlay()}
-    pan=null;const m=tmid();pinch={a:toSvg(m.x,m.y),z0:zoom,d0:m.d,raf:0,lm:m};if(PHONE())pinch.S=phScale(m.x,m.y);e.stopPropagation();e.preventDefault();return}
+    pan=null;const m=tmid();pinch={a:toSvg(m.x,m.y),z0:zoom,d0:m.d,raf:0,lm:m,ids:[...touches.keys()]};if(PHONE())pinch.S=phScale(m.x,m.y);e.stopPropagation();e.preventDefault();return}
   if(touches.size>2){e.stopPropagation();return}
   if(PHONE()){phDown(e);return}
   if(placing)return;   // a tap places the comment
@@ -22493,8 +22738,9 @@ stageEl.addEventListener('pointermove',e=>{
 const touchEnd=e=>{const pn=e.pointerType==='pen'&&phTouch.t&&phTouch.t.pid===e.pointerId;   // phones: the pen working as a finger
   if(e.pointerType!=='touch'&&!pn)return;if(!pn&&penId!==null&&!touches.has(e.pointerId)){e.stopPropagation();return}   // a resting palm lifted: not the end of the pen's drag
   touches.delete(e.pointerId);if(PHONE()){clearTimeout(phTouch.lp);phTouch.up=Date.now();phTouch.upT=e.timeStamp;const t=phTouch.t;if(t&&t.done&&t.pid===e.pointerId)PH.ghost=phTouch.up+450}   // (the click after a press and hold: see phScrim)
+  else if(e.pointerId===longPid){longPid=null;PH.ghost=Date.now()+450}   // tablets, the same: a menu near the window's edge opens under the finger
   // the finger still down after a pinch pans on (it did nothing until lifted); phones: the pinch's one zoom and render, now
-  if(touches.size<2&&pinch){if(pinch.raf)cancelAnimationFrame(pinch.raf);const P=pinch;pinch=null;if(P.S)phScaleEnd(P.S,P.z0*P.lm.d/P.d0,P.lm.x,P.lm.y);if(touches.size===1&&e.type==='pointerup'){const[t]=touches.values();pan={x:t.x,y:t.y,sl:stageEl.scrollLeft,st:stageEl.scrollTop,moved:true}}}
+  if(pinch&&(touches.size<2||pinch.ids.includes(e.pointerId))){if(pinch.raf)cancelAnimationFrame(pinch.raf);   /* one of its own two fingers lifted while a third is down: the pinch ends (it went on with the other pair, and the zoom jumped) */const P=pinch;pinch=null;if(P.S)phScaleEnd(P.S,P.z0*P.lm.d/P.d0,P.lm.x,P.lm.y);if(touches.size===1&&e.type==='pointerup'){const[t]=touches.values();pan={x:t.x,y:t.y,sl:stageEl.scrollLeft,st:stageEl.scrollTop,moved:true}}}
   if(pan&&touches.size===0){if(PHONE()){const t=phTouch.t;if(!pan.moved&&e.type==='pointerup'&&t&&!t.done){if(!placing)phTapAt(pan.tap,e.clientX,e.clientY,e.timeStamp);else if(t.note){setPlacing(false);phNoteAt(toSvg(e.clientX,e.clientY))}}else if(pan.moved&&e.type==='pointerup'&&t&&e.timeStamp-t.t0>=40)phFling(pan,e)}else if(!pan.moved&&e.type==='pointerup'&&sel.size){sel.clear();render();buildPanel()}pan=null}
   if(!touches.size)phTouch.t=null;
 };
@@ -23003,7 +23249,7 @@ addEventListener('popstate',e=>{PH.dead=0;const keep=(e.state&&e.state.ph)||0;
 function phScrim(on){const s=$('#phScrim');clearTimeout(phScrim.t);if(on)s.classList.add('on');else if(s.classList.contains('on'))phScrim.t=setTimeout(()=>s.classList.remove('on'),300)}
 // a menu after a press and hold covers the finger (a sheet up to 70 % of the height), a dialog or sheet after a double tap opens under it: the click the browser may send when that finger lifts (iOS looks at
 // what is there by then) would run whatever row or field it lands on, so it is dropped (PH.ghost: until when; set by the press and hold's lift and by phDouble)
-document.addEventListener('click',e=>{if(PH.ghost&&Date.now()<PH.ghost&&PHONE()&&e.target.closest&&e.target.closest('#modal,.pop,#props,#left')){PH.ghost=0;e.preventDefault();e.stopImmediatePropagation()}},true);
+document.addEventListener('click',e=>{if(PH.ghost&&Date.now()<PH.ghost&&e.target.closest&&e.target.closest('#modal,.pop,#props,#left')){PH.ghost=0;e.preventDefault();e.stopImmediatePropagation()}},true);
 // a sheet: closed, peek (the properties only: the canvas above it shrinks to stay in view) or full (over the canvas). Its grab bar: tap = peek ↔ full, drag = follows the finger
 // and snaps where it is let go, or onward with a flick; ✕ and Back close it. Closing keeps the selection
 function phSheet(el,state){if(typeof el==='string')el=$(el);if(!el)return;if(!PHONE())state='closed';if(state==='peek'&&el.id!=='props')state='full';const was=el.dataset.ph||'closed';
@@ -23113,7 +23359,7 @@ $('#status').addEventListener('click',()=>{if(PHONE()){const s=$('#status');toas
   z.onclick=()=>{if(held){held=false;return}fit()}}
 // a rotation (the window and the canvas get another width): the page is fitted again, unless the user zoomed since the last fit; sheets change only the height and never refit
 function phZoomed(){return fit.z!=null&&Math.abs(zoom-fit.z)>.002}
-if(window.ResizeObserver){let w0=0,iw=innerWidth;new ResizeObserver(()=>{const w=$('#stage').clientWidth,iw1=innerWidth;if(PHONE()){if(w0&&w!==w0&&iw1!==iw&&!phZoomed())requestAnimationFrame(()=>fit(true));phVars()}w0=w;iw=iw1}).observe($('#stage'))}
+if(window.ResizeObserver){let w0=0,iw=innerWidth;new ResizeObserver(()=>{const w=$('#stage').clientWidth,iw1=innerWidth;if(PHONE()){if(w0&&w!==w0&&iw1!==iw)requestAnimationFrame(()=>{if(!phZoomed())fit(true)});/* asked when the frame comes: a zoom made before it stays */phVars()}w0=w;iw=iw1}).observe($('#stage'))}
 // the phone layout switched on or off, or between upright and sideways (a rotation, a resized window, Appearance → Phone layout, fig.prefs)
 function phSync(first,turn){const on=PHONE(),de=document.documentElement,a=document.activeElement;
   if(on){if(inFocus())setFocusMode(false,true);de.classList.remove('hwrap');de.style.removeProperty('--hh');phVV.last='';phVV()}else{phSheet('#left','closed');phSheet('#props','closed');PH.multi=false;phScrim(false);de.classList.remove('ph-kb')}
@@ -23177,17 +23423,15 @@ window.fig={
 };
 
 applyCanvas();render();buildPanel();requestAnimationFrame(()=>fit(true));loadUserIcons();
-$('#fileMenu [data-act=reset]').hidden=!MAIN;
+$('#fileMenu [data-act=reset]').hidden=!MAIN;$('#fileMenu [data-act=storage]').hidden=true;storeStart();
 if(EX_ID&&FILE_SYNC)listFiles('examples').then(xs=>{if(xs&&xs.some(x=>x.name===EX_ID+'.json'))$('#fileMenu [data-act=restartex]').hidden=false});   // only for a copy of an example that exists
 buildPalette();fillPal();fillFileSel();
-if(FILE_SYNC){startBase0=JSON.stringify(scene);readFile().then(async t=>{while(drag)await new Promise(r=>setTimeout(r,100));   // never swap the scene under a drag
+if(FILE_SYNC){{let b0=null;try{if(localStorage.getItem(KEY)!==null)b0=localStorage.getItem(BASE0());else base0Forget()}catch(e){}startBase0=b0||JSON.stringify(scene)}closingRetry().then(()=>readFile()).then(async t=>{while(drag)await new Promise(r=>setTimeout(r,100));   // never swap the scene under a drag
   if(t&&WEB&&MAIN&&!new URLSearchParams(location.search).has('file')&&blankFig(t)){const fs=await listFiles(),n=fs&&startPick(fs);if(n){openFile(n,true);return}firstRead(t)}   // website: editors before 2026-10-30 stored a blank figure.json at the first visit, so the plain address kept opening it instead of the user's figures (File ▾ → figure.json opens it with ?file=)
-  else if(t)firstRead(t);
-  else if(serverOk){ // the root address with no figure.json: open the last-used figure (else the newest own one) instead of creating an empty one
-    if(MAIN){const fs=await listFiles(),n=fs&&startPick(fs);if(n){openFile(n,true);return}}fileReady=true;if(PHONE())setTimeout(phHello,1200);
-    if(WEB&&blankScene(scene)){newHold=baseState=lastSaved;holdNew();   // website: nothing is written until the first change (see newHold); the blank is the base a figure another tab saves meanwhile is merged against
-      if(!MAIN){const nm=BASE;toast(FROM_EX?`Could not load the example for “${nm}” (no internet connection?): this is an empty figure for now. Open the example link again once you are online.`:`No figure named “${nm}” in this browser, so this is a new, empty one (saved at your first change). Figures stay in the browser that made them: to share one, use File ▾ → Download a copy (.json) and send that file.`);clearTimeout(toast.tm);toast.tm=setTimeout(()=>$('#toast').classList.remove('show'),12000)}}
-    else{noteLast();pushFile()}}
+  else if(t!==null)firstRead(t);
+  else if(serverOk&&readFile.st===404){ // the root address with no figure.json: open the last-used figure (else the newest own one) instead of creating an empty one
+    if(MAIN){const fs=await listFiles(),n=fs&&startPick(fs);if(n){openFile(n,true);return}}await firstMissing()}
+  else if(serverOk)fileUnread();
   else setStatus('offline','Server offline');setTimeout(pollFile,1500);if(scene.sketching)setSketch(true)})}
 else{setStatus('local','Not connected');if(scene.sketching)setSketch(true)}
 </script>
