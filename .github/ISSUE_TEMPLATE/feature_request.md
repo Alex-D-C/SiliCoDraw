@@ -18,3 +18,6 @@ A clear and concise description of any alternative solutions or features you've 
 
 **Additional context**
 Add any other context or screenshots about the feature request here.
+
+**Is it related to new icons**
+Just write a list of the icons you'd want incorporated and I'll try to add them as soon as I have time
