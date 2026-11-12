@@ -33,7 +33,7 @@ try { $l.Start() } catch {
 Write-Host "SiliCoDraw is running at http://localhost:$port/  (close this window to stop it)"
 # one request at a time: a tab that stops reading must not hold up the others for hours (the default minimum is 150 bytes/s)
 try { $l.TimeoutManager.MinSendBytesPerSecond = 10000 } catch {}
-$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml; charset=utf-8'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.md'='text/markdown; charset=utf-8'; '.txt'='text/plain; charset=utf-8'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation'; '.pdf'='application/pdf'; '.tif'='image/tiff'; '.tiff'='image/tiff' }
+$types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml; charset=utf-8'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.md'='text/markdown; charset=utf-8'; '.txt'='text/plain; charset=utf-8'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation'; '.pdf'='application/pdf'; '.tif'='image/tiff'; '.tiff'='image/tiff'; '.ico'='image/x-icon'; '.icns'='image/icns' }
 # a figure's version is a hash of its content, sent as ETag with the figure (the same as serve.py). A save carries it back (If-Match, or ?base= from a
 # page that is closing) and is refused with 409 and the file as it is now when the file changed since (another window or a tool wrote it): the editor merges instead of overwriting
 $sha = [Security.Cryptography.SHA256]::Create()
@@ -157,10 +157,12 @@ while ($l.IsListening) {
         New-Item -ItemType Directory -Force $toDir | Out-Null; Move-Item -LiteralPath $srcP -Destination $dstP; $ctx.Response.StatusCode = 204
       } else { $ctx.Response.StatusCode = 409 }
     } elseif ($req.HttpMethod -eq 'POST' -and $path -eq 'api/delete') {
-      # permanent delete: only possible from trash\ (the figure's history goes with it)
+      # permanent delete: only possible from trash\ (the figure's history goes with it, unless an active or archived figure has that name: the history is kept by name, so it is theirs)
       $f = (Get-Q $req 'file'); $p = Join-Path (Join-Path $data 'trash') $f
       if ($f -match $nameRe -and (Test-Path -LiteralPath $p)) {
-        Remove-Item -LiteralPath $p; $h = Get-HistoryDir $f; if (Test-Path -LiteralPath $h) { Remove-Item -LiteralPath $h -Recurse }; $ctx.Response.StatusCode = 204
+        Remove-Item -LiteralPath $p
+        if (-not (Test-Path -LiteralPath (Join-Path $data $f)) -and -not (Test-Path -LiteralPath (Join-Path (Join-Path $data 'archive') $f))) { $h = Get-HistoryDir $f; if (Test-Path -LiteralPath $h) { Remove-Item -LiteralPath $h -Recurse } }
+        $ctx.Response.StatusCode = 204
       } else { $ctx.Response.StatusCode = 409 }
     } elseif ($path -eq 'api/history') {
       $f = (Get-Q $req 'file'); $dir = Get-HistoryDir $f
@@ -213,7 +215,8 @@ while ($l.IsListening) {
       $ctx.Response.Headers.Add('ETag', (Get-ETag $bytes))   # the new version, for the editor's next save
       $ctx.Response.StatusCode = 204
     } elseif ($req.HttpMethod -eq 'POST' -and $path -match '^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|pdf|tif|tiff|json)$') {
-      # exports (PNG/SVG/PDF/TIFF/PPTX), inserted images and the user's own icon library (assets/my-icons.json) are written as files into their folder
+      # exports (PNG/SVG/PDF/TIFF/PPTX), inserted images, the user's own icon library (assets/my-icons.json) and the list of imported icon packs
+      # (assets/icon-packs.json; the packs themselves, icon-expansions/, are program files and only read) are written as files into their folder
       New-Item -ItemType Directory -Force (Join-Path $data $Matches[1]) | Out-Null
       $ms = New-Object IO.MemoryStream
       $req.InputStream.CopyTo($ms)

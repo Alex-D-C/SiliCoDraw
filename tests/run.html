@@ -68,7 +68,7 @@
     let w = await open();
     const code = await lim(fetch(new URL('editor-tests.js', location.href), { cache: 'no-store' }).then(a => a.text()));
     w.eval(code);
-    r = await w.runEditorTests({ keep: true, only, onProgress: (n, i, N) => state(`running ${i + 1}/${N}: ${n}`) });
+    r = await w.runEditorTests({ keep: true, only, base: new URL('.', location.href).href, onProgress: (n, i, N) => state(`running ${i + 1}/${N}: ${n}`) });
     // reload: the figure read back from its file must be the one that was saved
     if (!only.length || only.some(p => 'save → reload'.startsWith(p))) {
       const want = w.__roundTrip, t1 = performance.now(); let tr;

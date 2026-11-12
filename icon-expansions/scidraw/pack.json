@@ -1,0 +1,79 @@
+{
+    "bytes":  5498067,
+    "chunks":  [
+                   {
+                       "bytes":  312979,
+                       "cat":  "bird",
+                       "count":  22,
+                       "file":  "icons-bird.json"
+                   },
+                   {
+                       "bytes":  691187,
+                       "cat":  "cell",
+                       "count":  61,
+                       "file":  "icons-cell.json"
+                   },
+                   {
+                       "bytes":  341468,
+                       "cat":  "drosophila",
+                       "count":  23,
+                       "file":  "icons-drosophila.json"
+                   },
+                   {
+                       "bytes":  467345,
+                       "cat":  "fish",
+                       "count":  29,
+                       "file":  "icons-fish.json"
+                   },
+                   {
+                       "bytes":  161868,
+                       "cat":  "human",
+                       "count":  16,
+                       "file":  "icons-human.json"
+                   },
+                   {
+                       "bytes":  1575666,
+                       "cat":  "mouse",
+                       "count":  78,
+                       "file":  "icons-mouse.json"
+                   },
+                   {
+                       "bytes":  1352540,
+                       "cat":  "other",
+                       "count":  109,
+                       "file":  "icons-other.json"
+                   },
+                   {
+                       "bytes":  595014,
+                       "cat":  "rat",
+                       "count":  29,
+                       "file":  "icons-rat.json"
+                   }
+               ],
+    "count":  367,
+    "names":  "names.json",
+    "preview":  "preview.json",
+    "id":  "scidraw",
+    "name":  "SciDraw",
+    "by":  "SciDraw, a community repository of scientific drawings; every drawing names its authors",
+    "url":  "https://scidraw.io",
+    "site":  "scidraw.io",
+    "mark":  "SD",
+    "license":  "CC BY 4.0 / CC0",
+    "licenseUrl":  "https://creativecommons.org/licenses/by/4.0/",
+    "attribution":  "mixed",
+    "shareAlike":  false,
+    "perIcon":  true,
+    "credit":  "SciDraw (scidraw.io), CC BY 4.0, adapted",
+    "plain":  "Each drawing is under the license its author chose: Creative Commons Attribution 4.0 (CC BY 4.0: you may use, change and share it, also commercially, as long as you credit the author) or CC0 (public domain: no credit needed). An icon\u0027s tooltip names its license.",
+    "ask":  "Please acknowledge the contribution of the image\u0027s authors and of SciDraw in the acknowledgements section of your work. You can use the DOI displayed below each drawing to cite the illustration properly.",
+    "askFrom":  "https://scidraw.io/terms",
+    "how":  "Credit every CC BY drawing you use with its authors and DOI, name SciDraw and the license, and say that it was adapted, for example: Mouse by A. Name (doi:10.5281/zenodo.0000000), scidraw.io, CC BY 4.0, adapted. SiliCoDraw writes this line on the page for you and keeps it up to date. With more than three such drawings the line names only SciDraw: then paste Copy full icon credits into the figure legend or the acknowledgments. Drawings under CC0 need no credit.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format: fitted into a 100 × 100 box, style sheets written out as attributes, text and editor data removed, coordinates rounded, and the two main colors made recolorable.",
+    "each":  "{by}. \"{n}\". SciDraw. https://doi.org/{doi}",
+    "exclude":  [
+                    "albert-einstein-d0368319"
+                ],
+    "retrieved":  "2026-11-11",
+    "version":  "2026-11-11"
+}

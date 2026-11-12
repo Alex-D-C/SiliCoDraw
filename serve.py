@@ -26,13 +26,14 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 ROOT = os.path.realpath(os.path.dirname(os.path.abspath(__file__)))   # realpath: a folder reached through a symlink still works
 NAME_RE = re.compile(r'^[\w\-][\w.\-]*\.json$')   # (no name starting with a dot: ...json had no name of its own for its history folder)
-FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|pdf|tif|tiff|json)$', re.I)   # exports, inserted images, the user's icon library
+FILE_RE = re.compile(r'^(exports|assets)/[\w.\-]+\.(png|svg|jpg|jpeg|gif|webp|pptx|pdf|tif|tiff|json)$', re.I)   # exports, inserted images, the user's icon library, the list of imported icon packs (assets/icon-packs.json; the packs, icon-expansions/, are program files)
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 'text/css',
          '.json': 'application/json; charset=utf-8', '.svg': 'image/svg+xml; charset=utf-8', '.png': 'image/png',
          '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.gif': 'image/gif', '.webp': 'image/webp',
          '.md': 'text/markdown; charset=utf-8', '.txt': 'text/plain; charset=utf-8',
          '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-         '.pdf': 'application/pdf', '.tif': 'image/tiff', '.tiff': 'image/tiff'}
+         '.pdf': 'application/pdf', '.tif': 'image/tiff', '.tiff': 'image/tiff',
+         '.ico': 'image/x-icon', '.icns': 'image/icns'}   # the app icons in brand/
 SNAPSHOT_EVERY = 300   # seconds
 ANY_HOST = False       # True when started with --host other than 127.0.0.1 (reachable from the network on purpose)
 KEEP_SNAPSHOTS = 60
@@ -337,12 +338,13 @@ class Handler(BaseHTTPRequestHandler):
                 os.rename(src, dst)
                 return self._send(204)
             return self._send(409, b'cannot move')
-        if path == 'api/delete':   # permanent, only from trash/ (history goes too)
+        if path == 'api/delete':   # permanent, only from trash/ (history goes too, unless an active or archived figure has that name: history is kept by name, so it is theirs)
             name = q.get('file', [''])[0]
             p = os.path.join(DATA, 'trash', name)
             if NAME_RE.match(name) and os.path.isfile(p):
                 os.remove(p)
-                shutil.rmtree(history_dir(name), ignore_errors=True)
+                if not os.path.isfile(os.path.join(DATA, name)) and not os.path.isfile(os.path.join(DATA, 'archive', name)):
+                    shutil.rmtree(history_dir(name), ignore_errors=True)
                 return self._send(204)
             return self._send(409, b'cannot delete')
         if path == 'api/rename':

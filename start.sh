@@ -41,13 +41,21 @@ no_python() {
        "for example:  sudo apt install python3   (or https://www.python.org/downloads/), then run this again."
 }
 
-# Mac shortcut: ~/Applications/SiliCoDraw.app opens "Start SiliCoDraw.command" in this folder. It is rebuilt only when it
-# is missing or points to another folder, and is made here (not downloaded), so Gatekeeper does not block it.
+# Mac shortcut: ~/Applications/SiliCoDraw.app opens "Start SiliCoDraw.command" in this folder, with the app icon of brand/. It is
+# rebuilt only when it is missing, points to another folder or lacks that icon, and is made here (not downloaded), so Gatekeeper
+# does not block it.
 make_app() {
   [ "$KEEPAPP" = 1 ] && return 0                                     # a stray copy in Downloads: keep the app on the installed one
   command -v osacompile >/dev/null 2>&1 || return 0
   apps="$HOME/Applications"; app="$apps/SiliCoDraw.app"; mark="$app/Contents/Resources/silicodraw-folder.txt"
-  [ -f "$mark" ] && [ "$(cat "$mark")" = "$DIR" ] && return 0
+  icns="$DIR/brand/SiliCoDraw.icns"
+  # an app made before the icon existed is made again once, to get it, quietly (no first-start tip); an icon that could not
+  # be copied is not tried again on every start (silicodraw-noicon)
+  icononly=0
+  if [ -f "$mark" ] && [ "$(cat "$mark")" = "$DIR" ]; then
+    { [ ! -f "$icns" ] || [ -f "$app/Contents/Resources/SiliCoDraw.icns" ] || [ -f "$app/Contents/Resources/silicodraw-noicon" ]; } && return 0
+    icononly=1
+  fi
   cmd=$(printf '%s' "$DIR/Start SiliCoDraw.command" | sed 's/\\/\\\\/g; s/"/\\"/g')   # as an AppleScript string
   tmp=$(mktemp -d "${TMPDIR:-/tmp}/silicodraw.XXXXXX") || return 0
   if osacompile -o "$tmp/SiliCoDraw.app" \
@@ -60,9 +68,20 @@ make_app() {
       -e 'end try' \
       -e 'do shell script "open " & quoted form of f' >/dev/null 2>&1; then
     printf '%s' "$DIR" > "$tmp/SiliCoDraw.app/Contents/Resources/silicodraw-folder.txt"
+    if [ -f "$icns" ]; then                                          # the app icon (brand/): replaces the script icon osacompile gives
+      res="$tmp/SiliCoDraw.app/Contents/Resources"; plist="$tmp/SiliCoDraw.app/Contents/Info.plist"
+      if cp "$icns" "$res/SiliCoDraw.icns" 2>/dev/null; then
+        rm -f "$res/Assets.car"                                      # newer macOS takes the icon from here first (CFBundleIconName)
+        /usr/libexec/PlistBuddy -c 'Delete :CFBundleIconName' "$plist" >/dev/null 2>&1
+        /usr/libexec/PlistBuddy -c 'Set :CFBundleIconFile SiliCoDraw' "$plist" >/dev/null 2>&1 ||
+          /usr/libexec/PlistBuddy -c 'Add :CFBundleIconFile string SiliCoDraw' "$plist" >/dev/null 2>&1
+      else
+        : > "$res/silicodraw-noicon"                                 # written before codesign, so it is part of the signed app
+      fi
+    fi
     codesign --force --deep --sign - "$tmp/SiliCoDraw.app" >/dev/null 2>&1
     xattr -cr "$tmp/SiliCoDraw.app" 2>/dev/null
-    if mkdir -p "$apps" && rm -rf "$app" && mv "$tmp/SiliCoDraw.app" "$app"; then NEWAPP=1; fi
+    if mkdir -p "$apps" && rm -rf "$app" && mv "$tmp/SiliCoDraw.app" "$app"; then [ "$icononly" = 1 ] || NEWAPP=1; touch "$app"; fi   # touch: Finder and the Dock show the new icon
   fi
   rm -rf "$tmp"
 }

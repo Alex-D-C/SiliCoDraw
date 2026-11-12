@@ -21,3 +21,9 @@ Thumbs.db
 # shareable figures in examples/
 *.json
 !examples/*.json
+# software that happens to be JSON: the icon packs, the tests' own pack, the pack descriptions of the import tool
+!icon-expansions/**/*.json
+!tests/icon-pack-test/*.json
+!release/tests/icon-pack-test/*.json
+!dev/icon-import/packs/*.json
+!notices/*.json

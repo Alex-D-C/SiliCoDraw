@@ -1,0 +1,100 @@
+{
+    "bytes":  1985855,
+    "chunks":  [
+                   {
+                       "bytes":  342475,
+                       "cat":  "Cell culture",
+                       "count":  19,
+                       "file":  "icons-cell-culture.json"
+                   },
+                   {
+                       "bytes":  94479,
+                       "cat":  "Cells",
+                       "count":  14,
+                       "file":  "icons-cells.json"
+                   },
+                   {
+                       "bytes":  215766,
+                       "cat":  "DNA",
+                       "count":  14,
+                       "file":  "icons-dna.json"
+                   },
+                   {
+                       "bytes":  71056,
+                       "cat":  "Embryology",
+                       "count":  11,
+                       "file":  "icons-embryology.json"
+                   },
+                   {
+                       "bytes":  11162,
+                       "cat":  "Enzyme",
+                       "count":  4,
+                       "file":  "icons-enzyme.json"
+                   },
+                   {
+                       "bytes":  208822,
+                       "cat":  "Eye",
+                       "count":  13,
+                       "file":  "icons-eye.json"
+                   },
+                   {
+                       "bytes":  144098,
+                       "cat":  "Immunology",
+                       "count":  22,
+                       "file":  "icons-immunology.json"
+                   },
+                   {
+                       "bytes":  115182,
+                       "cat":  "Membrane protein",
+                       "count":  10,
+                       "file":  "icons-membrane-protein.json"
+                   },
+                   {
+                       "bytes":  514627,
+                       "cat":  "Nervous system",
+                       "count":  29,
+                       "file":  "icons-nervous-system.json"
+                   },
+                   {
+                       "bytes":  29057,
+                       "cat":  "Other",
+                       "count":  5,
+                       "file":  "icons-other.json"
+                   },
+                   {
+                       "bytes":  193027,
+                       "cat":  "Protein Structure",
+                       "count":  12,
+                       "file":  "icons-protein-structure.json"
+                   },
+                   {
+                       "bytes":  46104,
+                       "cat":  "Transporter",
+                       "count":  9,
+                       "file":  "icons-transporter.json"
+                   }
+               ],
+    "count":  162,
+    "names":  "names.json",
+    "preview":  "preview.json",
+    "id":  "biodraws",
+    "name":  "BioDraws",
+    "by":  "BioDraws",
+    "url":  "https://biodraws.com",
+    "site":  "biodraws.com",
+    "mark":  "BD",
+    "license":  "CC BY-SA 4.0",
+    "licenseUrl":  "https://creativecommons.org/licenses/by-sa/4.0/",
+    "attribution":  "required",
+    "shareAlike":  true,
+    "perIcon":  false,
+    "credit":  "Images are obtained from BioDraws.com (CC BY-SA 4.0), adapted",
+    "plain":  "Creative Commons Attribution-ShareAlike 4.0 (CC BY-SA 4.0): you may use, change and share the illustrations, also commercially, as long as you give credit, link to the license, say that changes were made, and share what you make from them under the same license.",
+    "ask":  "If you have used illustrations from our website for your thesis, presentations, publications, or posters, please cite us by mentioning “Images are obtained from BioDraws.com.” in the figure legend.",
+    "askFrom":  "https://biodraws.com/faq/",
+    "shareAlikeText":  "BioDraws\u0027 terms say: “If you remix, transform, or build upon the material, you must distribute your contributions under the same license as the original.” Changed icons must therefore stay under CC BY-SA 4.0, and this can extend to a figure you build with them. Many journals publish under other licenses: check your journal\u0027s terms before you use these icons in a paper.",
+    "how":  "Put the credit in the figure legend or on the figure: Images are obtained from BioDraws.com (CC BY-SA 4.0), adapted. SiliCoDraw writes this line on the page for you.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format: fitted into a 100 × 100 box, styles written out as attributes, text and editor data removed, coordinates rounded, and the two main colors made recolorable. The converted icons remain under CC BY-SA 4.0.",
+    "retrieved":  "2026-11-11",
+    "version":  "2026-11-11"
+}

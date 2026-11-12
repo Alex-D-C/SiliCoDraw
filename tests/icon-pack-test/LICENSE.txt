@@ -1,0 +1,2 @@
+Test pack for the SiliCoDraw test suite: three icons made up for the tests (not from any repository).
+They are part of SiliCoDraw and under its MIT license; the license names in pack.json and icons-test.json are test data.

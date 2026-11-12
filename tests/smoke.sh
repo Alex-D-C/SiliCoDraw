@@ -62,6 +62,23 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://evil.e
 [ "$code" = 403 ] && ok "refuses writes from other websites" || bad "accepted a cross-site write (HTTP $code)"
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data x "http://localhost:$PORT/figure-editor.html")
 [ "$code" != 204 ] && ok "cannot overwrite the editor ($code)" || bad "editor file was writable"
+# icon packs (icon-expansions/): the index and, for every pack, its names, license and attribution are served
+PACKIDS=$(curl -fs "http://localhost:$PORT/icon-expansions/index.json" | "$PY" -c 'import json, sys; print(" ".join(p["id"] for p in json.load(sys.stdin)["packs"]))' 2>/dev/null)
+if [ -n "$PACKIDS" ]; then
+  LOST=""; for id in $PACKIDS; do for f in pack.json names.json preview.json LICENSE.txt ATTRIBUTION.md; do curl -fs -o /dev/null "http://localhost:$PORT/icon-expansions/$id/$f" || LOST="$LOST $id/$f"; done; done
+  [ -z "$LOST" ] && ok "icon packs served: $PACKIDS, each with its license and attribution" || bad "icon pack file missing:$LOST"
+else bad "icon-expansions/index.json not served"; fi
+# the app icon (brand/): served with the content type each kind needs
+WRONG=""; for p in icon.svg:image/svg+xml icon-small.svg:image/svg+xml lockup.svg:image/svg+xml icon-180.png:image/png social-preview.png:image/png icon.ico:image/x-icon SiliCoDraw.icns:image/icns; do
+  f=${p%%:*}; t=${p#*:}; ct=$(curl -fs -o /dev/null -w '%{content_type}' "http://localhost:$PORT/brand/$f") || ct=""
+  case "$ct" in "$t"*) ;; *) WRONG="$WRONG $f";; esac
+done
+[ -z "$WRONG" ] && ok "app icon served: the files of brand/ with their content types" || bad "brand/ files missing or with a wrong content type:$WRONG"
+# in a git checkout: the software JSON files are not ignored (*.json in .gitignore is for the user's figures), so they reach GitHub, the updater and CI
+if [ -d "$ROOT/.git" ] && command -v git >/dev/null 2>&1; then IGN=$(git -C "$ROOT" check-ignore notices/notices.json examples/pathway.json icon-expansions/index.json 2>/dev/null || true); if [ -n "$IGN" ]; then bad "ignored by .gitignore, so never committed: $IGN"; else ok "software JSON files are not ignored by git"; fi; fi
+# the notice board on Home (notices/): its list as JSON with tips and news, its pictures as SVG
+NB=$(curl -fs "http://localhost:$PORT/notices/notices.json" || true); NCT=$(curl -fs -o /dev/null -w '%{content_type}' "http://localhost:$PORT/notices/home.svg" || true)
+case "$NB" in *'"tips"'*'"news"'*) case "$NCT" in image/svg+xml*) ok "notice board served: notices/notices.json and its pictures";; *) bad "notices/home.svg missing or not image/svg+xml ($NCT)";; esac;; *) bad "notices/notices.json not served";; esac
 # a second start on the same port must not crash: it reports the running editor and exits 0
 if "$PY" "$ROOT/serve.py" --no-browser --port $PORT >"$TMP/second.log" 2>&1; then ok "second start reports the running editor"; else bad "second start failed: $(cat "$TMP/second.log")"; fi
 kill "$SRV" 2>/dev/null; SRV=''

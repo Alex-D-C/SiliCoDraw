@@ -1,0 +1,56 @@
+NIH BioArt Source icon pack for SiliCoDraw: terms
+
+Source:     NIH BioArt Source, https://bioart.niaid.nih.gov (National Institute of Allergy and Infectious Diseases,
+            U.S. National Institutes of Health)
+Terms:      every entry in this pack is one the site labels "Licensing: Public Domain". The site gives no legal
+            license text for that label; its Terms and Conditions (below) are what it states about the use of its
+            content. The entries the site labels "CC-BY" are not in this pack.
+Retrieved:  2026-11-11 (the texts below as the site showed them on that day, from https://bioart.niaid.nih.gov/terms
+            and https://bioart.niaid.nih.gov/faqs)
+
+The icons in this folder were converted by SiliCoDraw (see ATTRIBUTION.md for what was changed). SiliCoDraw is not
+affiliated with or endorsed by NIH or NIAID. The icons are NOT under SiliCoDraw's own MIT license: they stay under the
+terms below.
+
+------------------------------------------------------------------------
+NIH BioArt Source: "Terms and Conditions" (https://bioart.niaid.nih.gov/terms), as retrieved
+------------------------------------------------------------------------
+
+Terms and Conditions
+1. Acceptance of Terms
+By accessing and using the NIH BioArt Source, you agree to comply with and be bound by the following terms and conditions. If you do not agree with any part of these terms, you are prohibited from using this site.
+2. Use of Content
+The illustrations and content provided on the NIH BioArt Source are free for any use, including educational, research, informational, and commercial purposes. Please review the license associated with the specific entry for any attribution requirements.
+3. Attribution
+Publication:
+<BioArt Collection Name>. (<submission date>). <Entry Title>. NIAID NIH BioArt Source. bioart.niaid.nih.gov/bioart/###
+Example:
+"NIAID Visual & Medical Arts. 08/28/2024. Filovirus. NIAID BioArt Source. bioart.niaid.nih.gov/bioart/2182"
+Credit directly below image on web, presentation, or print:
+"Illustration from NIAID NIH BioArt Source (bioart.niaid.nih.gov/bioart/###)"
+4. Prohibited Activities
+Users are prohibited from using the content in any manner that violates applicable laws or regulations. While the content is free for any use, NIH BioArt Source expects users to respect the integrity and intended use of the illustrations.
+5. Content Accuracy
+While efforts are made to ensure the accuracy and quality of the content, NIH BioArt Source does not warrant that the illustrations are error-free or complete. Given the dynamic nature of scientific discovery, information may evolve, and users are encouraged to verify the content and use it in conjunction with other reliable sources.
+6. Intellectual Property Rights
+NIH BioArt Source holds the integrity and intent of the resource in high regard. Users are encouraged to maintain the quality and accuracy of the content when using it in any capacity. Please review the license associated with the entry for specific attribution requirements.
+7. Limitation of Liability
+NIH BioArt Source and its affiliates are not liable for any direct, indirect, incidental, or consequential damages resulting from the use or inability to use the content provided. This includes but is not limited to errors, omissions, or inaccuracies in the content.
+8. Changes to Terms and Conditions
+NIH BioArt Source reserves the right to modify these terms and conditions at any time without prior notice. Users are responsible for regularly reviewing these terms to ensure compliance.
+9. Contact Information
+For inquiries, further information, or to provide feedback, please contact us through our Contact Form
+
+------------------------------------------------------------------------
+NIH BioArt Source: from the FAQs (https://bioart.niaid.nih.gov/faqs), as retrieved
+------------------------------------------------------------------------
+
+What are the usage restrictions for NIH BioArt Source images?
+The illustrations and content provided on the NIH BioArt Source are free for any use, including educational, research, informational, and commercial purposes. If the entry is licensed as "Public Domain" citation is appreciated but not required (See "How to Cite Entries in NIH BioArt Source"). For licenses that require attribution (eg. CC-BY) we recommend using the entry DOI (should it be available) as well as the NIH BioArt Source citation style.
+How to cite entries in NIH BioArt Source?
+Publication:
+<BioArt Collection Name>. (<submission date>). <Entry Title>. NIAID NIH BioArt Source. bioart.niaid.nih.gov/bioart/###
+Example:
+"NIAID Visual & Medical Arts. 08/28/2024. Filovirus. NIAID BioArt Source. bioart.niaid.nih.gov/bioart/2182"
+Credit directly below image on web, presentation, or print:
+"Illustration from NIAID NIH BioArt Source (bioart.niaid.nih.gov/bioart/###)"

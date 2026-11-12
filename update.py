@@ -13,6 +13,7 @@ What it does, in this order, and only after you confirm:
      updates/backup-<date>/ and swaps the new files in; if anything goes wrong (or you press Ctrl+C) the
      files already swapped are put back, so the folder is never left half-updated.
 What it never touches: your figures, history/, exports/, assets/, archive/, trash/, updates/, .git/.
+(The icon packs in icon-expansions/ are software and are replaced like the rest; which packs you imported is in assets/icon-packs.json and stays.)
 Needs only Python 3 and an internet connection. Windows without Python: "Update SiliCoDraw.bat" runs
 update.ps1 instead, which does the same.
 """
@@ -103,8 +104,8 @@ def fetch(url, timeout=120):
     curl = shutil.which('curl') or shutil.which('curl.exe')
     if curl:
         try:
-            p = subprocess.run([curl, '-fsSL', '--retry', '2', '--max-time', str(timeout), '-A', 'SiliCoDraw-updater', url],
-                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=timeout + 30)
+            p = subprocess.run([curl, '-fsSL', '--retry', '2', '--connect-timeout', '30', '--speed-limit', '1024', '--speed-time', '60', '-A', 'SiliCoDraw-updater', url],
+                               stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=3600)   # no fixed total time: a slow line still gets the whole archive; a stalled one stops (under 1 KB/s for 60 s)
             if p.returncode == 0 and p.stdout:
                 return p.stdout
             first = '%s; curl: %s' % (first, p.stderr.decode('utf-8', 'replace').strip() or 'exit %d' % p.returncode)

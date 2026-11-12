@@ -38,6 +38,22 @@ try {
   if ($list -match "$nm.json") { Ok 'file list' } else { Bad 'file list' }
   $c = Code POST "http://localhost:$Port/$nm-evil.json" $fig @{ Origin = 'https://evil.example' }; if ($c -eq 403) { Ok 'refuses writes from other websites' } else { Bad "accepted a cross-site write (HTTP $c)" }
   $c = Code POST "http://localhost:$Port/figure-editor.html" 'x'; if ($c -ne 204) { Ok "cannot overwrite the editor ($c)" } else { Bad 'editor file was writable' }
+  # icon packs (icon-expansions\): the index and, for every pack, its names, license and attribution are served
+  $ix = try { (Invoke-WebRequest "http://localhost:$Port/icon-expansions/index.json" -UseBasicParsing -TimeoutSec 10).Content | ConvertFrom-Json } catch { $null }
+  if ($ix -and @($ix.packs).Count -ge 1) {
+    $lost = @($ix.packs | Where-Object { $id = $_.id; @('pack.json', 'names.json', 'preview.json', 'LICENSE.txt', 'ATTRIBUTION.md') | Where-Object { (Code GET "http://localhost:$Port/icon-expansions/$id/$_") -ne 200 } } | ForEach-Object { $_.id })
+    if ($lost.Count -eq 0) { Ok "icon packs served: $(@($ix.packs).Count), each with its license and attribution" } else { Bad "icon pack with a file missing: $($lost -join ', ')" }
+  } else { Bad 'icon-expansions/index.json not served' }
+  # the app icon (brand\): served with the content type each kind needs
+  $want = [ordered]@{ 'icon.svg' = 'image/svg+xml'; 'icon-small.svg' = 'image/svg+xml'; 'lockup.svg' = 'image/svg+xml'; 'icon-180.png' = 'image/png'; 'social-preview.png' = 'image/png'; 'icon.ico' = 'image/x-icon'; 'SiliCoDraw.icns' = 'image/icns' }
+  $wrong = @($want.Keys | Where-Object { $ct = try { (Invoke-WebRequest "http://localhost:$Port/brand/$_" -UseBasicParsing -TimeoutSec 10).Headers['Content-Type'] } catch { '' }; -not "$ct".StartsWith($want[$_]) })
+  if ($wrong.Count -eq 0) { Ok "app icon served: $($want.Count) files of brand/ with their content types" } else { Bad "brand/ files missing or with a wrong content type: $($wrong -join ', ')" }
+  # in a git checkout: the software JSON files are not ignored (*.json in .gitignore is for the user's figures), so they reach GitHub, the updater and CI
+  if ((Test-Path (Join-Path $root '.git')) -and (Get-Command git -ErrorAction SilentlyContinue)) { $ign = @(git -C $root check-ignore notices/notices.json examples/pathway.json icon-expansions/index.json 2>$null); if ($ign.Count) { Bad "ignored by .gitignore, so never committed: $($ign -join ', ')" } else { Ok 'software JSON files are not ignored by git' } }
+  # the notice board on Home (notices\): its list as JSON with tips and news, its pictures as SVG
+  $nb = try { [Text.Encoding]::UTF8.GetString((Invoke-WebRequest "http://localhost:$Port/notices/notices.json" -UseBasicParsing -TimeoutSec 10).RawContentStream.ToArray()) | ConvertFrom-Json } catch { $null }
+  $nct = try { (Invoke-WebRequest "http://localhost:$Port/notices/home.svg" -UseBasicParsing -TimeoutSec 10).Headers['Content-Type'] } catch { '' }
+  if ($nb -and @($nb.tips).Count -gt 0 -and @($nb.news).Count -gt 0 -and "$nct".StartsWith('image/svg+xml')) { Ok "notice board served: notices/notices.json ($(@($nb.tips).Count) tips, $(@($nb.news).Count) news) and its pictures" } else { Bad 'notices/notices.json or its pictures not served' }
 } finally {
   if ($srv -and -not $srv.HasExited) { Stop-Process -Id $srv.Id -Force -ErrorAction SilentlyContinue }
   Remove-Item "$root\$nm.json", "$root\$nm-evil.json" -Force -ErrorAction SilentlyContinue
@@ -68,6 +84,8 @@ try {
   if ((Test-Path -LiteralPath (Join-Path $cloud 'after.json')) -and -not (Test-Path -LiteralPath (Join-Path $app 'after.json'))) { Ok 'figures folder: saves go there' } else { Bad 'figures folder: saved in the wrong place' }
   $n = Get-Content -Raw -LiteralPath (Join-Path $cloud 'before.json'); Code POST "http://localhost:$P2/assets/a.json" '{}' | Out-Null; if (Test-Path -LiteralPath (Join-Path $cloud 'assets\a.json')) { Ok 'figures folder: its assets go there too' } else { Bad 'figures folder: assets in the wrong place' }
   $page = Code GET "http://localhost:$P2/serve.ps1"; if ($page -eq 200) { Ok 'figures folder: program files stay served from the program folder' } else { Bad "figures folder: program file (HTTP $page)" }
+  New-Item -ItemType Directory -Force (Join-Path $app 'icon-expansions') | Out-Null; '{"packs":[]}' | Set-Content -LiteralPath (Join-Path $app 'icon-expansions\index.json'); Code POST "http://localhost:$P2/assets/icon-packs.json" '{}' | Out-Null
+  $page = Code GET "http://localhost:$P2/icon-expansions/index.json"; if ($page -eq 200 -and (Test-Path -LiteralPath (Join-Path $cloud 'assets\icon-packs.json')) -and -not (Test-Path -LiteralPath (Join-Path $app 'assets\icon-packs.json'))) { Ok 'figures folder: icon packs come from the program folder, what was imported is kept with the figures' } else { Bad "figures folder: icon packs (HTTP $page)" }
   Stop-Copy; if (Start-Copy) { $l = (Invoke-WebRequest "http://localhost:$P2/api/files" -UseBasicParsing).Content; if ($l -match 'after\.json') { Ok 'figures folder: remembered after a restart' } else { Bad 'figures folder: forgotten after a restart' } }
   $c = Code POST "http://localhost:$P2/api/storage?dir=$([Uri]::EscapeDataString($cloud))" '' @{ Origin = 'http://localhost:1234' }; if ($c -eq 403) { Ok 'figures folder: another page on this computer cannot change it' } else { Bad "figures folder: changed from another local page (HTTP $c)" }
   $c = Code GET "http://localhost:$P2/not-there.json"; if ($c -eq 404) { Ok 'figures folder: a figure not there: 404' } else { Bad "figures folder: not there (HTTP $c)" }

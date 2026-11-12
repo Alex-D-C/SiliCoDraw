@@ -1,0 +1,5 @@
+{
+"zz-test:alpha":{"n":"Alpha disc","t":"alpha disc zzalpha test","c":["#3a7bd5","#f5a623"],"f":0,"by":"Test Author A","src":"https://example.org/zz-test/alpha","doi":"10.0000/zz.alpha","lic":"CC BY 4.0","cat":"Test"},
+"zz-test:beta":{"n":"Beta peak","t":"beta peak zzbeta test","c":["#2e9e6b","#1d4e89"],"f":0,"by":"Test Author B","src":"https://example.org/zz-test/beta","doi":"10.0000/zz.beta","lic":"CC BY 4.0","cat":"Test"},
+"zz-test:gamma":{"n":"Gamma card 2","t":"gamma card zzgamma test","c":["#8e44ad","#f1c40f"],"f":0,"by":"Test Author C","src":"https://example.org/zz-test/gamma","lic":"CC0 1.0","cat":"Test","title":"Gamma card"}
+}

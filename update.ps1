@@ -12,6 +12,7 @@
 #      updates\backup-<date>\ and swaps the new files in; if anything goes wrong (or you press Ctrl+C) the
 #      files already swapped are put back, so the folder is never left half-updated.
 # What it never touches: your figures, history\, exports\, assets\, archive\, trash\, updates\, .git\.
+# (The icon packs in icon-expansions\ are software and are replaced like the rest; which packs you imported is in assets\icon-packs.json and stays.)
 # The newest 5 software backups are kept; figure backups are never removed.
 param(
   [switch]$Check,
@@ -86,7 +87,7 @@ function Get-Download([string]$url, [string]$out) {
   catch { $first = $_.Exception.Message }
   $curl = Get-Command curl.exe -ErrorAction SilentlyContinue   # ships with Windows 10 1803 and later
   if ($curl) {
-    try { & $curl.Source -fsSL --retry 2 --max-time 180 -A 'SiliCoDraw-updater' -o $out $url 2>$null } catch {}   # stderr must not end the script: the friendly message follows
+    try { & $curl.Source -fsSL --retry 2 --connect-timeout 30 --speed-limit 1024 --speed-time 60 -A 'SiliCoDraw-updater' -o $out $url 2>$null } catch {}   # stderr must not end the script: the friendly message follows
     if ($LASTEXITCODE -eq 0 -and (Test-Path -LiteralPath $out)) { return }
     $first = "$first; curl exit $LASTEXITCODE"
   }

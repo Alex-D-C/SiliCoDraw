@@ -1,4 +1,4 @@
-# SiliCoDraw
+<h1><picture><source media="(prefers-color-scheme: dark)" srcset="brand/lockup-dark.svg"><img src="brand/lockup.svg" alt="SiliCoDraw" height="64"></picture></h1>
 
 **Draw scientific figures in silico, together with your AI assistant.**
 
@@ -28,9 +28,12 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 <td><img src="docs/example-data.png" alt="Bar, box, line, scatter and pie charts drawn from typed values"><br><sub><b>Charts from typed values</b>: bars with error bars, box plots from raw numbers, lines, scatter, pie; plus a periodic-table tile and a scale bar.</sub></td>
 <td><img src="docs/example-workflow.png" alt="A three-step workflow figure with numbered panels and arrows"><br><sub><b>Workflow figures</b>: numbered panels, library icons and arrows, made from the built-in parts in a few minutes (`examples/workflow.json`).</sub></td>
 </tr>
+<tr>
+<td colspan="2" align="center"><img src="docs/example-environmental-microbiology.png" width="50%" alt="A four-panel graphical abstract on methane in a peat bog: sampling, community, process, finding"><br><sub><b>Graphical abstracts for environmental microbiology</b>: habitats, microbes, element cycles and field methods from the icon library, with a chart from typed values (`examples/environmental-microbiology.json`).</sub></td>
+</tr>
 </table>
 
-![72 of the ~1500 icons](docs/example-icons.png)
+![72 of the ~1600 icons](docs/example-icons.png)
 
 All of these are in `examples/` and open from **File ▾ → New figure → Example: …**, so you can take
 them apart.
@@ -102,6 +105,9 @@ that block for this folder. If you already double-clicked and saw such a message
 Python is not needed on Windows: the start file uses Python if it is installed and Windows' own
 PowerShell otherwise.
 
+A desktop shortcut with the SiliCoDraw icon: right-click **Start SiliCoDraw.bat** → **Send to** → **Desktop (create shortcut)**,
+then right-click the shortcut → **Properties** → **Change Icon…** → **Browse…** and pick `brand\icon.ico` in the SiliCoDraw folder.
+
 ### Linux
 
 The Mac line works on Linux too, or download the folder and run `sh start.sh`. It needs Python 3.7 or
@@ -109,7 +115,10 @@ newer (`sudo apt install python3` on Ubuntu).
 
 ### Good to know
 
-The editor lives at <http://localhost:8770/> while SiliCoDraw runs; bookmark it if you like. It works
+The editor lives at <http://localhost:8770/> while SiliCoDraw runs; bookmark it if you like. That address
+opens where you left off: the figure you were working on, or **Home**, the page of all your figures, if that
+was showing (see [Managing figures](#managing-figures-active-archived-trash));
+`http://localhost:8770/?file=<name>.json` opens one figure directly. It works
 in any current browser (Chrome, Edge, Firefox, Safari). On a Mac the shortcuts use ⌘ where this
 README says Ctrl and ⌥ Option where it says Alt (Redo is ⌘⇧Z or ⌘Y). Tablets work too: one finger moves, two fingers zoom and pan, tap a text twice
 to edit it, press and hold for the menu.
@@ -205,7 +214,7 @@ format, every element type and the review loop.
 
 ## Features
 
-**A library that covers most fields.** About 1500 flat, recolorable icons in 24 groups: cells &
+**A library that covers most fields.** About 1600 flat, recolorable icons in 25 groups: cells &
 tissues (organelles, cell types, bacteria, viruses, cell processes such as phagocytosis, endocytosis,
 differentiation, migration, angiogenesis and metastasis, the cell cycle and spindle), molecules &
 genetics (receptors, kinases, DNA replication, repair and transcription factors, CRISPR, RNAi,
@@ -222,9 +231,11 @@ UMAP, ROC, forest and epidemic curves), AI & computing (transformer attention, G
 matrix…), mathematics, physics (particles, projectile, double slit, fission…), engineering &
 materials (graphene, nanotube, lattice, gears, robot arm…), energy & electronics, transport &
 aerospace, earth & climate (carbon and water cycles, hurricane, global warming…), ecology &
-agriculture, society & economics (scientist, doctor, family, poster, peer review, open access…),
+agriculture, environmental microbiology (microbes and their communities, habitats from soil profile to
+hot spring, the nitrogen, sulfur, phosphorus and iron cycles, wastewater treatment, corers, filters,
+microcosms, 16S amplicons and metagenomes), society & economics (scientist, doctor, family, poster, peer review, open access…),
 food, sport & nutrition, history & humanities, symbols. Every icon has a main and an accent color you
-can change. Search all ~1600 items by name or keyword (British or American spelling, plurals, common
+can change. Search all ~1700 items by name or keyword (British or American spelling, plurals, common
 synonyms and abbreviations such as *cardiac* or *ab*, and small typos all find it), jump to a group with the
 chips, collapse groups, star favorites, and the things you used recently stay at the top. Missing something? Ask your assistant to draw it;
 an icon is ten lines of SVG and `AGENTS.md` explains the format.
@@ -278,7 +289,21 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   **My icons** (the built-in icon is untouched; ✕ on an item removes it). The same works for a
   **group of icons**: select several (or group them with Ctrl+G or the *Group* button in the side
   panel) and choose *Save as icon…*; the elements stay in the figure as they are. Your icons are kept in
-  `assets/my-icons.json`, which updates never touch, and are embedded in the figures that use them.
+  `assets/my-icons.json`, which updates never touch, and are embedded in the figures that use them. An own icon
+  named like an icon the library gets later keeps its drawing (it moves to `lake2` beside the built-in `lake`).
+- **More icons from open repositories**: *Import more icons* at the top of the Add panel lists icon packs converted
+  from [SciDraw](https://scidraw.io) (367 icons, CC BY 4.0 or CC0 per drawing), [BioDraws](https://biodraws.com)
+  (162, CC BY-SA 4.0) and [NIH BioArt Source](https://bioart.niaid.nih.gov) (559, public domain). A pack opens with
+  its license and how its makers ask to be credited; you tick a box and import it. Its icons get their own groups, a
+  small mark and a tooltip with source, creator and license, are recolorable by **Colors in this icon** (one swatch
+  per group of similar colors, largest first; a new color keeps the shading, *One color* tints the whole drawing), and *Show icons
+  from* picks which sources the Add panel lists. Where a license asks for attribution, SiliCoDraw adds a small
+  **credit line** to the page when you place such an icon and keeps it up to date (move, edit or delete it; the
+  Export dialog reminds you if it is gone, on any slide). With more than three icons that are credited one by one the
+  line names only the repository: Page → *Copy full icon credits* gives every creator, DOI and license link as text
+  for the legend or the acknowledgments.
+  Crediting correctly stays your responsibility, and CC BY-SA can extend to the figure you build: check your
+  journal's terms. See "Third-party icon packs" below.
 
 **Arrows for pathways.** Arrow, open, inhibitor ⊣, circle and diamond ends at either end, straight,
 curved or elbow routing (the automatic elbow bends up to twice, for side-to-side steps and loops back),
@@ -351,12 +376,14 @@ with a slide per figure.
   or drag items onto the page, or press ↓ in the search field, walk the results with the arrow keys and
   press Enter (Shift+Enter also moves to the new element's fields).
   Drop or paste image files to insert them. A picture is never stretched: width and height set a frame
-  it fills (crop), "part shown" picks what is visible; *Stretch* shows the whole picture at its own
+  it fills (*Fill the frame*), "part shown" picks what is visible; *Stretch* shows the whole picture at its own
   proportions. TIFF files (from a microscope, or the editor's own TIFF export) are stored as PNG, so they
   show in every browser, PowerPoint and PDF: uncompressed, LZW, PackBits or Deflate, 8/16/32-bit gray, RGB
   or RGBA, the first page of a stack; 16- and 32-bit pictures get their brightness stretched from the
   darkest to the brightest value, as ImageJ shows them. An iPhone HEIC photo is stored as JPEG where the
   browser can open it (Safari); in Chrome or Firefox export it as JPEG first (Photos or Preview).
+- **Crop** (side panel, right-click, Shift+X) shows only a part of any element (pictures, icons, charts, shapes, fused
+  elements): drag the handles on the frame inward, Enter applies, Esc cancels, **Remove crop** brings everything back; it is in every export.
 - **Copy to other apps**: `Ctrl+Shift+C` (or right-click → *Copy as picture (PNG)*) copies the selection
   as a crisp picture for Keynote, PowerPoint, Google Slides, Word or Slack; *Copy as SVG* gives
   Illustrator or Inkscape the vector drawing. `Ctrl+C` copies elements for pasting into another figure.
@@ -393,10 +420,55 @@ with a slide per figure.
   *rasterize*: the page is then one high-resolution picture. **File ▾ → Export several figures…** (or
   "Several figures…" in the Export dialog) exports a selection of figures in one go, as one PDF with a
   page per figure, or as one PowerPoint with a slide per figure.
+- **Slides**: one figure file can hold a whole presentation. **New presentation** on Home (or *Presentation* in
+  **File ▾ → New figure**) starts one in 16 : 9 with a title slide and a content slide. **File ▾ → Add a slide** (or the Page panel) gives
+  any figure a second slide; a strip of thumbnails beside the canvas then switches between slides, and adds,
+  duplicates, renames, deletes and reorders them (drag a thumbnail; PageUp / PageDown switch; on a phone: the
+  Slides button). **File ▾ → Add slides from figures…** brings existing figure files in as slides. Each slide has
+  a name and speaker notes (Page panel); the page size, background and palette are the file's. Undo covers all
+  slides. In the Export dialog choose **All slides** or only the one shown: PowerPoint gets a slide for each (with
+  the speaker notes, and slide numbers if you tick them), PDF a page for each, PNG / TIFF / SVG a file per slide.
+- **Presenting**: the **Present** button (`F5`; `Shift+F5` from the slide shown) plays the slides full screen: click, `Space`
+  or `→` for the next animation step or slide, `←` back, a number and `Enter` to jump, `B` / `W` for a black or white
+  screen, `Esc` to end (on a touch screen: tap the right or left half, and the bottom edge for the controls). **Presenter view** opens a second window with the current slide, the next one, your speaker notes,
+  a timer and a clock. In the Page panel each slide can have a **transition** (Fade or Push, with direction, duration and
+  an optional advance time; they go into the PowerPoint export as PowerPoint's own) and, with **Different background
+  color for this slide**, a background of its own.
+- **Citations**: **Add citation…** (the quotation-mark button in the top bar, `Shift+C`, or *Citation* in the Add panel) turns a reference from Zotero, EndNote,
+  Mendeley or PubMed into a citation on the slide: paste the export (RIS, BibTeX, .enw, XML, CSL JSON, .nbib) or drop
+  the file, paste a formatted reference, or type a DOI, PMID or arXiv id and press **Look up**. Pick a style (short for
+  slides such as "Carlsson et al., *Nat Med* 2025", author–year, numbered, or the full reference) and it lands at the
+  bottom left as ordinary text that follows its reference; the file keeps its references, and **Insert reference
+  list…** writes them out, numbered like the citations. A citation copied into another figure brings its reference along.
+- **Animations**: the **Animations** button in the top bar (`Shift+A`) opens a sidebar with everything for them.
+  Select an element or a group and pick an effect: entrances and exits (Appear, Fade, Fly, Float, Split, Wipe,
+  Shape, Wheel) and motion paths (a line, a smooth curve whose points you drag or draw on the canvas, or **Back to
+  original position**, a straight line from where the element's earlier path left it back to its place), each
+  starting on click, with or after the one before, with a duration and delay. Copied, pasted and duplicated elements
+  keep their animations. The animation pane lists the
+  slide's animations in the order they play, with a timing bar each: click a row to select its element, drag rows
+  to reorder, `Del` removes them (not the element). **Play slide** shows them on the canvas (`Esc` stops). In a narrow
+  window the sidebar lies over the properties panel (**Show properties** closes it). In a figure without slides the first animation
+  makes it a file with one slide. The PowerPoint export carries them as PowerPoint's own animations, editable there. Google Slides,
+  opening that file, keeps Appear, Fade and Fly; it replaces other effects (usually with a fade) or leaves them
+  out, and has no motion paths.
 - New figures start with a small gray "Made with SiliCoDraw.com" line in the bottom-left corner. It is an
   ordinary text element: move it, edit it, or delete it.
 
 ## Managing figures: active, archived, trash
+
+**Home** shows all your figures with a small picture of each: the house button (or the logo) at the top
+left, **File ▾ → Home**, or Ctrl+O. SiliCoDraw starts where you left off, on Home or in your last figure
+(Appearance → **At start** can make it always one of the two). Click a figure to open it. **New figure**,
+**New presentation** and **Import…** (.json figures, a folder of figures or a .zip; dropping them on Home does the same) are at the top. To tidy up, tick several (or Ctrl / Shift + click, Ctrl+A)
+and choose **Archive**, **Move to trash**, **Duplicate** or **Export…** in the bar that appears; the
+**Archive** and **Trash** sections make figures active again, restore them or delete them for good, and
+**Templates** begins a new figure from a poster, a graphical abstract or an example. A search box, sorting by date or name and a list view
+help with many figures; **⋯** on a card (or a right-click) has Open in a new tab, Rename… and the rest.
+Figures you ticked stay ticked while you search for more (the bar then says how many are not shown).
+A notice board in the bar shows a tip or something new every few seconds, always in full (click it to try the feature; **What’s new** lists the latest update and every tip; **✕** folds it into a **Tips** button).
+Delete moves the card with the focus to the trash; the figure you have open asks first.
+Esc goes back to the figure you were on.
 
 Every figure is one `.json` file. The editor sorts them into three places:
 
@@ -469,11 +541,13 @@ install.sh           the one-line installer for macOS and Linux
 Start SiliCoDraw.bat / .command, start.sh, Update SiliCoDraw.bat / .command, update.sh   launchers
 updates/             figure backups and previous software versions made by the updater
 figure.json, *.json  your figures (one file each)
-examples/            example figures: signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow
+examples/            example figures: signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow, environmental-microbiology
 docs/                the pictures in this README
+brand/               the app icon: SVG, PNG sizes, icon.ico (Windows), SiliCoDraw.icns (macOS), lockup, social preview
 lib/mathjax/         the formula typesetter (MathJax), so formulas work offline
+icon-expansions/     icon packs from open repositories, each under its own license (LICENSE.txt and ATTRIBUTION.md per pack)
 tests/               automatic tests (server, installer, and the editor in a headless browser; see tests/README.md)
-history/             automatic snapshots      exports/   PNG, PDF, TIFF, SVG, PPTX      assets/   inserted images + my-icons.json (your own icons)
+history/             automatic snapshots      exports/   PNG, PDF, TIFF, SVG, PPTX      assets/   inserted images + my-icons.json (your own icons) + icon-packs.json (the packs you imported)
 ```
 
 ## Privacy and network
@@ -483,6 +557,9 @@ other devices on your network (e.g. a tablet) — there is no password, so do th
 you trust. Writes (saving figures, exports, file operations) are accepted only from the editor itself and
 from tools on your computer; a web page on another site cannot make your browser write into the figure
 folder, because the server refuses cross-site requests.
+
+**Look up** in Add citation… is the one place where the editor asks a web service about your content, and only when
+you press it: the DOI, PMID or arXiv id you typed, and nothing else, goes to Crossref, DataCite, PubMed or arXiv.
 
 ## Status and contributing
 
@@ -496,7 +573,8 @@ they also run on GitHub for every push, in Chrome, Edge, Firefox and Safari.
 
 ## Acknowledgements
 
-All code, icons and example figures in this repository were written for it, except `lib/mathjax/`:
+All code, the built-in icons and the example figures in this repository were written for it. Two folders
+hold other people's work: `icon-expansions/` (see "Third-party icon packs" below) and `lib/mathjax/`,
 an unchanged copy of [MathJax](https://www.mathjax.org/) 3.2.2 (Apache 2.0, license in that folder),
 which typesets formulas, so they work without internet (without the folder the editor fetches the
 same version from a CDN). Two more permissively licensed libraries are fetched from a CDN only at the
@@ -505,6 +583,24 @@ moment you use the feature, and are not bundled here:
 codes and [PptxGenJS](https://github.com/gitbrent/PptxGenJS) (MIT, Brent Ely) for the PowerPoint
 export. A typeset formula is stored as paths in your figure, so it renders anywhere afterwards.
 
+## Third-party icon packs
+
+The icon packs in `icon-expansions/` are other people's art under **their own licenses, not SiliCoDraw's MIT license**.
+SiliCoDraw converted them (fitted into a 100 × 100 box, made recolorable; details in each folder's `ATTRIBUTION.md`)
+and uses none of them until you import a pack in the Add panel:
+
+| Pack | From | License | Credit |
+|---|---|---|---|
+| `scidraw/` | [SciDraw](https://scidraw.io), drawings by the authors named per icon | CC BY 4.0 or CC0 1.0, per drawing | authors and DOI per CC BY drawing, SciDraw, the license and "adapted" |
+| `biodraws/` | [BioDraws](https://biodraws.com) | CC BY-SA 4.0 (share-alike) | "Images are obtained from BioDraws.com", with the license and "adapted" |
+| `nih-bioart/` | [NIH BioArt Source](https://bioart.niaid.nih.gov) (NIAID, U.S. National Institutes of Health), the entries it labels "Public Domain" | public domain, under the site's terms | not required; appreciated |
+
+Each folder has the full license text or terms as retrieved (`LICENSE.txt`) and how its makers ask to be credited, in
+their own words (`ATTRIBUTION.md`, with creator, DOI and page per icon where the repository names them). SiliCoDraw is
+not affiliated with or endorsed by these repositories or by NIH. The repositories' own logos and drawings of
+identifiable real people are not in the packs. If you pass SiliCoDraw on, keep these files with the packs. The converter that made them is kept with the project's development files.
+
 ## License
 
-MIT — see `LICENSE`.
+MIT — see `LICENSE` (the software, the built-in icons and the examples; the icon packs in `icon-expansions/` keep
+their own licenses, above).
