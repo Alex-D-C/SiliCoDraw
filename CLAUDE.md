@@ -19,7 +19,7 @@ that does not exist yet starts a blank figure (on the website it is saved only a
 "Where I left off", the default): Home (the page of all figures, see "Home" below) when Home was showing when SiliCoDraw was
 last used, over the figure last worked on; otherwise that figure, directly (the address goes on to `?file=<name>.json`), or
 Home when that figure is no longer among the active ones (archived, trashed, renamed). Nothing remembered (the first start
-in this browser): Home when there are two or more figures, else the figure. The browser remembers it in `localStorage`
+in this browser): Home when there are two or more figures, else the figure (on the website always Home, its front page, and also when the figure last shown was a blank one never saved). The browser remembers it in `localStorage`
 (`fig.lastView:<folder path>` = `home` / `figure`, written by `noteFront()` whenever Home shows or closes, a figure is opened
 and a tab is used again, so with several tabs the one used last wins; `fig.lastFile:<folder path>` = the figure); a tab on
 the plain address that is loaded again shows what that tab showed (`sessionStorage` `fig.here:<folder path>`), and so does
@@ -574,7 +574,7 @@ column of sections and a main area. It opens with the house button or the logo a
 `?home` in the address (also beside `?file=`), and at the start of the plain address (see "Start it"); Esc or
 "Back to <figure>" closes it. The figure underneath stays loaded, so `window.fig` keeps working while Home shows.
 `fig.home()` → whether it shows, `fig.home(true)` / `fig.home(false)` shows / hides it, `fig.home('archive')` shows a section
-(`figures`, `archive`, `trash`, `templates`).
+(`figures`, `archive`, `trash`, `templates`; on the website also `desktop`).
 
 - **Figures / Archive / Trash**: one card per figure (thumbnail drawn from its JSON with `sceneSvg`, lazily, at most four
   files read at a time, in a 16 : 9 frame: the whole page when it is square or wider, up to 3 : 1, else the top 4 : 3 of a
@@ -656,6 +656,16 @@ column of sections and a main area. It opens with the house button or the logo a
   rotating, still, paused, every}`; `fig.notices('next' | 'prev' | 'fold' | 'unfold' | 'whatsnew')` (an unknown word
   throws). In the page: `nbLoad(force)`, `nbStep(±1, user)`, `nbTick(ms)` (the clock, called every 500 ms; tests call it
   with a whole turn), `nbFold(on)`, `nbWhatsNew(id?)`.
+- **The website only** (`WEB`; nothing of it in the desktop editor): a welcome strip on Figures between the bar and the cards (`webStrip`: "Drawing with an AI assistant?", what the desktop version is, the GitHub link shown with **Copy instruction** = a
+  ready-to-paste instruction for a coding agent (`webAgent()`: clone the repository, follow its README, read AGENTS.md, start the editor), **Desktop version** (GitHub,
+  new tab), **More…**, and ✕, which folds it away in this browser (`localStorage` `fig.webHome`, `webFold`; other tabs follow); phones get a short version without the link
+  and the instruction), a section **Desktop & AI** (`id: 'desktop'`, `hmDesktop`: why the desktop version, install as README "Install and start" says it with the Mac
+  line to copy, the link and the instruction for a coding agent, Save all figures to a folder… here and Open a folder of figures… there, links: GitHub, README, License, Report a
+  problem = `issues/new/choose`, About), and links under the sections (`webNavFoot`: GitHub, About SiliCoDraw, MIT license; phones: at the end of the row of tabs). The
+  editor knows only the GitHub repository (`WEB_LINKS`); the site's own pages come from the storage script: `window.SiliCoDrawWeb.links = {about: 'https://silicodraw.com/about'}`
+  (https:// or a path from the site's root; `github` there replaces the repository; an item without its link is left out), so the local website build
+  (`dev/web/editor.html`) works as the site does. While the figure under Home is a blank one never saved (a first visit), Home's top-right button reads
+  **Start a blank figure** instead of "Back to figure" (`homeBackLabel`).
 - **A new feature on Home = one more entry in `HOME_SECTIONS`** (figure-editor.html; the frame `homeShow` / `homeDraw` /
   `homeNav` / `homeKey` assumes nothing about files): `{id, label, icon (the inside of a 24 × 24 stroked SVG), count?(ctx) →
   number | null, render(main, ctx) → optional clean-up function, key?(e, ctx, typing) → true when it used the key,

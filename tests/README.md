@@ -131,6 +131,18 @@ at opacity 0) and the buttons' layout; about 72 px tall on a wide screen (46 px 
 `notices/notices.json` and the other software JSON files are not ignored by `.gitignore`. `smoke.sh` / `smoke.ps1` check that
 the servers serve `notices/notices.json` and its pictures.
 
+## The website's Home
+
+One test named `home: the website starts on Home …` covers what only the website build (`-Editor dev/web/editor.html`) shows: a first visit
+(nothing remembered) starts on Home → Figures with the welcome strip above the cards; its words (American spelling), the **Desktop version**
+link (GitHub, a new tab, `rel=noopener`), the link shown and its **Copy** (an instruction for a coding agent naming the repository, its README
+and AGENTS.md; the button says Copied), with a clipboard of the test's own (nothing reaches the real clipboard and no dialog opens); the
+links under the sections (GitHub, About from `SiliCoDrawWeb.links`, the license); **More…** opening **Desktop & AI** with every part, every
+link and what each Copy copies; ✕ folding the strip (remembered, still folded after a reload, the focus on Desktop & AI, the navigation
+kept) and the section bringing it back; an example link opening the figure directly at a first visit; and on a phone the short strip,
+buttons a finger can hit and nothing wider than the screen. In the desktop editor the same test checks that none of it exists, and the
+test of where the plain address starts expects Home at a first visit on the website whatever the number of figures.
+
 ## In a browser
 
 With SiliCoDraw running, open <http://localhost:8770/tests/run.html>. It shows each test as it runs and the editor

@@ -2036,7 +2036,7 @@
       try {
         await wsClean(); fig.prefs({ start: 'last' });
         // nothing remembered (the first start in this browser): Home only when there are two or more figures to choose from, else the figure
-        const n0 = ((await listFiles('')) || []).length; let w = await start(null, null); eq(w.fig.home(), n0 >= 2, 'nothing remembered, ' + n0 + ' figure(s) in the folder: ' + say());
+        const n0 = ((await listFiles('')) || []).length; let w = await start(null, null); eq(w.fig.home(), WEB || n0 >= 2, 'nothing remembered, ' + n0 + ' figure(s) in the folder' + (WEB ? ' (the website: always Home)' : '') + ': ' + say());
         await hmMake(names);
         // Home was showing: Home again, over the figure last worked on
         w = await start('home', names[0]); ok(at(names[0]) && w.fig.home() === true, 'Home was showing, over ' + names[0] + ': ' + say()); ok(w.document.querySelector('#hmBack').textContent.includes(names[0].replace(/\.json$/, '')), 'Back does not lead to the figure last worked on');
@@ -2117,6 +2117,73 @@
     const citeTexts = () => slidesOf(scene).map(sl => sl.objects.filter(o => o.cite || o.refList).map(o => o.text));
     const fam = r => r.authors.map(a => a.literal || a.family).join('|');
 
+    test('home: the website starts on Home with directions to the desktop version and coding agents (welcome strip, Copy, Desktop & AI, links, fold); example links open directly; phones; the desktop editor has none of it', async () => {
+      if (typeof homeShow !== 'function') throw new Skip('this editor has no Home');
+      if (!WEB) {   // the desktop editor: no strip, no section, no links under the sections
+        ok(!HOME_SECTIONS.some(s => s && s.id === 'desktop'), 'the desktop editor lists Desktop & AI');
+        const was = fig.home(); fig.home('figures'); try { ok(await waitFor(() => hmMain().querySelector('.hmbar')), 'Figures did not draw'); ok(!D.querySelector('#hmMain .hmweb') && !D.querySelector('#hmNav .hmfoot') && !D.querySelector('#hmNav a'), 'the desktop editor shows the website\'s directions'); } finally { if (!was) fig.home(false); }
+        eq(typeof webStrip === 'function' ? webStrip() : '', '', 'webStrip outside the website'); return;
+      }
+      const put = (st, k, v) => { try { if (v == null) st.removeItem(k); else st.setItem(k, v); } catch (e) {} };
+      const keep = [[localStorage, viewKey()], [localStorage, lastKey()], [localStorage, 'fig.webHome'], [sessionStorage, 'fig.here:' + DIR]].map(([st, k]) => [st, k, (() => { try { return st.getItem(k); } catch (e) { return null; } })()]);
+      let fr = null;
+      const calm = () => { try { const w = fr.contentWindow; return !!(w.fig && w.eval('typeof fileReady!=="undefined"&&fileReady&&!HOME.pend&&!HOME.plan') && !w.document.documentElement.classList.contains('home-boot')) && w.location.href; } catch (e) { return false; } };
+      const open = async (u, w0, h0) => { if (fr) fr.remove(); put(sessionStorage, 'fig.home', null); put(sessionStorage, 'fig.homeRe', null); put(sessionStorage, 'fig.here:' + DIR, null);
+        fr = D.createElement('iframe'); fr.title = 'website home test'; fr.style.cssText = `position:fixed;left:0;top:0;width:${w0 || 1280}px;height:${h0 || 800}px;border:0;z-index:2147483000;background:#fff`; fr.src = u; D.body.appendChild(fr);
+        let was = null, n = 0; ok(await waitFor(() => { const h = calm(); n = h && h === was ? n + 1 : 0; was = h; return n >= 12; }, 60000), 'the editor did not settle at ' + u); const w = fr.contentWindow; w.alert = () => {}; w.confirm = () => true; w.onbeforeunload = null;
+        // a clipboard of our own (never the real one): what the page copies is kept here
+        w.__copied = []; Object.defineProperty(w.navigator, 'clipboard', { configurable: true, value: { writeText: t => { w.__copied.push(String(t)); return Promise.resolve(); } } }); return w; };
+      try {
+        // a first visit (nothing remembered): Home on Figures, with the welcome strip
+        put(localStorage, viewKey(), null); put(localStorage, lastKey(), null); put(localStorage, 'fig.webHome', null);
+        let w = await open(location.pathname), d = w.document; eq(w.fig.home(), true, 'a first visit to the website did not start on Home'); eq(d.querySelector('#hmNav [aria-current=page]').dataset.sec, 'figures', 'Home does not show Figures');
+        // Home over a blank figure never saved (a first visit with no figures): its button starts a figure, it names none; closed, nothing is saved
+        w = await open(location.pathname + '?home&file=' + encodeURIComponent(wsPre() + '-webhome-blank.json')); d = w.document; ok(await waitFor(() => w.fig.home() === true), '?home did not show Home');
+        eq(d.querySelector('#hmBack span').textContent, 'Start a blank figure', 'the top-right button names a figure that never was'); d.querySelector('#hmBack').click(); ok(await waitFor(() => w.fig.home() === false), 'Start a blank figure did not close Home');
+        // what that leaves behind (a figure was shown, none was ever saved): the plain address opens Home again, not a blank figure
+        put(localStorage, viewKey(), 'figure'); put(localStorage, lastKey(), null); w = await open(location.pathname); d = w.document; eq(w.fig.home(), true, 'after a look at a blank figure, the plain address no longer opens Home');
+        // a narrower window (1000 px): the short text, still two rows
+        w = await open(location.pathname + '?home', 1000, 760); d = w.document; ok(await waitFor(() => d.querySelector('#hmMain .hmweb')), 'no strip at 1000 px'); ok(d.querySelector('#hmMain .hmweb').getBoundingClientRect().height < 125, 'the strip is too tall at 1000 px: ' + d.querySelector('#hmMain .hmweb').getBoundingClientRect().height);
+        w = await open(location.pathname + '?home'); d = w.document; ok(await waitFor(() => d.querySelector('#hmMain .hmweb')), 'no strip');
+        const s = d.querySelector('#hmMain .hmweb'); ok(s, 'no welcome strip'); ok(/Drawing with an AI assistant\?/.test(s.textContent) && /Claude Code/.test(s.textContent) && /MIT license/.test(s.textContent) && !/licence/i.test(s.textContent), 'the strip\'s words: ' + s.textContent);
+        ok(s.compareDocumentPosition(d.querySelector('#hmMain .hmgrid')) & 4, 'the strip is not above the cards'); ok(s.getBoundingClientRect().height < 130, 'the strip is too tall at 1280 px: ' + s.getBoundingClientRect().height);
+        const gh = s.querySelector('a.hmlb.primary'); eq([gh.getAttribute('href'), gh.target, gh.rel, gh.textContent.trim()], ['https://github.com/Alex-D-C/SiliCoDraw', '_blank', 'noopener', 'Desktop version'], 'the Desktop version button');
+        eq(s.querySelector('code').textContent, 'https://github.com/Alex-D-C/SiliCoDraw', 'the link shown');
+        s.querySelectorAll('button,a').forEach(b => ok(b.title || b.getAttribute('aria-label'), 'a control of the strip without a name: ' + b.outerHTML.slice(0, 80)));
+        const cp = s.querySelector('[data-web=agent]'); cp.click(); ok(await waitFor(() => w.__copied.length === 1), 'Copy copied nothing'); const ins = w.__copied[0];
+        ok(ins.includes('https://github.com/Alex-D-C/SiliCoDraw') && /AGENTS\.md/.test(ins) && /README/.test(ins) && /start the figure editor/.test(ins), 'the instruction for the agent: ' + ins); eq(cp.textContent.trim(), 'Copied', 'the button does not say Copied'); ok(await waitFor(() => /copied to the clipboard/.test(d.querySelector('#srLive').textContent)), 'the screen reader is not told: ' + d.querySelector('#srLive').textContent);
+        // the links under the sections: GitHub, About (the site gives its address), the license
+        const L = [...d.querySelectorAll('#hmNav .hmfoot a')].map(a => [a.textContent.trim(), a.getAttribute('href'), a.target, a.rel]);
+        eq(L, [['GitHub', 'https://github.com/Alex-D-C/SiliCoDraw', '_blank', 'noopener'], ['About SiliCoDraw', 'https://silicodraw.com/about', '_blank', 'noopener'], ['MIT license', 'https://github.com/Alex-D-C/SiliCoDraw/blob/main/LICENSE', '_blank', 'noopener']], 'the links under the sections');
+        // More… opens Desktop & AI: why, install, agents, figures from the website, links; every Copy copies what it shows
+        s.querySelector('[data-web=more]').click(); ok(await waitFor(() => w.fig.home() === true && d.querySelector('#hmNav [aria-current=page]').dataset.sec === 'desktop'), 'More… did not open Desktop & AI');
+        const m = d.querySelector('#hmMain .hmdk'); ok(m, 'the section did not draw'); const tx = m.textContent;
+        ['Why the desktop version', 'Install', 'With an AI coding agent', 'Bring your figures from this website', 'Save all figures to a folder…', 'Open a folder of figures…', 'AGENTS.md', 'CLAUDE.md', 'Start SiliCoDraw.bat', 'sh start.sh'].forEach(t => ok(tx.includes(t), 'the section does not say ' + t));
+        ok(!/licence|colour|centre/i.test(tx), 'British spelling in the section');
+        const hrefs = [...m.querySelectorAll('a')].map(a => a.getAttribute('href')); ['https://github.com/Alex-D-C/SiliCoDraw', 'https://github.com/Alex-D-C/SiliCoDraw#install-and-start', 'https://github.com/Alex-D-C/SiliCoDraw/blob/main/LICENSE', 'https://github.com/Alex-D-C/SiliCoDraw/issues/new/choose', 'https://silicodraw.com/about'].forEach(h => ok(hrefs.includes(h), 'the section has no link to ' + h));
+        m.querySelectorAll('a').forEach(a => ok(a.target === '_blank' && a.rel === 'noopener', 'a link that does not open in a new tab: ' + a.href));
+        w.__copied.length = 0; m.querySelector('[data-web=mac]').click(); await sleep(20); m.querySelector('[data-web=link]').click(); await sleep(20); m.querySelector('.hmprompt [data-web=agent]').click(); ok(await waitFor(() => w.__copied.length === 3), 'the section copied ' + w.__copied.length + ' texts');
+        eq(w.__copied, ['curl -fsSL https://raw.githubusercontent.com/Alex-D-C/SiliCoDraw/main/install.sh | sh', 'https://github.com/Alex-D-C/SiliCoDraw', ins], 'what the section copies');
+        eq(m.querySelector('.hmprompt code').textContent, ins, 'the instruction shown is not the one copied');
+        // ✕ folds the strip away in this browser: gone, remembered, and still gone after a reload; the section brings it back
+        w.fig.home('figures'); await sleep(100); d.querySelector('#hmMain .hmweb [data-web=fold]').click(); await sleep(60); ok(!d.querySelector('#hmMain .hmweb'), 'the strip did not fold'); eq(localStorage.getItem('fig.webHome'), '{"folded":true}', 'the fold is not remembered'); eq(d.activeElement && d.activeElement.dataset.sec, 'desktop', 'the focus is not on Desktop & AI after the fold');
+        ok(d.querySelector('#hmNav [data-sec=desktop]') && d.querySelectorAll('#hmNav .hmfoot a').length === 3, 'folded, the navigation lost its entries');
+        w = await open(location.pathname + '?home'); d = w.document; ok(await waitFor(() => w.fig.home() && d.querySelector('#hmMain .hmbar')), 'Home did not show'); ok(!d.querySelector('#hmMain .hmweb'), 'the folded strip came back after a reload');
+        w.fig.home('desktop'); await sleep(60); const un = d.querySelector('#hmMain [data-web=unfold]'); ok(un, 'no way back to the strip'); un.click(); w.fig.home('figures'); ok(await waitFor(() => d.querySelector('#hmMain .hmweb')), 'the strip did not come back'); eq(localStorage.getItem('fig.webHome'), '{"folded":false}', 'unfolding is not remembered');
+        // an example link (the site's ?example= becomes ?file=…&from=examples/…) opens the figure directly, also at a first visit
+        put(localStorage, viewKey(), null); put(localStorage, lastKey(), null); const ex = wsPre() + '-webhome-ex.json';
+        w = await open(location.pathname + '?file=' + encodeURIComponent(ex) + '&from=examples/pathway.json'); eq(w.fig.home(), false, 'an example link opened Home'); ok(w.fig.list().length > 3, 'the example did not load');
+        // phones: the short strip (heading, one line, Desktop version, More…, ✕), nothing wider than the screen, the links at the end of the row of tabs
+        w = await open(location.pathname + '?home&phone=1', 390, 844); d = w.document; ok(await waitFor(() => w.fig.home() && d.querySelector('#hmMain .hmweb')), 'no strip on a phone'); const ps = d.querySelector('#hmMain .hmweb');
+        ok(w.getComputedStyle(ps.querySelector('.hmwag')).display === 'none' && w.getComputedStyle(ps.querySelector('.hmwlong')).display === 'none' && w.getComputedStyle(ps.querySelector('.hmwshort')).display !== 'none', 'the phone strip is not the short one');
+        ok(ps.getBoundingClientRect().height < 170 && ps.getBoundingClientRect().right <= 390, 'the phone strip: ' + JSON.stringify(ps.getBoundingClientRect()));
+        ok(d.querySelector('#hmMain').scrollWidth <= d.querySelector('#hmMain').clientWidth + 1, 'Home scrolls sideways on a phone'); ps.querySelectorAll('.hmwbt>*,.hmwx').forEach(b => ok(b.getBoundingClientRect().height >= 40, 'a button too small for a finger: ' + b.textContent));
+        eq(d.querySelectorAll('#hmNav .hmfoot a').length, 3, 'the links are not in the phone\'s row of tabs');
+        w.fig.home('desktop'); await sleep(60); ok(d.querySelector('#hmMain').scrollWidth <= d.querySelector('#hmMain').clientWidth + 1, 'Desktop & AI scrolls sideways on a phone');
+        { const tb = d.querySelector('#hmNav [data-sec=desktop]').getBoundingClientRect(); ok(tb.left >= 0 && tb.right <= 391, 'the Desktop & AI tab is off the row of tabs: ' + tb.left + '–' + tb.right); ok(w.getComputedStyle(d.querySelector('#hmMain .hmbar h2')).display !== 'none', 'Desktop & AI has no title on a phone'); ok(/⋯ → File ▸ → Save all/.test(d.querySelector('#hmMain .hmdk').textContent), 'the phone is told of a File ▾ menu'); }
+      } finally { if (fr) fr.remove(); keep.forEach(([st, k, v]) => put(st, k, v)); await wsClean(); }
+    }, 240000);
+
     test('home: New presentation (bar, card, templates, the file it makes), Import… and figures dropped on Home; the Cite button', async () => {
       if (typeof homeShow !== 'function') throw new Skip('this editor has no Home');
       if (typeof HM_NEWPRES === 'undefined') throw new Skip('this editor has no New presentation on Home');
@@ -2185,13 +2252,17 @@
         eq(nbRich('<b>x</b> **bold** *C. elegans* `Shift` {mod}'), '&lt;b&gt;x&lt;/b&gt; <b>bold</b> <i>C. elegans</i> <kbd>Shift</kbd> ' + esc(MODK), 'nbRich'); eq(nbRich('p<0.05 * a *'), 'p&lt;0.05 * a *', 'a lone star is kept');
         // rotation: the clock moves it on after NB_EVERY with a fade; a step by the user is said once
         if (D.hidden) throw new Skip('the test page is hidden: its timers do not run');
-        ok(fig.notices().rotating, 'the board does not rotate: ' + J(fig.notices())); const i0 = fig.notices().current; nbTick(NB_EVERY - 600); eq(fig.notices().current, i0, 'moved on early'); nbTick(600);
+        // nothing left from before that pauses it: a dialog, the focus, or the pointer (a headless window's mouse may rest over the board: :hover when it was mounted)
+        if (!D.querySelector('#modal').hidden) closeModal(); if (D.activeElement && nbEl().contains(D.activeElement)) D.activeElement.blur(); NB.hover = false; NB.acc = 0;
+        { const n = fig.notices(); ok(n.rotating, 'the board does not rotate: ' + J({ paused: n.paused, still: n.still, folded: n.folded, shown: n.shown, hidden: D.hidden, modal: !D.querySelector('#modal').hidden, items: n.items.length, focus: D.activeElement && (D.activeElement.className || D.activeElement.tagName) })); } const i0 = fig.notices().current; nbTick(NB_EVERY - 600); eq(fig.notices().current, i0, 'moved on early'); nbTick(600);
         eq(fig.notices().current, (i0 + 1) % st.items.length, 'the clock did not move it on'); ok(nbEl().classList.contains('nbout'), 'no fade'); { const b = nbEl().querySelector('.nbbody'); b.style.transition = 'none'; eq(getComputedStyle(b).opacity, '0', 'the words do not fade'); b.style.transition = ''; } await sleep(NB_FADE + 120); ok(!nbEl().classList.contains('nbout'), 'the fade did not end');
         { srSay(''); await sleep(60); const i = fig.notices().current; nbEl().querySelector('.nbnext').focus(); nbEl().querySelector('.nbnext').click(); eq(fig.notices().current, (i + 1) % st.items.length, 'Next'); ok(await waitFor(() => /^(Tip|New in this version): /.test(D.querySelector('#srLive').textContent)), 'a step by the user is not said: ' + D.querySelector('#srLive').textContent);
           ok(D.activeElement && D.activeElement.classList.contains('nbnext'), 'Next lost the focus'); nbEl().querySelector('.nbprev').click(); eq(fig.notices().current, i, 'Previous'); hmKey('ArrowRight', {}, D.activeElement); eq(fig.notices().current, (i + 1) % st.items.length, '→ in the board'); D.activeElement.blur(); }
         // pauses: the pointer over it, the focus in it
         { const e = nbEl(), i = fig.notices().current; e.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' })); ok(!nbTick(NB_EVERY) && fig.notices().current === i && fig.notices().paused, 'no pause while the pointer is over it'); e.dispatchEvent(new PointerEvent('pointerleave', { pointerType: 'mouse' }));
-          e.querySelector('.nbwn').focus(); ok(!nbTick(NB_EVERY) && fig.notices().current === i, 'no pause while the focus is in it'); D.activeElement.blur(); await frame(); ok(nbTick(NB_EVERY) && fig.notices().current !== i, 'it does not go on after the pause'); await sleep(NB_FADE + 80); }
+          // only the keyboard's focus pauses it (:focus-visible): a script's focus() counts as that in Chrome and Edge, not always in Firefox, so the rule is checked either way
+          e.querySelector('.nbwn').focus(); if (e.querySelector('.nbwn').matches(':focus-visible')) ok(!nbTick(NB_EVERY) && fig.notices().current === i && fig.notices().paused, 'no pause while the focus is in it');
+          else ok(!fig.notices().paused && fig.notices().rotating, 'a focus that is not the keyboard\'s pauses it'); D.activeElement.blur(); await frame(); ok(nbTick(NB_EVERY) && fig.notices().current !== i, 'it does not go on after the pause'); await sleep(NB_FADE + 80); }
         // reduced motion: no fade, no turn of the clock; the arrows still step
         { fig.prefs({ motion: 'reduced' }); await frame(); const i = fig.notices().current; ok(!nbTick(NB_EVERY * 3) && fig.notices().current === i && fig.notices().still && !fig.notices().rotating, 'it moves on with reduced motion'); fig.notices('next'); ok(!nbEl().classList.contains('nbout') && fig.notices().current !== i, 'a step fades with reduced motion'); fig.prefs({ motion: 'system' }); await frame(); }
         // folded: a Tips button, remembered in this browser (never in the figure), back with a click
@@ -2321,6 +2392,9 @@
         NBf.i = i0; fw.nbPaint(el); { const fd = [el.querySelector('.nbbody'), el.querySelector('.nbpic')].filter(x => x && x.getClientRects().length); fd.forEach(x => x.style.transition = 'none'); el.classList.add('nbout'); for (const x of fd) if (fw.getComputedStyle(x).opacity !== '0') say('no fade on ' + x.className.split(' ')[0]); el.classList.remove('nbout'); fd.forEach(x => x.style.transition = '');
           const cd = fw.getComputedStyle(el.querySelector('.nbctl')).display, bd = fw.getComputedStyle(el).display; if (cd !== (bd === 'grid' ? 'contents' : 'flex')) say('the arrows are laid out as ' + cd + ' in a ' + bd + ' board');
           if (bd === 'flex') { const p = R(el.querySelector('.nbprev')), n = R(el.querySelector('.nbnext')); if (n.left - p.right < 1.5) say('Previous and Next touch'); } }
+        // the line limit is set for the fonts of Windows and macOS (Segoe UI, San Francisco: about 0.45 em a letter); a wider font (DejaVu Sans on Linux, about 0.52 em) may take one line more: the board grows for it
+        if (maxLines) { const t0 = el.querySelector('.nbtx'), cs = t0 && fw.getComputedStyle(t0), cx = fw.document.createElement('canvas').getContext('2d'), sample = 'The quick brown fox jumps over the lazy dog, and a figure shows every tip whole.';
+          if (cs) { cx.font = cs.fontWeight + ' 100px ' + cs.fontFamily; if (cx.measureText(sample).width / 100 / sample.length > 0.45 * 1.08) maxLines++; } }
         if (maxLines) { for (let i = 0; i < L.length; i++) { NBf.i = i; fw.nbPaint(el); el.classList.remove('nbout'); const t = el.querySelector('.nbit.cur .nbtx'), lh = parseFloat(fw.getComputedStyle(t).lineHeight), n = Math.round(R(t).height / lh); if (n > maxLines) say(L[i].id + ': ' + n + ' lines (at most ' + maxLines + ')'); } }
         NBf.i = i0; fw.nbPaint(el); return hi; };
       try {
@@ -2878,7 +2952,10 @@
         // slides: a line made on a slide that is not shown does not land on the Made with line; the reminders cover every slide
         fig.set({ version: 4, w: 1600, h: 900, bg: '#ffffff', palette: [], slides: [1, 2].map(i => ({ id: 's' + i, objects: [creditObj(1600, 900), { id: 'ic' + i, type: 'icon', kind: TPK(i === 1 ? 'alpha' : 'beta'), x: 400, y: 300, s: 1, r: 0, size: 120 }] })) }); await settle(); fig.add('shape', { x: 800, y: 300 }); await settle();
         { const S = fig.get({ slides: true }).slides, l1 = S[0].objects.find(o => o.iconCredit === true), l2 = S[1].objects.find(o => o.iconCredit === true), c2 = S[1].objects.find(o => o.id === 'credit'); ok(l1 && l2, 'a line on both slides'); ok(l2.y <= c2.y - c2.size, 'on the slide that is not shown it sits above the Made with line: ' + J([l2.y, c2.y]));
-          fig.slide(2); await settle(); const bl = bbox(l2.id), bc = bbox('credit'); ok(bl.y + bl.h <= bc.y + 1, 'measured there: no overlap ' + J([bl, bc])); fig.remove(l2.id); fig.slide(1); await settle(); }
+          fig.slide(2); await settle();
+          // the glyphs' own box in page px (getBBox): Firefox widens getBoundingClientRect of a text by a few screen px on every side, which bbox() then shows as an overlap of lines that are apart
+          const tb = id => { const t = D.querySelector('#content [data-id="' + id + '"] text'), r = t.getBBox(), M = svg.getScreenCTM().inverse().multiply(t.getScreenCTM()), p = new DOMPoint(r.x, r.y).matrixTransform(M), q = new DOMPoint(r.x + r.width, r.y + r.height).matrixTransform(M); return { x: p.x, y: p.y, w: q.x - p.x, h: q.y - p.y }; };
+          const bl = tb(l2.id), bc = tb('credit'); ok(bl.y + bl.h <= bc.y, 'measured there: no overlap ' + J([bl, bc])); fig.remove(l2.id); fig.slide(1); await settle(); }
         eq(fig.check({ slides: true }).filter(r => /no credit line/.test(r.msg)).map(r => r.slide), [2], 'fig.check({slides: true}) names the slide without a line');
         exportDialog(); await sleep(250); { const E = () => $q('#exCred').textContent, SL = $q('#exSl'), set = v => { SL.value = v; SL.dispatchEvent(new Event('input', { bubbles: true })); }; set('all'); ok(/Slide 2 uses icons from Test pack/.test(E()), 'the Export dialog, all slides: ' + E());
           set([...SL.options].map(o => o.value).find(v => v !== 'all')); ok(/are credited by the line on the page/.test(E()), 'only this slide: credited: ' + E()); } closeModal(); unslide();
