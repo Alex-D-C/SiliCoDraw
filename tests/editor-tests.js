@@ -2231,8 +2231,8 @@
     const nbPut = p => { Object.assign(nbPref, p); localStorage.setItem('fig.notices', J(nbPref)); };   // (nbSave keeps what another tab wrote: the tests set the browser's copy themselves)
     test('notice board: in the bar of Figures between the search box and the sort list, tips and news from notices/notices.json (same as the built-in copy), rotation with a fade, pauses on hover and focus, none with reduced motion, fold remembered, what\'s new and its seen-state, the API', async () => {
       if (typeof nbMount !== 'function') throw new Skip('this editor has no notice board');
-      await nbKeep(async () => {
-        nbPut({ folded: false, seen: [] }); if (fig.prefs().motion === 'reduced') fig.prefs({ motion: 'system' });
+      const mot0 = fig.prefs().motion; await nbKeep(async () => {
+        nbPut({ folded: false, seen: [] }); fig.prefs({ motion: 'full' });   // full motion even where the system asks for less (GitHub's Windows and Mac machines do): reduced motion is checked below
         fig.home('figures'); await HOME.ctx.reload(); ok(await waitFor(() => nbEl() && nbEl().querySelector('.nbnext')), 'no board in the bar'); await nbLoad(true); await frame();
         const bar = hmMain().querySelector('.hmbar'), kids = [...bar.children], el = nbEl();
         ok(kids.indexOf(el) > kids.indexOf(bar.querySelector('.hmq')) && kids.indexOf(el) < kids.indexOf(bar.querySelector('.hmsort')), 'the board is not between the search box and the sort list');
@@ -2283,7 +2283,7 @@
         // another tab: what it saved is kept (folded, news seen) when this one steps; its change is followed here
         { localStorage.setItem('fig.notices', J({ folded: true, at: '', seen: ['zz-other-tab'] })); nbStep(1, true); const s = JSON.parse(localStorage.getItem('fig.notices')); ok(s.folded === true && s.seen.includes('zz-other-tab'), 'a step here wrote over another tab\'s fold or seen news: ' + J(s));
           W.dispatchEvent(new StorageEvent('storage', { key: 'fig.notices', newValue: J({ folded: true, at: '', seen: [] }) })); ok(nbEl().querySelector('.nbpill'), 'another tab folded it: this one did not follow');
-          W.dispatchEvent(new StorageEvent('storage', { key: 'fig.notices', newValue: J({ folded: false, at: '', seen: [] }) })); ok(nbEl().querySelector('.nbnext'), 'another tab unfolded it: this one did not follow'); nbPut({ folded: false, seen: [] }); }
+          W.dispatchEvent(new StorageEvent('storage', { key: 'fig.notices', newValue: J({ folded: false, at: '', seen: [] }) })); ok(nbEl().querySelector('.nbnext'), 'another tab unfolded it: this one did not follow'); nbPut({ folded: false, seen: [] }); } fig.prefs({ motion: mot0 });
       });
     }, 120000);
     test('notice board: a missing notices.json falls back to the built-in copy, an unsafe one is neutralized, every action works, nothing is asked of another host', async () => {
@@ -2401,7 +2401,8 @@
         await wsClean(); await hmMake([name]);
         // desktop: one frame, made narrower and wider (the bar slot from 1900 px of main area, its own row below)
         let fw = await open(2560, 700, '&phone=0'); const H = {};
-        for (const w of [2560, 2200, 1950, 1820, 1600, 1440, 1280, 1024, 768, 700, 600, 560]) { await size(w, 700); H[w] = check(fw, w + ' px', w <= 700 ? 3 : 0); }
+        // the narrowest board (560 px of main area) may take a fourth line with the fonts of macOS too: it grows for it, and the checks keep every item whole
+        for (const w of [2560, 2200, 1950, 1820, 1600, 1440, 1280, 1024, 768, 700, 600, 560]) { await size(w, 700); H[w] = check(fw, w + ' px', w <= 700 ? (w < 600 ? 4 : 3) : 0); }
         ok(H[2560] >= 70 && H[2560] <= 110 && H[1440] >= 70 && H[1440] <= 110, 'the board is not about 72 px tall on a wide screen: ' + J(H));
         ok(H[1440] >= 1.5 * 46, 'not taller than before (46 px): ' + H[1440]);
         // large text, compact spacing, every style, light and dark
