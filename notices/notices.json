@@ -49,7 +49,7 @@
     {"id": "n-libraries", "title": "Many more icon libraries", "text": "Servier, Reactome, Bioicons, PhyloPic, Health Icons, anatomograms, crops, weather and circuit symbols, and more.", "picture": "notices/libraries.svg", "action": "iconPacks"},
     {"id": "n-switcher", "title": "Libraries and categories in the Add panel", "text": "Switch libraries at the top; shared categories show the cells or animals of all of them together.", "picture": "notices/add-switcher.svg", "action": "addPanel"},
     {"id": "n-colorways", "title": "Colorways", "text": "Icons that differ only in color are now one icon: pick its color with one click, or search for it by name, such as “white mouse”.", "picture": "notices/colorways.svg", "action": "addPanel"},
-    {"id": "n-startmenu", "title": "Start menu shortcut and Quit", "text": "On Windows, a Start menu shortcut opens SiliCoDraw; File ▾ → **Quit SiliCoDraw** saves and stops it.", "picture": "notices/start-menu.svg"},
+    {"id": "n-startmenu", "title": "Start menu shortcut and Quit", "text": "On Windows, a Start menu shortcut opens SiliCoDraw; File ▾ → **Quit SiliCoDraw** saves and stops it.", "picture": "notices/start-menu.svg", "where": "desktop"},
     {"id": "n-offline", "title": "silicodraw.com works offline", "text": "After your first visit, the website keeps working without an internet connection.", "picture": "notices/offline.svg"}
   ]
 }

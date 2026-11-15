@@ -2388,6 +2388,7 @@
         const file = await (await fetch('notices/notices.json', { cache: 'no-store' })).json(), strip = L => J(L.map(x => { const y = { ...x }; delete y.src; return y; }));
         eq(strip(nbClean(file)), strip(nbClean(NB_FALLBACK)), 'the built-in copy differs from notices/notices.json'); eq(nbClean(file).length, file.tips.length + file.news.length, 'notices.json has items the board drops');
         const st = fig.notices(); ok(st.items.filter(x => x.kind === 'tip').length >= 25 && st.items.filter(x => x.kind === 'news').length >= 10, 'too few tips or news: ' + st.items.length); ok(st.items.every(x => !x.action || NB_ACTS[x.action]), 'an unknown action');
+        eq(nbClean(file).find(x => x.id === 'n-startmenu').where, 'desktop', 'the Start menu item lost its where'); eq(st.items.some(x => x.id === 'n-startmenu'), !WEB, 'the desktop-only Start menu item: shown ' + (WEB ? 'on the website' : 'nowhere'));
         ok(st.items.every(x => x.text.length <= 160), 'a tip that is too long for the board: ' + J(st.items.filter(x => x.text.length > 160).map(x => x.id))); ok(st.items.every(x => !/colour|centre|behaviour|favourite|licence\b|organis/i.test(x.text + ' ' + (x.title || ''))), 'British spelling in a tip');
         { const ix = st.items.map(x => x.kind); ok(ix.slice(0, 6).includes('tip') && ix.slice(0, 6).includes('news'), 'tips and news are not mixed: ' + ix.slice(0, 6)); }
         { const T = ['Shift+C', 'Shift A', 'F5', 'Shift X']; const tx = st.items.map(x => nbPlain(x.text)).join(' '); ok(/Shift C/.test(tx) && /Shift A/.test(tx) && /F5/.test(tx) && /Shift X/.test(tx), 'the tips name ' + T); }
@@ -2438,8 +2439,8 @@
         try {
           // missing: the built-in copy
           W.fetch = (u, o) => { const s = String(u && u.url || u); asked.push(s); return /notices\/notices\.json/.test(s) ? Promise.resolve(new Response('not found', { status: 404 })) : f0(u, o); };
-          let L = await nbLoad(true); eq(L.length, nbClean(NB_FALLBACK).length, 'no fallback when the file is missing'); ok(asked.some(s => /notices\/notices\.json/.test(s)), 'the file was not asked for');
-          W.fetch = (u, o) => /notices\/notices\.json/.test(String(u && u.url || u)) ? Promise.resolve(new Response('{"tips": [1, 2', { status: 200 })) : f0(u, o); L = await nbLoad(true); eq(L.length, nbClean(NB_FALLBACK).length, 'no fallback when the file is broken');
+          let L = await nbLoad(true); eq(L.length, nbClean(NB_FALLBACK).filter(nbHere).length, 'no fallback when the file is missing'); ok(asked.some(s => /notices\/notices\.json/.test(s)), 'the file was not asked for');
+          W.fetch = (u, o) => /notices\/notices\.json/.test(String(u && u.url || u)) ? Promise.resolve(new Response('{"tips": [1, 2', { status: 200 })) : f0(u, o); L = await nbLoad(true); eq(L.length, nbClean(NB_FALLBACK).filter(nbHere).length, 'no fallback when the file is broken');
           // unsafe: escaped words, no action that is not a name of the list, no picture from elsewhere, no script in a drawing
           const bad = { tips: [{ id: 'x1', text: '<img src=x onerror="window.__nbHack=1">**bold**', action: 'javascript:window.__nbHack=1', icon: '"><script>window.__nbHack=1</script>' }, { id: 'x 2', text: 'bad id' }, { id: 'x3', text: 'eval', action: 'constructor' }],
             news: [{ id: 'n1', title: '<script>window.__nbHack=1</script>', text: 'far away', picture: 'https://example.com/x.png' }, { id: 'n2', title: 'up', text: 'parent', picture: '../figure.json' }, { id: 'n3', title: 'svg', text: 'script', picture: '<svg xmlns="http://www.w3.org/2000/svg" onload="window.__nbHack=1"><script>window.__nbHack=1</script></svg>' },
@@ -2551,7 +2552,7 @@
         // large text, compact spacing, every style, light and dark
         for (const [w, p] of [[1440, { text: 'large' }], [2560, { text: 'large' }], [1024, { text: 'large', density: 'compact' }], [2560, { density: 'compact' }], [1440, { theme: 'dark', style: 'soft' }], [2200, { theme: 'dark', style: 'flat' }], [1280, { style: 'contrast' }], [1950, { theme: 'dark', style: 'contrast', text: 'large' }], [560, { text: 'large' }], [600, { theme: 'dark', density: 'compact' }]]) {
           await size(w, 700); await look(fw, p); check(fw, w + ' px ' + J(p), w <= 700 ? (p.text === 'large' ? 4 : 3) : 0); }
-        await look(fw, {}); ok(seen.size === fw.eval('NB.all').length, 'not every item was checked on the desktop: ' + seen.size + ' of ' + fw.eval('NB.all').length);
+        await look(fw, {}); ok(seen.size === fw.eval('NB.all.filter(nbHere)').length, 'not every item was checked on the desktop: ' + seen.size + ' of ' + fw.eval('NB.all.filter(nbHere)').length);
         // phones: upright (320, 360, 390, 430), sideways, large text; only the items a phone shows
         fw = await open(390, 844, '&phone=1'); ok(fw.document.documentElement.classList.contains('phone'), 'no phone layout');
         for (const [w, h] of [[390, 844], [320, 640], [360, 760], [430, 900]]) { await size(w, h); check(fw, 'phone ' + w + ' px'); }

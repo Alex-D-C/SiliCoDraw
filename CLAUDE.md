@@ -823,8 +823,8 @@ column of sections and a main area. It opens with the house button or the logo a
   are tasks of their own; the board is for the page people start from).
   **Content:** `notices/notices.json` (a software file in its own folder, since every `.json` in the root is a figure;
   read with no-cache; replaced by updates; `NB_FALLBACK` in the page is the same content, used when the file is missing
-  or holds nothing usable, and a test keeps the two equal): `{"version": 1, "tips": [{"id", "text", "icon"?, "action"?, "desk"?}],
-  "news": [{"id", "title", "text", "picture"?, "icon"?, "action"?, "since"?}]}`. Text takes `**bold**`, `*italic*`,
+  or holds nothing usable, and a test keeps the two equal): `{"version": 1, "tips": [{"id", "text", "icon"?, "action"?, "desk"?, "where"?}],
+  "news": [{"id", "title", "text", "picture"?, "icon"?, "action"?, "since"?, "where"?}]}` (`where`: `"desktop"` or `"web"` = shown only in the desktop editor or only on the website, `nbHere`). Text takes `**bold**`, `*italic*`,
   `` `key` `` and `{mod}` / `{alt}` (Ctrl / Alt, ⌘ / ⌥ Option on a Mac); it is escaped first (`nbRich`). `icon` = a glyph
   of `NB_GLYPH` (cite, copy, home, anim, present, chem, picture, eye, export, parts, star, connect, crop, search, text,
   zoom, hand, comment, panels, history, gear, keyboard, sketch, bulb, sparkle) or an icon key of `ICONS` (drawn by
