@@ -23,7 +23,7 @@ or a problem in the updater or installer), please report it privately, not in a 
   I will reply with a private way to send them.
 
 Please include what you did, what happened, and the version (the date in `updates/installed.txt`, or the commit).
-You will get an answer as soon as I can; this is a one-person project, so please allow a few days.
+You will get an answer as soon as I can; but this is a one-person project, can take some time.
 Please give me a reasonable time to fix the problem before you publish it.
 
 ## What SiliCoDraw does to stay safe
