@@ -120,6 +120,19 @@ def fetch(url, timeout=120):
     raise Stop(msg + '\nNothing was changed.')
 
 
+def refresh_shortcuts():
+    """Windows: a Start-menu or Desktop shortcut made by 'Add SiliCoDraw to the Start menu.bat' is pointed at this folder again
+    when the folder it named is gone (moved or replaced) and gets the current icon; one that does not exist is never made here.
+    macOS / Linux: start.sh refreshes the Mac app and the Linux menu entry at the next start."""
+    sc = os.path.join(ROOT, 'shortcut.ps1')
+    if os.name != 'nt' or not os.path.isfile(sc):
+        return
+    try:
+        subprocess.run(['powershell', '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', sc, '-Update'], timeout=60)
+    except (OSError, subprocess.SubprocessError):
+        pass
+
+
 def make_exec_and_unquarantine():
     """Launchers must be executable (a GitHub ZIP of web-uploaded files has no executable bits) and, on a Mac,
     not quarantined, or a double-click is refused."""
@@ -375,6 +388,7 @@ def run(a, st):
     os.remove(JOURNAL)
     shutil.rmtree(sdir, ignore_errors=True)
     make_exec_and_unquarantine()
+    refresh_shortcuts()
     with open(os.path.join(UPD, 'installed.txt'), 'w') as f:
         f.write('updated: %s\nsource: https://github.com/%s commit %s\n' % (datetime.now().strftime('%Y-%m-%d %H:%M'), a.repo, st['commit']))
     st['result'] = 'success'
@@ -386,7 +400,7 @@ def run(a, st):
     if changed:
         say('The previous versions are kept in updates/%s/' % bdir_name)
     say('Your figures, history, exports and assets were not touched.')
-    say('If SiliCoDraw is open: close the server window, start it again and reload the browser page.')
+    say('If SiliCoDraw is open: choose File > Quit SiliCoDraw in the editor (or close the server window), start it again and reload the browser page.')
     if skipped:
         say('(%d file(s) in the download were skipped because they would overwrite your data.)' % skipped)
     try:                                                   # keep the newest software backups (by date written, not by name)

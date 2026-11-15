@@ -1,0 +1,55 @@
+{
+    "count":  28,
+    "bytes":  4616047,
+    "names":  "names.json",
+    "fields":  ["life", "medicine"],
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-animals.json",
+                       "cat":  "Animals",
+                       "count":  12,
+                       "bytes":  523992
+                   },
+                   {
+                       "file":  "icons-human.json",
+                       "cat":  "Human",
+                       "count":  3,
+                       "bytes":  760361
+                   },
+                   {
+                       "file":  "icons-plant-parts.json",
+                       "cat":  "Plant parts",
+                       "count":  6,
+                       "bytes":  1160235
+                   },
+                   {
+                       "file":  "icons-plants.json",
+                       "cat":  "Plants",
+                       "count":  7,
+                       "bytes":  2171459
+                   }
+               ],
+    "id":  "anatomogram",
+    "name":  "Expression Atlas anatomograms",
+    "by":  "EMBL\u0027s European Bioinformatics Institute (EMBL-EBI): the anatomograms its Expression Atlas uses to show the organs and tissues of experiments",
+    "url":  "https://github.com/ebi-gene-expression-group/anatomogram",
+    "site":  "github.com/ebi-gene-expression-group/anatomogram",
+    "mark":  "EA",
+    "license":  "CC BY 4.0",
+    "licenseUrl":  "https://creativecommons.org/licenses/by/4.0/",
+    "attribution":  "required",
+    "shareAlike":  false,
+    "perIcon":  false,
+    "credit":  "Anatomograms from Expression Atlas, EMBL-EBI (Expression Atlas in 2026, Nucleic Acids Research, doi:10.1093/nar/gkaf1238), CC BY 4.0, adapted",
+    "plain":  "Creative Commons Attribution 4.0 (CC BY 4.0): you may use, change and share these drawings, also commercially, as long as you give credit, link to the license and say that you changed them. The repository\u0027s README puts all its images under CC BY 4.0 (its code is Apache 2.0), and the Expression Atlas licence page applies CC BY 4.0 to all copyrightable material of the site, naming the species anatomograms. The outline of the male human body comes from a public-domain drawing on Wikimedia Commons (by Vsion, SVG by Sjef, text by tsaitgaist), named in that icon\u0027s credits. This pack is not endorsed by EMBL-EBI.",
+    "ask":  "This means that anyone is free to copy, reuse, display and distribute the images and information on our database, provided you give us credit by citing: Expression Atlas in 2026: enabling FAIR and open expression data through community collaboration and integration (Nucleic Acids Research, 10 December 2025).",
+    "askFrom":  "https://www.ebi.ac.uk/gxa/licence.html",
+    "how":  "Cite the Expression Atlas article, as EMBL-EBI asks: Expression Atlas in 2026: enabling FAIR and open expression data through community collaboration and integration (Nucleic Acids Research, 10 December 2025, doi:10.1093/nar/gkaf1238). SiliCoDraw writes this line on the page for you: Anatomograms from Expression Atlas, EMBL-EBI (Expression Atlas in 2026, Nucleic Acids Research, doi:10.1093/nar/gkaf1238), CC BY 4.0, adapted. Put the full citation in the reference list or the acknowledgments too.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format, one icon per anatomogram: the small EBI attribution logo (a link to the licence page) taken out; the tissue shapes, which the files leave invisible for the Expression Atlas web page to color, filled with one light red under the outline so that the organs show; tissues that spread over the whole body (skin, skeletal muscle, fat, bone, cartilage, bone marrow, blood vessels, nerves, lymph nodes and the like) left unfilled, and a tissue drawn twice under two ontology ids filled once; fitted into a 100 × 100 box, styles written out as attributes, metadata removed, coordinates rounded, and the outline and tissue colors made recolorable (the green anole\u0027s tissues are too small a part of it for a color field of their own: they change with their color group). Each icon was drawn and compared with the adapted drawing on a white and on a dark page. Names are SiliCoDraw\u0027s (common name and species); the tissues each drawing shows are its search words. Left out: three drawings over 700 KB each because of their fine line work (the potato plant, the whole Brachypodium plant and the sorghum flower parts).",
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14",
+    "exclude":  [
+
+                ]
+}

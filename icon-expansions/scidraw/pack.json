@@ -52,6 +52,7 @@
                ],
     "count":  367,
     "names":  "names.json",
+    "fields":  ["life"],
     "preview":  "preview.json",
     "id":  "scidraw",
     "name":  "SciDraw",

@@ -12,6 +12,28 @@ Windows without Python: `powershell -NoProfile -ExecutionPolicy Bypass -File ser
 (or the user double-clicks `Start SiliCoDraw.bat`; macOS: `sh start.sh` or `Start SiliCoDraw.command`). The servers need Python 3.7 or newer (`serve.ps1` needs none).
 Mac users usually install with the one-line installer (README, "Install and start"): it puts the folder in `~/SiliCoDraw`
 and creates `~/Applications/SiliCoDraw.app`, so they start it with Command+Space, "SiliCoDraw".
+`Start SiliCoDraw.bat` starts the server in a minimized window ("SiliCoDraw server"), waits until `api/storage?brief=1` answers
+(at most ~30 s; it says why when not: another program on the port, IT policy, no answer) and then opens the editor as an ordinary
+tab in the default browser (no app window). **Start-menu shortcut (Windows):** `Add SiliCoDraw to the Start menu.bat` (it runs
+`shortcut.ps1`; `-Desktop`, `-Remove`, `-Update`, `-Yes`) makes a per-user `SiliCoDraw.lnk` with `brand\icon.ico` that opens
+`Start SiliCoDraw.bat` (no admin rights); the launcher and the updaters repoint it when the folder it named is gone. Linux:
+`start.sh` writes `~/.local/share/applications/SiliCoDraw.desktop` on a desktop session. `serve.ps1` on a PC whose IT policy
+restricts PowerShell (not FullLanguage) says so and points to silicodraw.com.
+**Quit:** File ▾ → Quit SiliCoDraw (phones: ⋯ → Quit SiliCoDraw; not on the website) saves the figure, lets the other tabs
+save, then POSTs `api/quit` (both servers; it stops after answering 204) and leaves "SiliCoDraw has stopped; you can close this
+tab" (`quitApp()`, `quitPage()`; a tab whose figure was moved away or is broken asks "Quit anyway"). There is no idle timeout. Do not call `api/quit` unless the user asks you to stop SiliCoDraw.
+**Before editing figures, check which folder the running server serves:** `GET http://localhost:8770/api/storage` returns
+`dir`; edit figures there. If a server is already running, starting `serve.py` / `serve.ps1` again does nothing (it says
+"already running" and exits 0), so files edited in another folder (another checkout) never appear in the user's editor.
+**Writes** (every POST: figures, `exports/`, `assets/`, `api/move`, `api/delete`, `api/rename`, `api/storage`, `api/quit`) are
+accepted from a browser page only when its `Origin` is the server's own exact address (`http://localhost:<this port>`; another
+port of this computer is refused, and so is `Sec-Fetch-Site` other than `same-origin`), and from tools that send no `Origin`
+(curl, scripts, you) as before; a foreign `Host` is refused; PUT / DELETE answer 405. Under `serve.ps1` a POST needs a
+`Content-Length` (http.sys answers 411 without one): send a body even when none is needed (`curl -X POST -d '' …`).
+Files of the figures folder (figures, `archive/`, `trash/`, `history/`, `assets/`, `exports/`) are served with
+`Content-Security-Policy: sandbox; …` and `X-Content-Type-Options: nosniff` (a PDF without the sandbox), so an SVG or HTML
+that came in with a .zip or a sync folder never runs as the editor's page (`USER_CSP` / `$userCsp`, identical in both servers).
+`serve.py --host` accepts only an IP address, localhost or the computer's own name in `Host` (no DNS rebinding).
 
 Open `http://localhost:8770/?file=<name>.json` for a figure in this folder (`?file=figure.json` for the default one). A name
 that does not exist yet starts a blank figure (on the website it is saved only at the first change).
@@ -48,12 +70,14 @@ figure directly, without Home: use it** (tests and assistants do; `?home=0` on t
 | `history/<name>/` | automatic snapshots of a figure (at most one per 5 min, newest 60) |
 | `exports/` | PNG / PDF / TIFF / SVG / PPTX exports written by the editor |
 | `assets/` | images the user inserted (referenced as `assets/<file>` from the figure), the user's own icons (`my-icons.json`) and which icon packs were imported (`icon-packs.json`) |
-| `icon-expansions/` | icon packs converted from open repositories (`scidraw/`, `biodraws/`, `nih-bioart/`), each under its own license, with `index.json`; see "Icon expansions" |
+| `icon-expansions/` | icon packs converted from open repositories (`scidraw/`, `biodraws/`, `nih-bioart/`, `arcadia/`, `reactome/`, `bioicons/`, `phylopic/`, `healthicons/`, `ocha/`, `electric/`, `wmo-weather/`, `sbol/`, `opencrop/`, `anatomogram/`, `servier/`), each under its own license, with `index.json`; see "Icon expansions" |
 | `examples/` | example figures to copy from (signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow, environmental-microbiology); they appear in File ▾ → New figure; `api/files?scope=examples` lists them |
 | `notices/` | the notice board on Home: `notices.json` (tips and what is new) and the small pictures it names; software, replaced by updates (see "Home") |
-| `lib/mathjax/` | MathJax 3.2.2 (Apache 2.0), loaded first so formulas typeset without internet; the editor falls back to the same version on a CDN when it is missing |
+| `lib/` | unchanged third-party libraries, each with its license in its folder, loaded first so these features work without internet: `lib/mathjax/` MathJax 3.2.2 (Apache 2.0, formulas), `lib/qrcode-generator/` qrcode-generator 1.4.4 (MIT, QR codes), `lib/pptxgenjs/` PptxGenJS 3.12.0 (MIT; bundles JSZip, MIT option, and pako, MIT; PowerPoint export). Without a copy the editor loads the same version from its CDN pinned by `integrity` (SHA-384 of the same bytes: `LIB_QR`, `LIB_PPTX`, `MJ_SRI`; `libLoad()`); a new version means a new copy here and new hashes there (see each folder's `README.txt`) |
+| `Add SiliCoDraw to the Start menu.bat` / `shortcut.ps1` | Windows: the per-user Start-menu (and Desktop) shortcut, see "Start it" |
+| `SECURITY.md` | how to report a security problem privately; official downloads only from github.com/Alex-D-C/SiliCoDraw, never executables by email or chat |
 | `brand/` | the app icon (software, published and updated like the editor; never user data): `icon.svg` (master, the cell of silicon), `icon-small.svg` (16–64 px, the Co mark alone), `icon-macos.svg`, `mark.svg` / `mark-dark.svg`, `lockup.svg` / `lockup-dark.svg` (tile + wordmark), PNGs 16–1024 (`icon-180.png` = apple-touch-icon), `icon.ico` (Windows), `SiliCoDraw.icns` (the Mac app made by `start.sh`), `social-preview.png`; see `brand/README.md`. Outlines only (no text, masks or external references). The editor carries `icon-small.svg` inline (top-bar logo, Home, the `rel="icon"` data URI, also in the presenter window), so it runs without these files|
-| (website) | silicodraw.com runs this same editor with a storage script (`window.SiliCoDrawWeb`): figures live in the browser (IndexedDB), exports are downloaded |
+| (website) | silicodraw.com runs this same editor with a storage script (`window.SiliCoDrawWeb`): figures live in the browser (IndexedDB), exports are downloaded. It also works offline: the storage script registers a service worker (`sw.js` next to the page, scope its folder; `SiliCoDrawWeb.offline`) that keeps the editor's own files (the page, the script, `lib/`, `notices/`, `icon-expansions/index.json` at the first visit; icon pack parts as they are first fetched, and every part of the packs the user imported, `packOffline()` → `SiliCoDrawWeb.offline.keep(urls)`, except a pack over 20 MB; Remove from library forgets a pack's copies, `offline.forget(id)`), network-first, never another host or a request with credentials; only at the editor's own address (`…/editor.html` or its folder; the site's front page needs a connection, as Home → Desktop & AI says, `webOffSec()`); offline the status line adds "· Offline" (phones: a hollow dot and one toast; `netOff()`, `netNote()`, the tooltip by where figures are kept, `netOffTip()`) and Look up, cloud storage and Import more icons say they need a connection (`packOffNote()`; a pack part that cannot load says so once, `packMiss()`); a newer release taking over a page opened offline shows "A new version of SiliCoDraw is ready" with Reload. Not an installable app (no manifest). The desktop editor never registers a worker (no storage script)|
 
 ## How to change a figure
 
@@ -104,8 +128,8 @@ and at once when it is shown again).
    (then `commit()`); `PAL_PRESETS` holds the colorblind-safe palettes of Edit palette… (Okabe–Ito, Paul Tol, viridis, cividis). `fig.add` and `fig.update` check what they were given
    and `console.warn` it; `fig.update` returns that list (`[]` = fine).
    **Finding things:** `fig.list()` (one row per element: `{id, type, name, text, kind, bbox: [x, y, w, h], group,
-   hidden, locked}`, comments also `status` and `on`), `fig.findIcon(word, n = 8, {packs})` (icon keys for a word, ranked like the
-   Add panel's search: `fig.findIcon('mitochondria')` → `mito` first; icons of imported icon packs that are shown come too, see "Icon expansions"), `fig.schema(type)` (`{defaults, fields: [{key,
+   hidden, locked}`, comments also `status` and `on`), `fig.findIcon(word, n = 8, {packs})` (icon keys for a word, ranked exactly like the
+   Add panel's search (`palRank`, the first ten with variety by `palTop`; its first icon is the panel's first icon under All libraries, and the icons of the panel's "Most relevant" block are among its first ones: the panel also ranks items that are no icons, such as Text or the DNA helix): `fig.findIcon('mitochondria')` → `mito` first, also with every pack imported; icons of imported icon packs that are shown come too, see "Icon expansions"), `fig.iconLibrary(id?)` (the Add panel's library: no argument → `{shown, group, libraries: [{id, name, count, hidden}]}`; `'all'`, `'builtin'`, `'my'` or a pack id shows that library), `fig.schema(type)` (`{defaults, fields: [{key,
    kind, label, options}], common}`), `fig.select(ids)` (selects them and scrolls them into view, e.g. to show the user
    something or before align / group, which act on the selection; returns the selected ids).
    Multi-panel figures: `fig.labelPanels(ids, {style, size})` puts a bold letter above each panel's top-left corner in
@@ -397,25 +421,77 @@ it, a citation of nothing else is removed); `fig.cite(id or [ids], {style, doi, 
 ## Icon expansions (more icons from open repositories)
 
 `icon-expansions/` holds **icon packs** converted from open repositories; `index.json` lists them. Shipped: `scidraw`
-(SciDraw, 367 icons, CC BY 4.0 or CC0 per drawing, credited per icon with its authors and DOI), `biodraws` (BioDraws, 162,
-CC BY-SA 4.0, one sentence of credit, share-alike), `nih-bioart` (NIH BioArt Source, 559, the entries labeled Public
-Domain, no credit required). They are third-party art under their own licenses (never SiliCoDraw's MIT): every pack
+(SciDraw, 367 icons, CC BY 4.0 or CC0 per drawing, credited per icon with its authors and DOI), `biodraws` (BioDraws, 160,
+CC BY-SA 4.0, one sentence of credit, share-alike), `nih-bioart` (NIH BioArt Source, 752, one icon per drawing,
+the entries labeled Public Domain, no credit required), `arcadia` (Arcadia Science's Free organism illustration library,
+144: 72 organisms, each as its three-color drawing and as its silhouette, CC0, no credit required, a citation of the library
+appreciated; ten drawings adapted from PhyloPic name the PhyloPic uploader in their credits), `reactome` (Reactome Icon Library, 645: cell elements,
+cell types, human tissues, receptors, transporters and drawn proteins and compounds, CC BY 4.0, credited per icon with its designer;
+the library's label badges, names written into a pill or hexagon, and pure color variants left out; a drawing whose color or detail is what it
+is stays an icon of its own: the sugars arabinose, lyxose and fructose, the generic nucleotides, sugars and damaged bases, the T cell stages and
+subtypes, the regulatory B cell, CTLA4 beside CD28, COPI and COPII vesicles, preNOTCH, uridylated mRNA), `bioicons` (Bioicons, 454: lab apparatus,
+cells, plants, animals, molecular biology, safety pictograms, charts; per icon CC0 (266), CC BY 4.0 (127), CC BY-SA 4.0 (26, share-alike) or MIT (36),
+by the folder it is filed in, credited per icon with its creator; logos, brands and the libraries it re-hosts left out), `phylopic` (PhyloPic, 3,178 organism
+silhouettes across the tree of life, fossils included, one per taxon and genus: per icon Public Domain Mark (283), CC0 (2,220), CC BY 3.0 (219)
+or CC BY 4.0 (456) as the image's record states it, credited per icon with the attribution PhyloPic gives; NonCommercial and ShareAlike images,
+human figures and public-domain tracings of another person's recent work left out; lazy parts), `healthicons` (Health Icons, 640 flat one-color
+pictograms for public and global health: body, conditions, devices, diagnostics such as malaria rapid tests, people, PPE, specialties, zoonoses;
+the 48 px filled style only, CC0, no credit required; letters, digits, plain shapes, logos and trademarks, user-interface symbols and a military
+vehicle left out), `ocha` (OCHA Humanitarian Icons of the UN Office for the Coordination of Humanitarian Affairs, 283 flat
+one-color pictograms for natural hazards, health, water and sanitation, food, people, shelter, infrastructure and data; public domain
+(CC0), no credit required (OCHA appreciates one where feasible); user-interface symbols, lettering, conflict, violence and the military,
+religious buildings and the icons with UN lettering left out; no UN emblem, and no wording that suggests UN endorsement), `electric` (Inkscape Electric Symbols of the Power
+Electronics and Electrical Drives group (LEA) of Paderborn University, 204 line drawings taken out of its one Inkscape sheet: IEC and US circuit
+symbols, semiconductors, sources and meters, grounds and connectors, converter and machine blocks, transformer vector groups, control blocks,
+logic gates, ladder logic, instruments, electronic parts, energy and buildings, toroids and waveforms; CC0, no credit required; arrowheads drawn
+as shapes and letters as MathJax outlines (`dev/icon-import/sheet.ps1`); repeats in other sizes, turns and framed copies and the USB trident logo
+left out), `wmo-weather` (WMO WorldWeatherSymbols of the OGC Meteorology and Oceanography Domain Working Group, 355 WMO weather
+symbols for synoptic charts: present and past weather (ww, wawa, w1w1, W1W2), clouds and cloud cover, fronts, pressure tendency and centers,
+wind arrows and swell, state of the ground, and ICAO significant-weather symbols; CC BY 4.0, one sentence of credit for the pack (the repository
+gives no wording: "WorldWeatherSymbols, OGC MetOcean DWG and WMO (github.com/OGCMetOceanDWG/WorldWeatherSymbols), CC BY 4.0, adapted");
+named by WMO code and description (`fig.findIcon('ww 95')`); arrowheads drawn as shapes (convert option `markers`), stray dots of the drawing program taken out and a symbol that runs off its page shown whole (`dropSpecks`, `unclip`); a symbol repeated (or drawn again with a hair of difference) in another
+code table kept once, Southern Hemisphere mirror images, symbols whose meaning is a digit written as text and plain lines left out), `sbol` (SBOL Visual, the
+glyphs of the Synthetic Biology Open Language's visual standard from its GitHub repository (never from sbolstandard.org, whose content is CC BY-NC-ND), 63 line glyphs for genetic designs: sequence features (promoter, CDS, RBS,
+terminator, operator, origins, recombination, restriction and cleavage sites, stem-top sites), molecular species and interactions; CC0 (the exception for the glyphs in the repository's
+otherwise CC BY 4.0 LICENSE.html), no credit required; the characters some glyphs are made of (?, AAA, asterisk) set as MathJax outlines (convert option `textOutlines`); specification and example drawings, the Deprecated
+folder and glyphs repeated in another glyph set left out), `opencrop` (Open Crop Icons, an icon set of the OpenFarm project, from its GitHub repository at a pinned commit, 221 flat drawings of cultivated plants: grains and field crops, peppers and chilies, fruiting, leaf and stem and root vegetables, beans, fruits and nuts, herbs and medicinal plants, mushrooms; one drawing per crop, CC0, no credit required (a credit "would be in good spirit", in their words); misspelled folder names corrected in the names (Artichoke, Brussels Sprout, Yukon Gold Potato), the same drawing in other colors of one crop kept once (its other names find it: `fig.findIcon('purple carrot')`), while another ripeness or species is an icon of its own (the green, red, orange and yellow bell peppers, the oyster mushrooms, the nectarine beside the peach), the cannabis plant and the psilocybin mushroom left out), `anatomogram` (Expression Atlas anatomograms of EMBL-EBI, from the GitHub repository ebi-gene-expression-group/anatomogram at a pinned commit, 28 body, organ and plant maps whose tissues are separate shapes: human male, female and brain, mouse male, female and brain, rat, cattle, chicken, macaque, baboon, opossum, anole, Xenopus, pufferfish; Arabidopsis, the whole plant and the flower or fruit parts of maize, rice, wheat, barley and tomato, the sorghum plant and the Brachypodium flower parts; CC BY 4.0 (the README; the Expression Atlas licence page names "the species anatomograms"), one sentence of credit citing the article EMBL-EBI asks for: "Anatomograms from Expression Atlas, EMBL-EBI (Expression Atlas in 2026, Nucleic Acids Research, doi:10.1093/nar/gkaf1238), CC BY 4.0, adapted"; the male body's outline is a public-domain drawing from Wikimedia Commons (by Vsion, SVG by Sjef, text by tsaitgaist, named in its `by`; its file records CC0 1.0, its Commons page a public-domain release); the EBI attribution logo taken out, the tissues (invisible in the files: the Atlas web page colors them) filled with one light red under the outline, tissues spread over the whole body (skin, muscle, fat, bone, vessels, nerves) left unfilled; the tissue names are search words; drawings up to 700 KB (fine line work), the three larger ones (potato, the whole Brachypodium plant, sorghum flower parts) left out), `servier` (Servier Medical Art, 3,193 drawings converted from its 49 PowerPoint kits, CC BY 4.0,
+one sentence of credit in Servier's own wording: "Images adapted from Servier Medical Art (https://smart.servier.com/),
+licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)"; shaded drawings, one part per kit (a big kit in two parts of about 2.5 MB). They are third-party art under their own licenses (never SiliCoDraw's MIT): every pack
 folder has `LICENSE.txt` (license, the repository's terms as retrieved, legal text) and `ATTRIBUTION.md` (who made it,
 how they ask to be credited in their own words, what was changed, credits per icon). The folder is software: the servers
 serve it from the program folder, the updater replaces it, `dev/make-web.ps1` and `publish.ps1` copy it.
+**Colorways.** Drawings of one pack that are the same shapes in other colors (a library's mice in six colors, an outline in
+six skin tones, a database drawn light blue and white) are one icon whose other colors are **colorways**: named presets of its color
+groups, one click away in the side panel (see "Color groups" below). Merged so far: 11 drawings of NIH BioArt Source into 4 icons, 1 of Bioicons into 1, 2 of BioDraws into 2, 1 of Open Crop Icons into 1, 235 of Servier Medical Art into 109 (`dev/icon-import/colorways.js`, its README section "Colorways"). The kept icon carries
+`cw: [{n: name, grp: a grp value, v: the merged drawing's own name}]` (in its part and in `names.json`) and `cwn` (the name of its
+own colors, "as made"); the merged drawings' names and search words are its search words ("blue mouse" finds it), and a merged drawing's
+own name counts as a name of the icon (`cwAlt`: a match on it 0.1 under the same match on a name, at most 9.4, so "Receptors (3) (blue)" finds the icon it became first); `names.json` has `"alias": {"<id>:<old key>": ["<id>:<kept key>", "<colorway>"]}`. A drawing became a colorway only
+when the kept icon drawn with that preset through the editor's own coloring matched it at 96 px (mean ΔE under 1, under 0.5 % of
+the pixels over ΔE 10) and again at 256 px (mean ΔE under 1, under 3 % of the pixels over ΔE 10, no solid patch of difference
+and no line that only one of them has: a bleed, the surface of a liquid, highlights, an edge in another place); its name is what the
+library's names say sets it apart, else the colors where it differs ("Red", "Red and gray"), and a color in the kept icon's name
+goes ("as made" names it); drawings that differ in shape (another pose, crop, label or detail), in their credits, or that the
+coloring cannot reproduce stay icons of their own. **A state is never a colorway:** drawings that show another state or meaning of a thing (empty vs filled,
+a screen on vs off, a lamp lit, another allele, nucleotide, sugar or damaged base, labeled vs unlabeled, stained vs unstained, with vs without a lab coat,
+another cell subtype, receptor or vesicle type, another ripeness or species, a fluorescent label whose color is the label) are separate icons even when
+the coloring draws the one as the other; the pixels cannot tell a state from a color, so such pairs are listed by hand (`cwApart` in
+`dev/icon-import/packs/<id>.json`: `cwDetect` never proposes them, `cwBuild` never merges them, and the converter never folds the one into the other
+as a color variant); `sameAs` there is only for another color of the same thing or a drawing uploaded again. The name of a colorway, or "as made", can be given there
+too (`cwNames`: the outlines' "Type I" / "Type II", as their colorways are "Type III" and on).
 
 **Pack format** (`icon-expansions/<id>/`): `pack.json` = `{id, name, by, url, site, mark, license, licenseUrl, attribution:
-"required" | "none" | "mixed" (per icon, by its lic), shareAlike, perIcon, credit (the line printed on the page), plain,
+"required" | "none" | "mixed" (per icon, by its lic), mixedShare (mixed: how many of its icons ask for credit, in words for the import pop-up; default "most of them"), shareAlike, perIcon, credit (the line printed on the page), plain,
 ask, askFrom, how, shareAlikeText, changes, each (a full-credit line per icon with `{by}`, `{n}`, `{doi}`, `{page}` and
-an optional `({y}).`), retrieved, version, count, bytes, names, preview, chunks: [{file, cat, count, bytes}]}`;
-`names.json` = `{"<id>:<key>": {n, t, c, f (index of its part), by?, src?, doi?, lic?, cat?, title?, y?}}`;
-`icons-<category>.json` (a second part of the same category `icons-<category>-2.json`) = `{"<id>:<key>": {n, t, svg, k, c, b, by?, src?, doi?, lic?, cat?, title?, y?, kt?, fixed?}}`, the format of
+an optional `({y}).`), retrieved, version, count, bytes, names, fields (the subjects it serves, one to three of `life`, `medicine`,
+`ecology`, `earth`, `engineering`: the Import more icons list filters by them; written in `packs/<id>.json`), preview, chunks: [{file, cat, count, bytes}]}`;
+`names.json` = `{"<id>:<key>": {n, t, c, f (index of its part), by?, src?, doi?, lic?, cat?, title?, y?, cw?, cwn?}, "alias"?: {"<id>:<old key>": ["<id>:<kept key>", "<colorway>"]}}`;
+`icons-<category>.json` (a second part of the same category `icons-<category>-2.json`) = `{"<id>:<key>": {n, t, svg, k, c, b, by?, src?, doi?, lic?, cat?, title?, y?, kt?, fixed?, cw?, cwn?}}` (`cw`, `cwn`: colorways, above), the format of
 the user's own icons (`svg` drawn in the 100 × 100 box around 0, `k` = the two colors the editor swaps for `c1` / `c2`,
 `c` = their defaults) plus `b` = `[width, height]` of what is seen (the icon is measured by it: shapes cut off by a clip
 path may reach further) and the credits the repository gives: `by` = every author it names, joined with ", "; `title` =
 the name as the repository has it where the library name `n` got a number to tell two "Mouse" apart (credits print the
 title); `y` = a year of publication, only when the repository states one (none of the shipped packs does). `kt` = the
-shades of a shaded drawing: `[[shades of k[0]], [shades of k[1]]]`, at most 256 per key; when `c1` / `c2` differs
+shades of a shaded drawing (Servier): `[[shades of k[0]], [shades of k[1]]]`, at most 256 per key; when `c1` / `c2` differs
 from its default (any CSS color: `#2a4` and `red` are read as `#rrggbb` first, `hex6`), each shade is recolored as it
 stood to its key (`toneOf`: the hue turns with it, lightness and saturation scale toward white or black), so the shading
 stays, and the defaults draw it exactly as made. Outline inks (near-black, dark gray) and near-white highlights are never
@@ -424,28 +500,116 @@ nothing). This is how an element without `grp` is colored; the side panel colors
 (see "Color groups" below), which works for `fixed` icons too. In the Add panel a pack drawing over 8 KB is shown as a small cached picture once it
 is drawn (`thumbPut`, `thumbRaster`), so thousands of thumbnails keep a few KB each in the page. `preview.json` = a few icons for the animated preview. Parts stay under a few MB, load only when needed and
 are kept by the browser's cache (`cache: "no-cache"`: only asked whether they changed). An import fetches the names and
-every part (a missing file shows at once), except for a pack over 20 MB (`PACK_EAGER`): its names and first
+every part (a missing file shows at once), except for a pack over 20 MB (`PACK_EAGER`, Servier): its names and first
 part only, the other parts when their icons are shown or placed. Left out on purpose: the repositories' own logos and
 drawings of identifiable real people (a license covers the drawing, not that person's rights).
 
 
 **In the editor.** Nothing of a pack is used before the user imported it: **Import more icons** at the top of the Add
 panel (`#packBtn`, `packMenu()`) lists the packs with license badge, count, size, "Imported ✓" and a looping preview
-(a cross-fade through `preview.json` about every 1.2 s; four still icons with reduced motion). A pack opens a pop-up
+(a cross-fade through `preview.json` about every 1.2 s; four still icons with reduced motion). From six packs on
+(`PACK_MANY`) the list has, on top and staying there while it scrolls, a search field (`#pkFind`: name, maker, license, field
+and the pack's own categories, so "mushroom" finds Open Crop Icons; ↓ goes into the rows shown, ↑ from the first back, Esc empties it
+first) and one sideways-scrolling row of field chips with counts (All, Biology, Medicine, Ecology, Earth, Engineering, from
+`fields` of `pack.json`, `PACK_FIELDS`; and Imported), each row names its fields, and "No pack matches" offers Show all packs; the
+filter (`packFind`) stays while the list is drawn again and for the page. Open, the list takes the panel's height (the icons below
+keep a strip), so a laptop shows several packs; a long license badge wraps. A pack opens a pop-up
 (`packDialog(id)`): who makes it, the license in plain words with links, whether and how to credit (their own wording),
 share-alike consequences, what was changed, count and size, and a box that must be ticked before **Import** works ("I
 take full responsibility for correctly attributing this repository"; "I have read these terms" when none is required);
 imported packs have **Remove from library** there. The list closes with a press outside it, a click elsewhere in the
 Add panel, typing in the search field or Esc; on a phone held sideways it takes the sheet while it is open. What was
-imported (date, version) is kept with the figures in `assets/icon-packs.json` (website: the same path in its storage),
-so it holds for every browser of that installation; the file is read again before it is written (only this tab's own
+imported (date, version, what was accepted) is kept with the figures in `assets/icon-packs.json` (website: the same path in its storage),
+so it holds for every browser of that installation; an import accepted while the pack asked for no credit (`accepted:
+"terms read"`) no longer counts once an update makes the pack ask for some (`packStale`): its row says "Terms changed:
+review", its pop-up says why and asks for the box again, and its icons are not offered (nor taken by `fig.add`) until it
+is imported again; the file is read again before it is written (only this tab's own
 import or removal is changed, `packSaveState(id)`), and other tabs follow (`{packs}` on the `silicodraw-files` channel,
 and when the window gets the focus back: `packRefresh()`). A search that finds nothing while a source is unticked says
 how many matches the hidden sources have, with **Show all sources**.
 Imported icons are ordinary `icon` elements with `kind: "<id>:<key>"`; in the Add panel they have their own groups
-("SciDraw · Mouse"), one chip per pack, a small mark (`mark`) and a tooltip (name, from, creator, license; also the
+("SciDraw · Mouse") gathered under the shared categories (below; never a chip per pack), a small mark (`mark`) and a tooltip (name, from, creator, license; also the
 item's title, and a long press on touch screens). **Show icons from:** (a row of boxes once a pack is imported: SiliCoDraw,
-My icons, each pack; `localStorage` `fig.iconShow`) picks which sources the groups and the search list. Pack icons are
+My icons, each pack; `localStorage` `fig.iconShow`) picks which sources the groups and the search list; with more than six
+sources the boxes fold behind one line that says what is shown ("All 17 sources", "15 of 17 · hidden: PhyloPic,
+Bioicons", "12 of 17 · 5 hidden"), whose button unfolds them with **All** and **None** (folded or open: `localStorage`
+`fig.iconShowOpen`). The Add panel makes the buttons of its first 400 items at once (`PAL_BUILD`) and every later group as an empty
+block of the height its items will take, filled when it comes within 900 px of the view or the keyboard reaches it (`palGIO`,
+`palGridFill(grid)`, `palFillAll()`): with every pack imported the list is ~13,280 items, and drawing it took ~250 ms and 69,000
+elements, now ~20 ms and ~6,000.
+**Libraries** (`palLibs()`: All, SiliCoDraw = the built-in items, My icons, then each imported pack A to Z by name, with its
+mark and count): the switcher under the search (`#palLib`: a button naming the library shown with its mark and count (its
+tooltip has the whole name), opening a list of them, a listbox: ↑ / ↓, Home / End, PageUp / PageDown, letters typed quickly
+for the library starting with them ("sc" → SciDraw; one letter again: the next one), Enter, Esc back to the button;
+`palLibMenu(on)`; the marks have one width, so the names line up) shows one library (`palLibSet(id)`, remembered in
+`localStorage` `fig.palLib`; the new list is read out); the chips are then that library's groups (a pack's without the pack's
+name: "Mouse", not "SciDraw · Mouse"; **All** = every group of it; a group picked there stays when Show icons from or the packs
+change, `palCatOk`), and an **All** button beside the switcher goes back to every library. The switcher (with Show icons from)
+is the only place where libraries are picked: no chip names a pack. **Shared categories:** under All libraries, while a pack is shown
+(beside other libraries or on its own, `palMulti()`), the chips are categories that gather the groups of every library shown (`PAL_CATS`, the most used first since the
+folded row shows the first ones: Text & shapes, Cells, Molecules, Anatomy, Medicine, Lab, Microbes, Animals, Plants, Immunology, Ecology,
+Earth, Food, People, Chemistry, Engineering, Charts, Other; short words on the chips, the full name ("Lab equipment & techniques") in the
+tooltip and for screen readers, always starting with the chip's words so a voice command can say what it sees). `PAL_CAT_SRC` maps every built-in group and every shipped pack's group (`<pack id>:<group>`, `<pack id>:*` = the
+whole pack) to one category; a group that mixes things goes item by item (`PAL_CAT_PICK`: `{group: {category: the icon keys (built-in) or
+a RegExp on the item's name (a pack)}}`, the rest of the group by the table; e.g. the built-in Organisms (arabidopsis to Plants, Human to People),
+Bacterium and Virus of Cells & tissues and Immunology to Microbes, the glassware of Chemistry to Lab, the farming of Ecology & agriculture to
+Food, sport and exercise to Medicine, the species of Aging & hallmarks to Animals, SciDraw's Other (organisms, networks, lab items), Health
+Icons' Symbols); then one rule for every library (`PAL_CAT_ONECELL`): a single-celled organism (yeasts, microalgae, protists) filed under animals,
+plants or cells goes to Microbes, so a yeast is in one category whichever library has it (mushrooms, molds and seaweeds stay in Plants & fungi).
+My icons go by the words of their names; a group no table names (a pack added later) by the words of its name
+(`PAL_CAT_WORDS`), else the pack's first field, else Other: add a new pack's groups to `PAL_CAT_SRC` (and to `PAL_CAT_PICK` when one mixes
+things; a test checks that every shipped group is there, that no entry names a group that is gone, and items of several split groups). A category lists its groups (`palCatSecs()`) built-in first, then
+My icons, then the packs in the switcher's order, each header with the library's mark (and its name for screen readers) and the
+group's own name ("Mammals", tooltip "PhyloPic · Mammals"); no icon is lost or counted twice in a category (an icon in two built-in
+groups of two categories is in both). Without a pack shown the chips are All and the built-in groups, as before. The first chip is
+named "All categories" for screen readers; inside one library it reads **All groups** (the switcher's **All** beside it is every library). The
+chosen chip is `palState.cat` (`cat:<id>` for a category) and is remembered (`localStorage` `fig.palCat`; written also when the chip is reset,
+e.g. its library hidden or its pack removed, so a reload never brings back a chip the user left). Picking a chip says what is listed now
+("Animals, 3,182 items from 15 libraries", `palChipSay`). The chips wrap: at
+most three lines (two on a phone), then **More (n)** (`palCatsFit`: measured once, laid out by arithmetic; the chips shown are a run from the
+start and the chip pressed, when further on, right before More, so none seems missing in the middle), which unfolds them all and becomes **Fewer** (`localStorage` `fig.palCatsOpen`); one Tab stop, ← / → between the chips shown
+and More, Home / End. A line beside the switcher names the library the
+list has scrolled to ("in PhyloPic", `palHereSet`, read by screen readers); the group headers stay on top while their group
+scrolls, so the place is always in sight. A library hidden by Show icons from is marked "hidden" in the list and shown again
+when it is picked. `palView()` = the library and group shown, worked out each time (a pack not imported yet at the start leaves
+the choice for later; a group of another library picked elsewhere, such as the notice board's `envmicro`, shows that library).
+`fig.iconLibrary(id?)` reads or sets it (its `group` is the chip: `All`, a group's name, or `cat:<id>`); **`fig.iconCategory(id?)`**
+reads or sets the chip: no argument → `{shown, library, shared, categories: [{id, name, count}]}` (`shared`: the shared categories,
+ids such as `cells`; else the groups of the library shown, by name); `'all'`, a category id (it picks All libraries first; with no pack shown it throws and changes nothing) or a
+group's name shows it and empties the search (`fig.iconCategory('animals')` = every library's animals). The switcher, its list and the search's blocks follow Appearance → Text size.
+**Search** looks in the library picked (All libraries: every library shown; `palLibRows`): the result line says "… in SciDraw",
+the switcher keeps naming it, **All** beside it searches every library with the same words, and picking a library keeps the
+words; a library with nothing for them says how many the other libraries have, with **Search every library**. The chips
+are hidden while searching (the search looks in every group of the library picked, whatever the category; emptied, the category
+is back; a category picked meanwhile, `fig.iconCategory`, empties the words). A **Most relevant** block with the 10 best matches (`palTop`), then **More results · N** (a
+level-3 heading like Most relevant; its libraries are level 4): the rest by library (the library with the best of them first),
+each with its mark and count and folding on its own (`palState.rclosed`, `localStorage` `fig.palResClosed`); an item in several
+groups is listed once, and a result keeps the group it comes from (`data-sec`). The ranking is one pure function,
+`palRank(query, rows, {order})` → `{hits: [{r, s, i}], fuzzy}` over rows `{n, t, ty, src, k}` (the same for `fig.findIcon`; an
+icon's search words are `palIconTags(kind)`: its tags, key and group, a pack icon's pack name and category): exact name 10 > the
+name without what is in brackets or a trailing ", silhouette" ("Mouse (Mus musculus)", "Mouse (gray)") 9.5 > the name in
+another spelling or plural (`grey`/gray, `colour`/color, `haemoglobin`/hemoglobin, `mice`/mouse, `kidneys`/kidney) 9 > the name
+starts with the word 8.05 > a whole word of the name 7.65 > the word only starts the name's first word ("rain" → Rainbow) 7.5
+> a synonym that is the whole name ("corn" → Maize, "cardiac" → Heart) 7.1 > every word starts a word of the name, or starts the
+first word with four or more letters of it left ("rain" → Raincloud plot, "corn" → Cornufer), 7 > the name holds it 6 > a synonym
+(`SYN_GROUPS`) 5 > a tag 4 > a chance hit inside a word 3.8 (none for a word under 5 letters: "nk" in Y-Link, "mast" in
+amastigote, "axon" in taxon; after a combining form it still counts, "film" in Biofilm) > a typo forgiven (only when the words
+as typed find fewer than five): the whole name 1.9, its first word 1.7, another word 1.5, a tag 1. Several words must all
+match, the phrase first; written together they may be one word of the name ("b cell" → BCell, "zebra fish" → Zebrafish); every
+word a whole word of the name 7.65 ("Plasma B Cell"); a typed phrase finds the other terms of its synonym group (`SYNP`: "b cell"
+→ B lymphocyte, "flow cytometry" → FACS); a one-letter word counts only as a whole word of the name or tags, or as the initial
+of the name's word before the next typed word ("e coli" → Escherichia coli, 3.9). The key typed exactly first; SiliCoDraw's
+own items and My icons get `srcBonus`; ties: built-in, My icons, packs, then the shorter name without its brackets (where the
+name matched; always among pack icons), then the packs in the list's order. `palTop(hits, 10)` picks the ten one by one, each
+pick lowering others with the same base name (`palBase`: without numbers, counts such as x14, colors and parts in brackets)
+from the same source by 1, from another source by 0.15, and a fourth and later pick from one source by 0.2, so ten copies of
+one drawing from one pack give way; only the first of these may let a lower kind of match (`PAL_TIER`: whole name, whole word,
+start of a word, the name holds it, tag…) jump ahead, so "rain" keeps the WMO symbols named Rain before Rainbow (the best match
+always stays first; Enter adds it). A typo is looked for only among the rows holding a word close to it (`palNear`: every
+row's words listed once), a word that finds nothing is kept per word (`palMiss`), and `fig.findIcon` keeps its rows per set
+of packs, so a word with no icon ("salmonella") no longer scans every row twice per keystroke. With every pack imported a
+keystroke rebuilds the results in ~20–50 ms (the ranking ~10–40 ms of it; the search words are made in idle time after an
+import, `palWarm`), typing is debounced by 80 ms, and a search makes fewer buttons and thumbnails at once (160 and 60). Pack icons are
 recolored with `c1` / `c2` like any icon; a shaded pack icon (`kt`) recolors its shades with them; `fig.add('icon', {kind})` keeps a pack icon's own colors unless `c1` / `c2` are
 given. A figure embeds the pack icons it uses in `scene.icons` **with their credits** (`pack`, `packName`, `packSite`,
 `packCredit`, `packLicUrl`, `perIcon`, `by`, `src`, `doi`, `lic`, `title`, `req` = attribution asked), so it draws,
@@ -460,7 +624,7 @@ figures, and with `fig.set(plain figure)` on a slide (added to the file's, never
 An icon's drawing arrives with its part: until then (after a reload) it is a dashed circle. The export functions wait
 for it; **`await fig.iconsReady()`** does the same for you (→ the kinds that could not be loaded, `[]` = fine): call it
 after `fig.add` of pack icons and before `bbox`, `fig.check` or closing the page. Ids inside an icon (gradients, clip
-paths) get an ending of their own wherever it is drawn (`iconIds`: the element's id on the canvas, a counter in
+paths, masks, the filters of a drop shadow or glow) get an ending of their own wherever it is drawn (`iconIds`: the element's id on the canvas, a counter in
 thumbnails), so two drawings of one icon never share an id. `svgScrub` (every icon definition, `custom` element and
 thumbnail passes it) also removes `<style>`, references of `<image>` / `<use>` to other hosts and `url(…)` that does not
 point into the drawing.
@@ -503,7 +667,8 @@ merged into a gray group, a group under about 2 % of the icon joins its nearest 
 ink and near-white highlights are groups of their own, listed after the others (a dark gray right beside a color of the
 drawing belongs to that material, so a black mouse's fur stays one group; a dark gray group under a quarter of the icon
 counts as outline). Each group has a main color (its largest member) and its shades (`shades`, dark to light). Computed
-only for an icon that is selected or drawn with `grp`, kept for the last 300 kinds (`GRP_MEMO`); about 1 ms for a typical drawing, ~10 ms for the largest. **The field:** an icon element with `grp` (an object, `{}` too) is colored by
+only for an icon that is selected or drawn with `grp`, kept for the last 300 kinds (`GRP_MEMO`); about 1 ms for a typical
+Servier drawing, ~10 ms for the largest. **The field:** an icon element with `grp` (an object, `{}` too) is colored by
 groups: `grp` = `{"<a color of the drawing>": "#rrggbb", "=<a color of the drawing>": "#rrggbb"}`. A plain key names the
 group that color is in (the editor writes each group's main color as the drawing has it, and always the two largest
 groups), and that group follows it: the key color becomes the new color and every other color of the group keeps its
@@ -533,7 +698,7 @@ with `kind`, or a built-in kind from the panel's list; `fig.update` needs both d
 first, else it throws and changes nothing): the two largest groups (`c1`, `c2`) keep the colors they had unless those
 were their own, the rest starts as made (a kind with one group leaves `c2` as it was, unused). `recolorFig` changes
 `c1`, `c2` and the values of `grp`; the color check names two groups of a recolored icon that look alike now (normal
-vision, deuteranopia, protanopia) while they were told apart as made.
+vision, deuteranopia, protanopia) while they were told apart as made (not for a colorway: its library drew it so).
 **Panel:** one swatch per group, largest first (up to six of those covering at least about 2 % of the icon; **More**
 for the rest, tiny highlights or outline included), each with a strip of its shades and a name ("Color 1: #c0392b,
 46 % of the icon, 4 shades"; Outline, Highlights); a click opens its color below (the color field, the recent colors
@@ -546,19 +711,41 @@ again, not for the next selection. Several icons of one kind selected: the row s
 kinds: c1 / c2 as before (they set the two largest groups of an icon in group mode). Phones: the same row in the
 properties sheet, larger swatches; the sheet's quick color row is Color 1 of the row. Icons marked `fixed` (no color key)
 are recolored by their groups too. A built-in icon shows no row: it draws from two colors only, which its main and
-accent fields already are.
+accent fields already are. **Colorways** (an icon with `cw`): above the swatches a row "Colorways" (`.cwrow`, a group named for
+screen readers): **As made** first (dashed; its tooltip names the icon's own colors, `cwn`), then one small swatch per colorway
+showing the colors it changes (its groups, largest first, then the single colors it sets), so two colorways never look alike; its name in the tooltip and as its label ("Colorway White"), pressed when the icon shows
+it (`cwNow`: its `grp` is that preset); the row's line names the colorway shown, or the one under the pointer or the focus (`.cwnow`: a touch screen
+has no tooltip); a click or tap sets `grp` to the preset and `c1` / `c2` to its two largest groups (`cwApply`,
+one undo step; As made takes `grp` off; when the drawing has not come yet `c1` / `c2` are set when it arrives, `cwSync`), the focus stays on it; the row is one Tab
+stop (the colorway shown), ← → Home End move along it; phones: larger swatches. In Windows high contrast the pressed swatch has an outline. Any change to a
+group afterwards is an ordinary `grp` (no colorway pressed). Added from the Add panel's search whose words name a colorway ("white
+mouse", or the merged drawing's own name: `cwQuery`), the icon comes in that colorway, by a click or a drag (the result shows it in
+that colorway, its name after the icon's, and the tooltip says so).
+**Old keys** of drawings merged as colorways (`PACKS.alias`, from `names.json` `alias`, where the pack is imported): `fig.add('icon',
+{kind: oldKey})` and `fig.update(id, {kind: oldKey})` give the kept icon with that colorway (unless `grp`, `c1` or `c2` are given);
+a pasted element of an old key in its drawing's own colors becomes the kept icon with the colorway (one recolored by hand keeps its
+old drawing, which it carries; Duplicate and Alt-drag copy an element of an old key exactly); a file naming an old key without embedding its drawing does too when it is opened or the pack's
+names arrive (`cwHealScene`); a figure that embeds the old drawing in `scene.icons` draws from it, unchanged.
 `fig.iconColors(id)` → `{mode: 'groups' | 'c1/c2', groups: [{n, main, color, kind: color | ink | white, share, shades,
 field: c1 | c2 | grp}]}` (`null` for a built-in icon); `fig.iconColors(id, {"#main" or group number: "#new" (null = as
 made)})`, `fig.iconColors(id, "#hex")` (One color) and `fig.iconColors(id, null)` (Reset colors) change them (one undo
-step each). Development: `dev/icon-import/color-groups.js` (`grpHarness()`) groups a sample of every pack and draws
+step each). An icon with colorways also gets `colorways: [{n: 'as made' | name, name? (the drawing's own name), colors: [the two
+largest groups], grp?}]` and `colorway` (its name, `'as made'`, or `null` for colors of its own); `fig.iconColors(id, {colorway:
+'White'})` applies one (any letter case; `null` or `'as made'`: as made; an unknown name throws and lists them). Development: `dev/icon-import/color-groups.js` (`grpHarness()`) groups a sample of every pack and draws
 contact sheets (as made, then the largest group in blue, green, orange and gray) into `exports/`.
 
 
 `window.fig`: `fig.iconPacks()` → `[{id, name, license, count, imported, shown, attribution, shareAlike, perIcon, credit,
-how, url, bytes}]`; `await fig.importIconPack(id, {accept: true})` (throws without `accept: true`, which says the terms
+how, url, bytes, fields}]`; `await fig.importIconPack(id, {accept: true})` (throws without `accept: true`, which says the terms
 were read and the responsibility for attribution taken: only pass it when the user agreed) → `{id, name, count}`;
 `await fig.removeIconPack(id)`; `fig.showIconPacks({builtin, my, <id>: bool})` → what is shown; `fig.findIcon(word, n,
-{packs})` (`packs`: left out = the imported packs that are shown, `true` = every imported pack, `false` = none, `[ids]`);
+{packs})` (`packs`: left out = the imported packs that are shown, `true` = every imported pack, `false` = none, `[ids]`;
+ranking across packs, the same in the Add panel's search: SiliCoDraw's own items and My icons get `srcBonus` (+1 when the name is
+the word or the word in another spelling, so the built-in Mitochondrion comes before a pack's "Mitochondria"; +0.04 for the other
+good matches, a tie-break smaller than the smallest step between two ranks, so a closer name still wins: a pack's "Rain (ICAO)"
+before the built-in Raincloud plot); items that rank alike: the shorter name first (where the name matched; always among pack icons), then among pack icons the packs in the list's order,
+never the order they were imported in; the first ten with variety, `palTop`, as the panel's "Most relevant" block under All libraries (whose ten can also hold items that are no icons): see "Search" above;
+returns `[{kind, name, group}]`); `fig.iconLibrary(id?)` (the library the Add panel shows, see "Libraries" above); `fig.iconCategory(id?)` (its chip: a shared category such as `animals`, or a group);
 `fig.add('icon', {kind: 'scidraw:…'})` works when the pack is imported or the figure already embeds that icon, else it
 throws and says how to import (also after an import that was canceled or failed: nothing of it stays registered);
 `await fig.iconsReady()` (above); `fig.iconCredits()` → the line's text for the slide shown, `fig.iconCredits({full: true})`

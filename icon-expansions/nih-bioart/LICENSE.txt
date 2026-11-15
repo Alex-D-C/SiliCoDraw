@@ -4,9 +4,10 @@ Source:     NIH BioArt Source, https://bioart.niaid.nih.gov (National Institute 
             U.S. National Institutes of Health)
 Terms:      every entry in this pack is one the site labels "Licensing: Public Domain". The site gives no legal
             license text for that label; its Terms and Conditions (below) are what it states about the use of its
-            content. The entries the site labels "CC-BY" are not in this pack.
-Retrieved:  2026-11-11 (the texts below as the site showed them on that day, from https://bioart.niaid.nih.gov/terms
-            and https://bioart.niaid.nih.gov/faqs)
+            content. The entries the site labels CC BY 4.0 (tissue drawings, most of the Human Reference Atlas, whose
+            labels, scale bars and badge are drawn into them) are not in this pack.
+Retrieved:  2026-11-13 (the texts below as the site showed them on that day, from https://bioart.niaid.nih.gov/terms
+            and https://bioart.niaid.nih.gov/faqs, and each entry's own page)
 
 The icons in this folder were converted by SiliCoDraw (see ATTRIBUTION.md for what was changed). SiliCoDraw is not
 affiliated with or endorsed by NIH or NIAID. The icons are NOT under SiliCoDraw's own MIT license: they stay under the

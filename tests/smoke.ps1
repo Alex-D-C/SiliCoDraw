@@ -18,6 +18,11 @@ function Code($method, $url, $body, $headers) {
   catch { if ($_.Exception.Response) { return [int]$_.Exception.Response.StatusCode } return -1 }
 }
 Write-Host "SiliCoDraw smoke test (Windows, PowerShell $($PSVersionTable.PSVersion)), folder: $root"
+# a PC whose IT policy restricts PowerShell (ConstrainedLanguage): serve.ps1 says so and stops (it waits 15 s for the reader, so it runs beside the other checks; looked at near the end)
+$clmOut = Join-Path ([IO.Path]::GetTempPath()) "silicodraw-$nm-clm.txt"; $clmPort = 0
+try { $q0 = New-Object Net.Sockets.TcpListener ([Net.IPAddress]::Loopback), 0; $q0.Start(); $clmPort = $q0.LocalEndpoint.Port; $q0.Stop() } catch {}
+$clm = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', "`"`$ExecutionContext.SessionState.LanguageMode = 'ConstrainedLanguage'; & '$($root.Replace("'", "''"))\serve.ps1' -port $clmPort`"" -PassThru -WindowStyle Hidden -RedirectStandardOutput $clmOut
+try { $null = $clm.Handle } catch {}   # (kept, so its exit code can be read once it ended)
 $srv = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$root\serve.ps1`"", '-port', $Port, '-data', "`"$root`"" -PassThru -WindowStyle Hidden
 try {
   $up = $false
@@ -37,7 +42,23 @@ try {
   $list = try { (Invoke-WebRequest "http://localhost:$Port/api/files" -UseBasicParsing).Content } catch { '' }
   if ($list -match "$nm.json") { Ok 'file list' } else { Bad 'file list' }
   $c = Code POST "http://localhost:$Port/$nm-evil.json" $fig @{ Origin = 'https://evil.example' }; if ($c -eq 403) { Ok 'refuses writes from other websites' } else { Bad "accepted a cross-site write (HTTP $c)" }
+  # writes only from the editor's own origin (scheme, name and this port); a tool without Origin as before (the saves above); a foreign Host never
+  $c = Code POST "http://localhost:$Port/$nm.json" $fig @{ Origin = "http://localhost:$Port"; 'Sec-Fetch-Site' = 'same-origin' }; if ($c -eq 204) { Ok 'accepts writes from the editor''s own page (same port)' } else { Bad "refused a write from its own page (HTTP $c)" }
+  $c = Code POST "http://localhost:$Port/$nm-evil.json" $fig @{ Origin = "http://localhost:$($Port + 1)" }; if ($c -eq 403) { Ok 'refuses writes from another port of this computer' } else { Bad "accepted a write from another localhost port (HTTP $c)" }
+  $c = Code POST "http://localhost:$Port/api/move?file=$nm.json&from=&to=trash" '' @{ Origin = 'http://127.0.0.1:1234' }; if ($c -eq 403) { Ok 'refuses moving a figure from another local page' } else { Bad "moved a figure for another local page (HTTP $c)" }
+  $c = Code POST "http://localhost:$Port/$nm-evil.json" $fig @{ 'Sec-Fetch-Site' = 'same-site' }; if ($c -eq 403) { Ok 'refuses a browser write marked same-site (another port)' } else { Bad "accepted a same-site write (HTTP $c)" }
+  $c = Code POST "http://localhost:$Port/api/quit" '' @{ Origin = "http://localhost:$($Port + 1)" }; $up2 = (Code GET "http://localhost:$Port/api/storage?brief=1") -eq 200; if ($c -eq 403 -and $up2) { Ok 'another local page cannot quit it' } else { Bad "quit from another local page (HTTP $c, still up: $up2)" }
+  $c = Code GET "http://localhost:$Port/api/storage?brief=1" $null @{ Host = "evil.example:$Port" }; if ($c -ge 400) { Ok "refuses a foreign Host ($c)" } else { Bad "answered a foreign Host (HTTP $c)" }
+  $c = Code PUT "http://localhost:$Port/$nm.json" $fig; if ($c -eq 405) { Ok 'PUT is refused (405)' } else { Bad "PUT answered $c" }
+  if (Test-Path "$root\$nm-evil.json") { Bad 'a refused write left a file' }
   $c = Code POST "http://localhost:$Port/figure-editor.html" 'x'; if ($c -ne 204) { Ok "cannot overwrite the editor ($c)" } else { Bad 'editor file was writable' }
+  # files of the figures folder are served sandboxed (an SVG with a script that came in with a .zip must not run as the editor's page); the editor itself is not
+  $svgOk = (Code POST "http://localhost:$Port/assets/$nm.svg" '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>') -eq 204
+  $hs = try { (Invoke-WebRequest "http://localhost:$Port/assets/$nm.svg" -UseBasicParsing -TimeoutSec 10).Headers } catch { $null }
+  $hf = try { (Invoke-WebRequest "http://localhost:$Port/$nm.json" -UseBasicParsing -TimeoutSec 10).Headers } catch { $null }
+  $he = try { (Invoke-WebRequest "http://localhost:$Port/" -UseBasicParsing -TimeoutSec 10).Headers } catch { $null }
+  if ($svgOk -and $hs -and "$($hs['Content-Security-Policy'])" -match '^sandbox;' -and $hs['X-Content-Type-Options'] -eq 'nosniff' -and "$($hf['Content-Security-Policy'])" -match '^sandbox;' -and $he -and -not $he['Content-Security-Policy']) { Ok 'files of the figures folder are served sandboxed (nosniff); the editor is not' } else { Bad "sandbox headers: svg '$($hs['Content-Security-Policy'])' figure '$($hf['Content-Security-Policy'])' editor '$($he['Content-Security-Policy'])'" }
+  Remove-Item -LiteralPath "$root\assets\$nm.svg" -ErrorAction SilentlyContinue
   # icon packs (icon-expansions\): the index and, for every pack, its names, license and attribution are served
   $ix = try { (Invoke-WebRequest "http://localhost:$Port/icon-expansions/index.json" -UseBasicParsing -TimeoutSec 10).Content | ConvertFrom-Json } catch { $null }
   if ($ix -and @($ix.packs).Count -ge 1) {
@@ -99,7 +120,34 @@ try {
   $l = (Invoke-WebRequest "http://localhost:$P2/api/files" -UseBasicParsing).Content; if ($l -match 'before\.json') { Ok 'figures folder: a path with [ ] works' } else { Bad 'figures folder: a path with [ ] looks empty' }
   $quoted = [string][char]34 + $cloud + [char]34; $c = Code POST "http://localhost:$P2/api/storage?dir=$([Uri]::EscapeDataString($quoted))" ''; if ($c -eq 200) { Ok 'figures folder: a path pasted in quotes works' } else { Bad "figures folder: a path in quotes (HTTP $c)" }
   $c = Code POST "http://localhost:$P2/api/storage?dir=" ''; $s = Get-Json 'api/storage'; if ($c -eq 200 -and $s.isDefault -and -not (Test-Path -LiteralPath (Join-Path $app '.silicodraw-folder'))) { Ok 'figures folder: back to the program folder' } else { Bad "figures folder: back (HTTP $c)" }
+  # File > Quit SiliCoDraw: POST api/quit from the editor's own page answers 204, then the server ends
+  $c = Code POST "http://localhost:$P2/api/quit" '' @{ Origin = "http://localhost:$P2"; 'Sec-Fetch-Site' = 'same-origin' }
+  for ($i = 0; $i -lt 40 -and -not $srv2.HasExited; $i++) { Start-Sleep -Milliseconds 250 }
+  if ($c -eq 204 -and $srv2.HasExited -and (Code GET "http://localhost:$P2/api/storage?brief=1") -eq -1) { Ok 'quit: api/quit stops the server' } else { Bad "quit: HTTP $c, ended: $($srv2.HasExited)" }
 } finally { $env:OneDrive = $oldOD; Stop-Copy; Remove-Item -LiteralPath $tmpD -Recurse -Force -ErrorAction SilentlyContinue }
+# the launcher (Start SiliCoDraw.bat) on a port of its own, without opening a browser: it waits until the server answers and ends with 0; Quit then stops that server
+$bat = Join-Path $root 'Start SiliCoDraw.bat'
+if (Test-Path -LiteralPath $bat) {
+  $q3 = New-Object Net.Sockets.TcpListener ([Net.IPAddress]::Loopback), 0; $q3.Start(); $P3 = $q3.LocalEndpoint.Port; $q3.Stop()
+  $env:SILICODRAW_PORT = "$P3"; $env:SILICODRAW_NO_BROWSER = '1'
+  try {
+    $lp = Start-Process cmd.exe -ArgumentList '/c', "`"`"$bat`"`"" -PassThru -WindowStyle Hidden; try { $null = $lp.Handle } catch {}
+    for ($i = 0; $i -lt 180 -and -not $lp.HasExited; $i++) { Start-Sleep -Milliseconds 250 }
+    $up3 = (Code GET "http://localhost:$P3/api/storage?brief=1") -eq 200
+    if ($lp.HasExited -and $lp.ExitCode -eq 0 -and $up3) { Ok 'launcher: waits until the server answers, then ends (0)' } else { Bad "launcher: ended $($lp.HasExited), code $(if ($lp.HasExited) { $lp.ExitCode }), server up: $up3" }
+    $c = Code POST "http://localhost:$P3/api/quit" ''; $gone = $false; for ($i = 0; $i -lt 40 -and -not $gone; $i++) { Start-Sleep -Milliseconds 250; $gone = (Code GET "http://localhost:$P3/api/storage?brief=1") -eq -1 }
+    if ($c -eq 204 -and $gone) { Ok 'launcher: its server stops with api/quit' } else { Bad "launcher: quit (HTTP $c, stopped: $gone)" }
+  } finally {
+    Remove-Item Env:SILICODRAW_PORT, Env:SILICODRAW_NO_BROWSER -ErrorAction SilentlyContinue
+    try { Get-CimInstance Win32_Process -Filter "Name = 'powershell.exe' OR Name = 'python.exe' OR Name = 'pwsh.exe'" | Where-Object { $_.CommandLine -match "(-|--)port $P3\b" } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue } } catch {}
+  }
+} else { Write-Host '  skip  launcher (no Start SiliCoDraw.bat in this folder)' }
+# the restricted PowerShell started at the top
+for ($i = 0; $i -lt 100 -and -not $clm.HasExited; $i++) { Start-Sleep -Milliseconds 250 }
+$said = try { [IO.File]::ReadAllText($clmOut) } catch { '' }
+if ($clm.HasExited -and $clm.ExitCode -eq 1 -and $said -match 'IT policy' -and $said -match 'silicodraw\.com') { Ok 'restricted PowerShell (IT policy): serve.ps1 says so and points to silicodraw.com' } else { Bad "restricted PowerShell: ended $($clm.HasExited), code $(if ($clm.HasExited) { $clm.ExitCode }), said: $said" }
+if (-not $clm.HasExited) { Stop-Process -Id $clm.Id -Force -ErrorAction SilentlyContinue }
+Remove-Item -LiteralPath $clmOut -Force -ErrorAction SilentlyContinue
 if (-not $Offline -and -not (Test-Path (Join-Path $root 'update.ps1'))) { Write-Host '  skip  updater -Check (no update.ps1 in this folder)' }
 elseif (-not $Offline) {
   $out = & powershell -NoProfile -ExecutionPolicy Bypass -File "$root\update.ps1" -Check -Yes -Force 2>&1 | Out-String

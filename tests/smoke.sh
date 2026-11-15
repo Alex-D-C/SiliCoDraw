@@ -39,6 +39,12 @@ if [ "$(uname -s)" = Darwin ]; then
   APP="$TMP/home/Applications/SiliCoDraw.app"
   [ -d "$APP" ] && ok "app shortcut created" || bad "app shortcut missing: $APP"
   [ -x "$APP/Contents/MacOS/applet" ] && ok "app shortcut has an executable" || bad "app shortcut not runnable"
+else
+  # Linux: on a desktop session start.sh adds SiliCoDraw to the applications menu (a .desktop file naming this folder's start.sh and icon)
+  if HOME="$TMP/home" XDG_DATA_HOME="$TMP/home/.local/share" DISPLAY=:0 sh "$ROOT/start.sh" --setup-only; then
+    DE="$TMP/home/.local/share/applications/SiliCoDraw.desktop"
+    if [ -f "$DE" ] && grep -q '^Exec=sh ".*/start.sh"$' "$DE" && grep -q '^Icon=.*/brand/icon-256.png$' "$DE"; then ok "applications-menu entry (SiliCoDraw.desktop)"; else bad "applications-menu entry missing or wrong: $(cat "$DE" 2>/dev/null)"; fi
+  else bad "start.sh --setup-only on a desktop"; fi
 fi
 
 # 3. the server (free ports: never a SiliCoDraw you are using)
@@ -60,8 +66,32 @@ ls "$ROOT/history/$NM/"*.json >/dev/null 2>&1 && ok "history snapshot" || bad "n
 curl -fs "http://localhost:$PORT/api/files" | grep -q "$NM.json" && ok "file list" || bad "file list"
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: https://evil.example' --data "$FIG" "http://localhost:$PORT/$NM-evil.json")
 [ "$code" = 403 ] && ok "refuses writes from other websites" || bad "accepted a cross-site write (HTTP $code)"
+# writes only from the editor's own origin (scheme, name and this port); a tool without Origin as before (the saves above); a foreign Host never
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Origin: http://localhost:$PORT" -H 'Sec-Fetch-Site: same-origin' --data "$FIG" "http://localhost:$PORT/$NM.json")
+[ "$code" = 204 ] && ok "accepts writes from the editor's own page (same port)" || bad "refused a write from its own page (HTTP $code)"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Origin: http://localhost:$((PORT + 1))" --data "$FIG" "http://localhost:$PORT/$NM-evil.json")
+[ "$code" = 403 ] && ok "refuses writes from another port of this computer" || bad "accepted a write from another localhost port (HTTP $code)"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Origin: http://127.0.0.1:1234' "http://localhost:$PORT/api/move?file=$NM.json&from=&to=trash")
+[ "$code" = 403 ] && ok "refuses moving a figure from another local page" || bad "moved a figure for another local page (HTTP $code)"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H 'Sec-Fetch-Site: same-site' --data "$FIG" "http://localhost:$PORT/$NM-evil.json")
+[ "$code" = 403 ] && ok "refuses a browser write marked same-site (another port)" || bad "accepted a same-site write (HTTP $code)"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST -H "Origin: http://localhost:$((PORT + 1))" "http://localhost:$PORT/api/quit")
+if [ "$code" = 403 ] && curl -fs -o /dev/null "http://localhost:$PORT/api/storage?brief=1"; then ok "another local page cannot quit it"; else bad "quit from another local page (HTTP $code)"; fi
+code=$(curl -s -o /dev/null -w '%{http_code}' -H "Host: evil.example:$PORT" "http://localhost:$PORT/api/storage?brief=1")
+[ "$code" -ge 400 ] 2>/dev/null && ok "refuses a foreign Host ($code)" || bad "answered a foreign Host (HTTP $code)"
+code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT --data "$FIG" "http://localhost:$PORT/$NM.json")
+[ "$code" = 405 ] && ok "PUT is refused (405)" || bad "PUT answered $code"
+[ -f "$ROOT/$NM-evil.json" ] && bad "a refused write left a file"
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data x "http://localhost:$PORT/figure-editor.html")
 [ "$code" != 204 ] && ok "cannot overwrite the editor ($code)" || bad "editor file was writable"
+# files of the figures folder are served sandboxed (an SVG with a script that came in with a .zip must not run as the editor's page); the editor itself is not
+code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>' "http://localhost:$PORT/assets/$NM.svg")
+HS=$(curl -fsI "http://localhost:$PORT/assets/$NM.svg" | tr -d '\r'); HF=$(curl -fsI "http://localhost:$PORT/$NM.json" | tr -d '\r'); HE=$(curl -fsI "http://localhost:$PORT/" | tr -d '\r')
+if [ "$code" = 204 ] && printf '%s\n' "$HS" | grep -qi '^content-security-policy: sandbox;' && printf '%s\n' "$HS" | grep -qi '^x-content-type-options: nosniff' \
+  && printf '%s\n' "$HF" | grep -qi '^content-security-policy: sandbox;' && [ -n "$HE" ] && ! printf '%s\n' "$HE" | grep -qi '^content-security-policy:'; then
+  ok "files of the figures folder are served sandboxed (nosniff); the editor is not"
+else bad "sandbox headers (HTTP $code): $HS"; fi
+rm -f "$ROOT/assets/$NM.svg"
 # icon packs (icon-expansions/): the index and, for every pack, its names, license and attribution are served
 PACKIDS=$(curl -fs "http://localhost:$PORT/icon-expansions/index.json" | "$PY" -c 'import json, sys; print(" ".join(p["id"] for p in json.load(sys.stdin)["packs"]))' 2>/dev/null)
 if [ -n "$PACKIDS" ]; then
@@ -118,6 +148,11 @@ post --data "$FIG" "$B2/snap.json" >/dev/null; post --data "$FIG" "$B2/snap.json
 [ "$(post --data "$FIG" "$B2/...json")" != 204 ] && ok "a name that is only dots is no figure" || bad "a name that is only dots was saved"
 stop_copy; start_copy
 [ "$(post "$B2/api/storage?dir=")" = 200 ] && curl -fs "$B2/api/storage" | grep -q '"isDefault": true' && [ ! -f "$APP/.silicodraw-folder" ] && ok "figures folder: back to the program folder" || bad "figures folder: back"
+# File > Quit SiliCoDraw: POST api/quit from the editor's own page answers 204, then the server ends
+code=$(post -H "Origin: http://localhost:$P2" -H 'Sec-Fetch-Site: same-origin' "$B2/api/quit"); i=0; up=1
+while [ $i -lt 40 ]; do curl -fs -o /dev/null --max-time 2 "$B2/api/storage?brief=1" || { up=0; break; }; i=$((i+1)); sleep 0.25; done
+if [ "$code" = 204 ] && [ $up = 0 ]; then ok "quit: api/quit stops the server"; else bad "quit: HTTP $code, still answering: $up"; fi
+grep -q 'has stopped' "$TMP/server2.log" 2>/dev/null || { sleep 1; grep -q 'has stopped' "$TMP/server2.log" 2>/dev/null; } && ok "quit: the server says it has stopped" || bad "quit: no word in the server window: $(tail -3 "$TMP/server2.log")"
 stop_copy
 
 # 4. installer (into a temporary home) and the updater's dry run

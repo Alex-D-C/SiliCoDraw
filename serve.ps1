@@ -7,7 +7,17 @@
 #  - api/files, api/history?file=..., api/rename, api/move, api/delete for the editor's file menu
 #  - api/storage: the figures folder (figures, archive\, trash\, history\, assets\, exports\), this folder by default, or any other folder such as
 #    one synced by Dropbox, OneDrive, Google Drive, iCloud Drive or Box; the program itself stays here. -data <folder> sets it for this run only
+#  - api/quit (POST): stops the server (File > Quit SiliCoDraw in the editor)
+#  - writes (every POST) are accepted only from the editor's own page (Origin = this server's exact address and port) or from a
+#    tool that sends no Origin (curl, scripts, the tests); never from another site or another port of this computer
 param([int]$port = 8770, [string]$data = '')
+# a PC where IT policy restricts PowerShell (ConstrainedLanguage: AppLocker, WDAC) cannot run this server: say so instead of failing on the first .NET call
+if ($ExecutionContext.SessionState.LanguageMode -ne 'FullLanguage') {
+  Write-Host 'Your IT policy blocks the local SiliCoDraw server on this computer (PowerShell runs in restricted mode).'
+  Write-Host 'Use SiliCoDraw in your browser instead: https://silicodraw.com'
+  Start-Sleep -Seconds 15; exit 1
+}
+try { $Host.UI.RawUI.WindowTitle = "SiliCoDraw server (port $port)" } catch {}   # the name the launcher's messages give (the taskbar button)
 $root = $PSScriptRoot
 $config = Join-Path $root '.silicodraw-folder'   # the figures folder chosen in the editor (one line); never replaced by the updater
 $dataFixed = [bool]$data
@@ -30,7 +40,8 @@ try { $l.Start() } catch {
   Write-Host "Could not start on port ${port}: another program uses it. Close that program and try again."
   Start-Sleep -Seconds 8; exit 1
 }
-Write-Host "SiliCoDraw is running at http://localhost:$port/  (close this window to stop it)"
+Write-Host "SiliCoDraw is running at http://localhost:$port/  (to stop it: File > Quit SiliCoDraw in the editor, or close this window)"
+$quit = $false   # set by POST api/quit: the loop ends after that answer
 # one request at a time: a tab that stops reading must not hold up the others for hours (the default minimum is 150 bytes/s)
 try { $l.TimeoutManager.MinSendBytesPerSecond = 10000 } catch {}
 $types = @{ '.html'='text/html; charset=utf-8'; '.js'='text/javascript'; '.css'='text/css'; '.json'='application/json; charset=utf-8'; '.svg'='image/svg+xml; charset=utf-8'; '.png'='image/png'; '.jpg'='image/jpeg'; '.jpeg'='image/jpeg'; '.gif'='image/gif'; '.webp'='image/webp'; '.md'='text/markdown; charset=utf-8'; '.txt'='text/plain; charset=utf-8'; '.pptx'='application/vnd.openxmlformats-officedocument.presentationml.presentation'; '.pdf'='application/pdf'; '.tif'='image/tiff'; '.tiff'='image/tiff'; '.ico'='image/x-icon'; '.icns'='image/icns' }
@@ -60,6 +71,11 @@ function Send-Json($ctx, $obj) {
 }
 function Get-HistoryDir($name) { Join-Path $data ('history\' + [IO.Path]::GetFileNameWithoutExtension($name)) }
 $dataDirs = @('archive', 'trash', 'history', 'assets', 'exports')
+# files of the figures folder (figures, archive/, trash/, history/, assets/, exports/) are the user's data, not the program: a picture that came in
+# with a .zip or through a sync folder may be an SVG or HTML with a script, and opened as a page it would run as the editor's own origin (and
+# pass the write rule). They are served sandboxed (no scripts, a unique origin), never sniffed; a PDF is left out of the sandbox (browsers
+# refuse to show a PDF in one) and runs no page script anyway. <img> / <image> use is unaffected. The same headers as serve.py (USER_CSP).
+$userCsp = "sandbox; default-src 'none'; img-src data: 'self'; style-src 'unsafe-inline'; font-src data:"
 # where a path of the address lives: a figure and its data in the figures folder, everything else with the program
 # a chosen folder that cannot be reached at the moment (an unplugged drive, a sync app stopped): figures are then refused with 503, and never read from or written to anywhere else
 function Test-DataGone { ($data -ne $root.TrimEnd('\')) -and -not (Test-Path -LiteralPath $data -PathType Container) }
@@ -105,14 +121,24 @@ while ($l.IsListening) {
     if ($path -eq '') { $path = 'figure-editor.html' }
     $scopeQ = Get-Q $req 'scope'
     $isData = ($path -match $nameRe) -or ($dataDirs -contains ($path -split '/')[0]) -or (@('api/move', 'api/delete', 'api/rename', 'api/history') -contains $path) -or ($path -eq 'api/files' -and $scopeQ -ne 'examples')
-    if ($isData -and (Test-DataGone)) { $ctx.Response.StatusCode = 503; $ctx.Response.Close(); continue }
     $homeDir = Get-Home $path
     $full = [IO.Path]::GetFullPath((Join-Path $homeDir $path))
-    # writes are accepted from the editor (same origin) and from local tools, never from a web page on another site
-    # (a browser marks such requests with Sec-Fetch-Site: cross-site and an Origin that is not localhost)
-    $origin = $req.Headers['Origin']; $site = $req.Headers['Sec-Fetch-Site']
-    $foreign = ($site -eq 'cross-site') -or ($origin -and ($origin -notmatch '^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$') -and ($origin -ne ('http://' + $req.Headers['Host'])))
+    # writes are accepted from the editor's own page and from local tools, never from another web page (the same rule as serve.py):
+    # a browser names the page that sends a request in Origin, and it must be this server's exact address: http, a local name and
+    # this port (a page on another port of this computer, such as a dev server or another app, is another site's page, though the
+    # browser calls it "same-site"); Sec-Fetch-Site, when sent, must say same-origin. A request with neither header comes from a tool
+    # (curl, a script, an agent, the tests) and is accepted as before. The Host check (a name other than this computer's) is HttpListener's own: 400
+    $origin = $req.Headers['Origin']; $site = $req.Headers['Sec-Fetch-Site']; $hostH = "$($req.Headers['Host'])"
+    $ownHost = $hostH -match ('^(localhost|127\.0\.0\.1|\[::1\])' + $(if ($port -eq 80) { '(:80)?' } else { ":$port" }) + '$')
+    $foreign = ($site -and @('same-origin', 'none') -notcontains $site) -or ($origin -and -not ($ownHost -and $origin -eq ('http://' + $hostH)))
+    if (@('GET', 'HEAD', 'POST') -notcontains $req.HttpMethod) { $ctx.Response.StatusCode = 405; $ctx.Response.Close(); continue }   # PUT, DELETE, OPTIONS...: nothing is changed in any other way
     if ($req.HttpMethod -eq 'POST' -and $foreign) { $ctx.Response.StatusCode = 403; $ctx.Response.Close(); continue }
+
+    if ($req.HttpMethod -eq 'POST' -and $path -eq 'api/quit') {
+      # File > Quit SiliCoDraw: the editor saved first; answered, then the server stops (never on its own: no idle timeout)
+      $quit = $true; $ctx.Response.StatusCode = 204; $ctx.Response.Close(); break
+    }
+    if ($isData -and (Test-DataGone)) { $ctx.Response.StatusCode = 503; $ctx.Response.Close(); continue }   # (after the origin check, as in serve.py)
 
     if ($path -eq 'api/files') {
       # ?scope=active (root, default) | archive | trash | examples
@@ -229,6 +255,10 @@ while ($l.IsListening) {
       $ext = [IO.Path]::GetExtension($full).ToLower()
       $ctx.Response.ContentType = if ($types[$ext]) { $types[$ext] } else { 'application/octet-stream' }
       $ctx.Response.Headers.Add('Cache-Control','no-store')
+      if ($path -match $nameRe -or $dataDirs -contains ($path -split '/')[0]) {   # a file of the figures folder (see $userCsp)
+        $ctx.Response.Headers.Add('X-Content-Type-Options', 'nosniff')
+        if ($ext -ne '.pdf') { $ctx.Response.Headers.Add('Content-Security-Policy', $userCsp) }
+      }
       $same = $false
       if ($path -match $nameRe) {   # a figure: its version (see Get-ETag)
         $etg = Get-ETag $bytes; $ctx.Response.Headers.Add('ETag', $etg)
@@ -253,3 +283,4 @@ while ($l.IsListening) {
   }
   try { $ctx.Response.Close() } catch {}
 }
+if ($quit) { try { $l.Stop(); $l.Close() } catch {}; Write-Host 'SiliCoDraw has stopped (File > Quit SiliCoDraw).' }

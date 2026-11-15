@@ -1,0 +1,214 @@
+{
+    "count":  640,
+    "bytes":  1449523,
+    "names":  "names.json",
+    "fields":  ["medicine"],
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-blood.json",
+                       "cat":  "Blood",
+                       "count":  11,
+                       "bytes":  20305
+                   },
+                   {
+                       "file":  "icons-body.json",
+                       "cat":  "Body",
+                       "count":  54,
+                       "bytes":  119698
+                   },
+                   {
+                       "file":  "icons-conditions.json",
+                       "cat":  "Conditions",
+                       "count":  52,
+                       "bytes":  166058
+                   },
+                   {
+                       "file":  "icons-contraceptives.json",
+                       "cat":  "Contraceptives",
+                       "count":  15,
+                       "bytes":  42424
+                   },
+                   {
+                       "file":  "icons-devices.json",
+                       "cat":  "Devices",
+                       "count":  76,
+                       "bytes":  158423
+                   },
+                   {
+                       "file":  "icons-diagnostics.json",
+                       "cat":  "Diagnostics",
+                       "count":  32,
+                       "bytes":  104483
+                   },
+                   {
+                       "file":  "icons-emotions.json",
+                       "cat":  "Emotions",
+                       "count":  26,
+                       "bytes":  60408
+                   },
+                   {
+                       "file":  "icons-exercise.json",
+                       "cat":  "Exercise",
+                       "count":  7,
+                       "bytes":  21171
+                   },
+                   {
+                       "file":  "icons-graphs.json",
+                       "cat":  "Graphs",
+                       "count":  13,
+                       "bytes":  25707
+                   },
+                   {
+                       "file":  "icons-medications.json",
+                       "cat":  "Medications",
+                       "count":  16,
+                       "bytes":  36974
+                   },
+                   {
+                       "file":  "icons-nutrition.json",
+                       "cat":  "Nutrition",
+                       "count":  18,
+                       "bytes":  42491
+                   },
+                   {
+                       "file":  "icons-objects.json",
+                       "cat":  "Objects",
+                       "count":  26,
+                       "bytes":  37425
+                   },
+                   {
+                       "file":  "icons-people.json",
+                       "cat":  "People",
+                       "count":  89,
+                       "bytes":  200484
+                   },
+                   {
+                       "file":  "icons-places.json",
+                       "cat":  "Places",
+                       "count":  22,
+                       "bytes":  32959
+                   },
+                   {
+                       "file":  "icons-ppe.json",
+                       "cat":  "PPE",
+                       "count":  14,
+                       "bytes":  21861
+                   },
+                   {
+                       "file":  "icons-specialties.json",
+                       "cat":  "Specialties",
+                       "count":  45,
+                       "bytes":  101318
+                   },
+                   {
+                       "file":  "icons-symbols.json",
+                       "cat":  "Symbols",
+                       "count":  101,
+                       "bytes":  199622
+                   },
+                   {
+                       "file":  "icons-vehicles.json",
+                       "cat":  "Vehicles",
+                       "count":  11,
+                       "bytes":  22236
+                   },
+                   {
+                       "file":  "icons-zoonoses.json",
+                       "cat":  "Zoonoses",
+                       "count":  12,
+                       "bytes":  35476
+                   }
+               ],
+    "id":  "healthicons",
+    "name":  "Health Icons",
+    "by":  "Health Icons, a volunteer project hosted by the public-health not-for-profit Resolve to Save Lives (maintainers Daniel Burka and Jahanvi Singh, with volunteer contributors)",
+    "url":  "https://healthicons.org",
+    "site":  "healthicons.org",
+    "mark":  "HI",
+    "license":  "CC0 1.0",
+    "licenseUrl":  "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attribution":  "none",
+    "shareAlike":  false,
+    "perIcon":  false,
+    "credit":  "Health Icons (healthicons.org), CC0 1.0",
+    "plain":  "Creative Commons Zero 1.0 (CC0): the makers of Health Icons waived all copyright in these icons, so you may use, change and share them for any purpose, also commercially, without asking and without giving credit. The repository\u0027s LICENSE puts the icon files in the public domain under CC0; its MIT license covers only the code of the healthicons.org website. This pack is not endorsed by Health Icons or Resolve to Save Lives.",
+    "ask":  "The icons are in the public domain, so you can use them in any type of project, for free, with no credit needed.",
+    "askFrom":  "https://healthicons.org/licenses",
+    "how":  "No credit is required, and SiliCoDraw adds no credit line for these icons. If you want to mention the library, Page → Copy full icon credits gives a line for it.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format, one style only (the 48 px filled icons; the outline style and the 24 px versions draw the same subjects): fitted into a 100 × 100 box, coordinates rounded, and the color made recolorable (the icons are drawn in one color). Each icon was drawn and compared with the original on a white and on a dark page. Left out: letters, digits and currency signs, plain geometric shapes, logos and trademarks, user-interface symbols (menus, zoom and settings buttons, signal bars, check marks and question marks) and a military vehicle.",
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14",
+    "exclude":  [
+                    "dhis2-logo",
+                    "excel-logo",
+                    "openmrs-logo",
+                    "simple-logo",
+                    "fhir-logo",
+                    "hl7v2-logo",
+                    "loinc",
+                    "icd",
+                    "icd-11",
+                    "icd-10",
+                    "icd-9",
+                    "question-triangle",
+                    "question-circle",
+                    "question",
+                    "positive",
+                    "negative",
+                    "no",
+                    "yes",
+                    "cancel",
+                    "stop",
+                    "info",
+                    "alert",
+                    "alert-circle",
+                    "magnifying-glass",
+                    "polygon",
+                    "peace",
+                    "tally",
+                    "default",
+                    "i-note-action",
+                    "video",
+                    "camera",
+                    "magic-wand",
+                    "qr-code",
+                    "geo-location",
+                    "communication",
+                    "forum",
+                    "secure-communication",
+                    "contact-support",
+                    "entry",
+                    "low-level",
+                    "medium-level",
+                    "high-level",
+                    "job-status-level",
+                    "ui-zoom-in",
+                    "ui-zoom-out",
+                    "ui-zoom",
+                    "ui-settings",
+                    "ui-secure",
+                    "ui-preferences",
+                    "ui-folder-family",
+                    "ui-folder",
+                    "ui-menu",
+                    "ui-menu-grid",
+                    "ui-user-profile",
+                    "network-5g",
+                    "network-4g",
+                    "3g",
+                    "2g",
+                    "medium-bars",
+                    "low-bars",
+                    "high-bars",
+                    "i-schedule-school-date-time",
+                    "cardiogram-e",
+                    "health-data-sync",
+                    "database",
+                    "i-exam-qualification",
+                    "i-exam-multiple-choice",
+                    "provider-fst",
+                    "imm",
+                    "war"
+                ]
+}

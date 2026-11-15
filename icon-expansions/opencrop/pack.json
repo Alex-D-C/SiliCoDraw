@@ -1,0 +1,94 @@
+{
+    "count":  221,
+    "bytes":  1917516,
+    "names":  "names.json",
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-beans-peas.json",
+                       "cat":  "Beans \u0026 peas",
+                       "count":  5,
+                       "bytes":  32728
+                   },
+                   {
+                       "file":  "icons-flowers-other-plants.json",
+                       "cat":  "Flowers \u0026 other plants",
+                       "count":  5,
+                       "bytes":  56177
+                   },
+                   {
+                       "file":  "icons-fruiting-vegetables.json",
+                       "cat":  "Fruiting vegetables",
+                       "count":  24,
+                       "bytes":  123410
+                   },
+                   {
+                       "file":  "icons-fruits-nuts.json",
+                       "cat":  "Fruits \u0026 nuts",
+                       "count":  21,
+                       "bytes":  282209
+                   },
+                   {
+                       "file":  "icons-grains-field-crops.json",
+                       "cat":  "Grains \u0026 field crops",
+                       "count":  14,
+                       "bytes":  204259
+                   },
+                   {
+                       "file":  "icons-herbs-medicinal-plants.json",
+                       "cat":  "Herbs \u0026 medicinal plants",
+                       "count":  31,
+                       "bytes":  367761
+                   },
+                   {
+                       "file":  "icons-leaf-stem-vegetables.json",
+                       "cat":  "Leaf \u0026 stem vegetables",
+                       "count":  30,
+                       "bytes":  301058
+                   },
+                   {
+                       "file":  "icons-mushrooms.json",
+                       "cat":  "Mushrooms",
+                       "count":  14,
+                       "bytes":  209484
+                   },
+                   {
+                       "file":  "icons-peppers-chilies.json",
+                       "cat":  "Peppers \u0026 chilies",
+                       "count":  52,
+                       "bytes":  232490
+                   },
+                   {
+                       "file":  "icons-roots-tubers-onions.json",
+                       "cat":  "Roots, tubers \u0026 onions",
+                       "count":  25,
+                       "bytes":  107940
+                   }
+               ],
+    "id":  "opencrop",
+    "name":  "Open Crop Icons",
+    "by":  "the contributors of Open Crop Icons, an icon set of the OpenFarm project",
+    "url":  "https://github.com/openfarmcc/open-crop-icons",
+    "site":  "github.com/openfarmcc/open-crop-icons",
+    "mark":  "OCI",
+    "license":  "CC0 1.0",
+    "fields":  [
+                   "ecology"
+               ],
+    "licenseUrl":  "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attribution":  "none",
+    "shareAlike":  false,
+    "perIcon":  false,
+    "credit":  "Open Crop Icons, OpenFarm contributors (github.com/openfarmcc/open-crop-icons), CC0 1.0",
+    "plain":  "Public domain, dedicated under Creative Commons Zero 1.0 (CC0): you may copy, change and share these icons for any purpose, also commercially, without asking and without giving credit. The repository\u0027s README releases the icons under CC0 and its package.json declares CC0-1.0. The repository names no creator per icon. This pack is not endorsed by OpenFarm or the icons\u0027 contributors.",
+    "ask":  "These are released under a CC0 license. They\u0027re public domain works so use them without restriction. A credit somewhere to help other people find them would be in good spirit, but is not required.",
+    "askFrom":  "https://github.com/openfarmcc/open-crop-icons/blob/mainline/README.md",
+    "how":  "No credit is required, and SiliCoDraw adds no credit line for these icons. The makers would welcome a credit somewhere to help other people find the icons: Page → Copy full icon credits gives a line for it, if you want to give one.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format, one drawing per crop (the PNG pictures and the 24, 32 and 64 px copies of a few icons are not included): fitted into a 100 × 100 box, style sheets written out as attributes, coordinates rounded, and the two main colors made recolorable. Each icon was drawn and compared with the original on a white and on a dark page. Names are the folder names in words, with misspellings corrected (Artichoke, Marjoram, Chanterelle, Portobello, Brussels Sprout, Lacinato Kale, Yukon Gold Potato and others); the groups are SiliCoDraw\u0027s, since the repository has none. Left out: the cannabis plant and the psilocybin mushroom; drawings that are only another color of a drawing kept (the purple, red, white and yellow carrots, the red cabbage, the white and yellow onions, the purple-pod and wax beans, the red and rainbow chards, the black habanero, the Granny Smith apple and others: SiliCoDraw recolors icons, and their names still find the drawing kept); and the cantaloupe, whose conversion did not match the original. A drawing of another ripeness or species is an icon of its own, even where only its colors differ (the green, red, orange and yellow bell peppers, the oyster mushrooms, the nectarine beside the peach).",
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14",
+    "exclude":  [
+                    "cannabis",
+                    "psilocybin"
+                ]
+}

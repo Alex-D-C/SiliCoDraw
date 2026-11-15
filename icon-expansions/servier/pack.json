@@ -1,0 +1,361 @@
+{
+    "count":  3193,
+    "bytes":  62725618,
+    "names":  "names.json",
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-animals.json",
+                       "cat":  "Animals",
+                       "count":  50,
+                       "bytes":  1380461
+                   },
+                   {
+                       "file":  "icons-arteries-pathophysiology.json",
+                       "cat":  "Arteries (pathophysiology)",
+                       "count":  42,
+                       "bytes":  987532
+                   },
+                   {
+                       "file":  "icons-arteries-physiology.json",
+                       "cat":  "Arteries (physiology)",
+                       "count":  87,
+                       "bytes":  2511680
+                   },
+                   {
+                       "file":  "icons-atherothrombosis.json",
+                       "cat":  "Atherothrombosis",
+                       "count":  47,
+                       "bytes":  2596819
+                   },
+                   {
+                       "file":  "icons-atherothrombosis-2.json",
+                       "cat":  "Atherothrombosis",
+                       "count":  21,
+                       "bytes":  641064
+                   },
+                   {
+                       "file":  "icons-blood-and-immunology.json",
+                       "cat":  "Blood and immunology",
+                       "count":  228,
+                       "bytes":  1839514
+                   },
+                   {
+                       "file":  "icons-bone-fractures.json",
+                       "cat":  "Bone fractures",
+                       "count":  68,
+                       "bytes":  1165932
+                   },
+                   {
+                       "file":  "icons-bone-structure.json",
+                       "cat":  "Bone structure",
+                       "count":  108,
+                       "bytes":  2148829
+                   },
+                   {
+                       "file":  "icons-bones.json",
+                       "cat":  "Bones",
+                       "count":  44,
+                       "bytes":  2558337
+                   },
+                   {
+                       "file":  "icons-bones-2.json",
+                       "cat":  "Bones",
+                       "count":  62,
+                       "bytes":  2189659
+                   },
+                   {
+                       "file":  "icons-cell-membrane.json",
+                       "cat":  "Cell membrane",
+                       "count":  80,
+                       "bytes":  1534143
+                   },
+                   {
+                       "file":  "icons-chemistry.json",
+                       "cat":  "Chemistry",
+                       "count":  56,
+                       "bytes":  495389
+                   },
+                   {
+                       "file":  "icons-dermatology.json",
+                       "cat":  "Dermatology",
+                       "count":  31,
+                       "bytes":  1254508
+                   },
+                   {
+                       "file":  "icons-diabetes.json",
+                       "cat":  "Diabetes",
+                       "count":  24,
+                       "bytes":  663396
+                   },
+                   {
+                       "file":  "icons-dietetics.json",
+                       "cat":  "Dietetics",
+                       "count":  97,
+                       "bytes":  2550938
+                   },
+                   {
+                       "file":  "icons-dietetics-2.json",
+                       "cat":  "Dietetics",
+                       "count":  43,
+                       "bytes":  422313
+                   },
+                   {
+                       "file":  "icons-digestive-system.json",
+                       "cat":  "Digestive system",
+                       "count":  88,
+                       "bytes":  2544770
+                   },
+                   {
+                       "file":  "icons-digestive-system-2.json",
+                       "cat":  "Digestive system",
+                       "count":  28,
+                       "bytes":  414223
+                   },
+                   {
+                       "file":  "icons-drugs.json",
+                       "cat":  "Drugs",
+                       "count":  40,
+                       "bytes":  378966
+                   },
+                   {
+                       "file":  "icons-ear-nose-and-throat.json",
+                       "cat":  "Ear, nose and throat",
+                       "count":  21,
+                       "bytes":  747588
+                   },
+                   {
+                       "file":  "icons-embryology.json",
+                       "cat":  "Embryology",
+                       "count":  18,
+                       "bytes":  287698
+                   },
+                   {
+                       "file":  "icons-emergency-equipment.json",
+                       "cat":  "Emergency equipment",
+                       "count":  4,
+                       "bytes":  48206
+                   },
+                   {
+                       "file":  "icons-endocrinology.json",
+                       "cat":  "Endocrinology",
+                       "count":  25,
+                       "bytes":  981747
+                   },
+                   {
+                       "file":  "icons-general-items.json",
+                       "cat":  "General items",
+                       "count":  107,
+                       "bytes":  280940
+                   },
+                   {
+                       "file":  "icons-genetics.json",
+                       "cat":  "Genetics",
+                       "count":  94,
+                       "bytes":  177443
+                   },
+                   {
+                       "file":  "icons-heart-pathophysiology.json",
+                       "cat":  "Heart (pathophysiology)",
+                       "count":  91,
+                       "bytes":  2514886
+                   },
+                   {
+                       "file":  "icons-heart-physiology.json",
+                       "cat":  "Heart (physiology)",
+                       "count":  39,
+                       "bytes":  955173
+                   },
+                   {
+                       "file":  "icons-infectiology.json",
+                       "cat":  "Infectiology",
+                       "count":  24,
+                       "bytes":  2585990
+                   },
+                   {
+                       "file":  "icons-infectiology-2.json",
+                       "cat":  "Infectiology",
+                       "count":  22,
+                       "bytes":  590488
+                   },
+                   {
+                       "file":  "icons-intracellular-components.json",
+                       "cat":  "Intracellular components",
+                       "count":  100,
+                       "bytes":  1063131
+                   },
+                   {
+                       "file":  "icons-lab-apparatus.json",
+                       "cat":  "Lab apparatus",
+                       "count":  37,
+                       "bytes":  552644
+                   },
+                   {
+                       "file":  "icons-lipids.json",
+                       "cat":  "Lipids",
+                       "count":  18,
+                       "bytes":  1436827
+                   },
+                   {
+                       "file":  "icons-lymphatic-system.json",
+                       "cat":  "Lymphatic system",
+                       "count":  8,
+                       "bytes":  326207
+                   },
+                   {
+                       "file":  "icons-medical-acts.json",
+                       "cat":  "Medical acts",
+                       "count":  19,
+                       "bytes":  354830
+                   },
+                   {
+                       "file":  "icons-medical-equipment.json",
+                       "cat":  "Medical equipment",
+                       "count":  62,
+                       "bytes":  669988
+                   },
+                   {
+                       "file":  "icons-microbiology-and-cell-culture.json",
+                       "cat":  "Microbiology and cell culture",
+                       "count":  106,
+                       "bytes":  1010390
+                   },
+                   {
+                       "file":  "icons-muscles.json",
+                       "cat":  "Muscles",
+                       "count":  22,
+                       "bytes":  682463
+                   },
+                   {
+                       "file":  "icons-nervous-system.json",
+                       "cat":  "Nervous system",
+                       "count":  71,
+                       "bytes":  2324474
+                   },
+                   {
+                       "file":  "icons-neural-cells.json",
+                       "cat":  "Neural cells",
+                       "count":  112,
+                       "bytes":  1316614
+                   },
+                   {
+                       "file":  "icons-nucleic-acids.json",
+                       "cat":  "Nucleic acids",
+                       "count":  52,
+                       "bytes":  338927
+                   },
+                   {
+                       "file":  "icons-oncology.json",
+                       "cat":  "Oncology",
+                       "count":  20,
+                       "bytes":  851597
+                   },
+                   {
+                       "file":  "icons-ophthalmology.json",
+                       "cat":  "Ophthalmology",
+                       "count":  54,
+                       "bytes":  806904
+                   },
+                   {
+                       "file":  "icons-paraclinical-exams.json",
+                       "cat":  "Paraclinical exams",
+                       "count":  68,
+                       "bytes":  1839657
+                   },
+                   {
+                       "file":  "icons-parasitology.json",
+                       "cat":  "Parasitology",
+                       "count":  71,
+                       "bytes":  884899
+                   },
+                   {
+                       "file":  "icons-people.json",
+                       "cat":  "People",
+                       "count":  152,
+                       "bytes":  2531862
+                   },
+                   {
+                       "file":  "icons-people-2.json",
+                       "cat":  "People",
+                       "count":  12,
+                       "bytes":  65495
+                   },
+                   {
+                       "file":  "icons-receptors-and-channels.json",
+                       "cat":  "Receptors and channels",
+                       "count":  182,
+                       "bytes":  907983
+                   },
+                   {
+                       "file":  "icons-reproduction.json",
+                       "cat":  "Reproduction",
+                       "count":  52,
+                       "bytes":  478703
+                   },
+                   {
+                       "file":  "icons-respiratory-system.json",
+                       "cat":  "Respiratory system",
+                       "count":  43,
+                       "bytes":  1081306
+                   },
+                   {
+                       "file":  "icons-risk-factors.json",
+                       "cat":  "Risk factors",
+                       "count":  60,
+                       "bytes":  784229
+                   },
+                   {
+                       "file":  "icons-tissues.json",
+                       "cat":  "Tissues",
+                       "count":  61,
+                       "bytes":  921033
+                   },
+                   {
+                       "file":  "icons-urinary-system.json",
+                       "cat":  "Urinary system",
+                       "count":  21,
+                       "bytes":  608094
+                   },
+                   {
+                       "file":  "icons-veins.json",
+                       "cat":  "Veins",
+                       "count":  55,
+                       "bytes":  2451975
+                   },
+                   {
+                       "file":  "icons-veins-2.json",
+                       "cat":  "Veins",
+                       "count":  2,
+                       "bytes":  521196
+                   },
+                   {
+                       "file":  "icons-world-maps.json",
+                       "cat":  "World maps",
+                       "count":  44,
+                       "bytes":  465558
+                   }
+               ],
+    "id":  "servier",
+    "name":  "Servier Medical Art",
+    "by":  "Servier Medical Art (SMART), the medical illustration bank of Servier",
+    "url":  "https://smart.servier.com",
+    "site":  "smart.servier.com",
+    "mark":  "SMA",
+    "license":  "CC BY 4.0",
+    "fields":  [
+                   "medicine",
+                   "life"
+               ],
+    "licenseUrl":  "https://creativecommons.org/licenses/by/4.0/",
+    "attribution":  "required",
+    "shareAlike":  false,
+    "perIcon":  false,
+    "credit":  "Images adapted from Servier Medical Art (https://smart.servier.com/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/)",
+    "plain":  "Creative Commons Attribution 4.0 (CC BY 4.0): you may use, change and share the images, also commercially, as long as you credit Servier Medical Art, link to the license and say that the images were changed. The credit must not suggest that Servier endorses you or your work. Servier\u0027s name and logo are not part of the license. The drawings keep Servier\u0027s shaded style (shading and highlights, not flat colors); changing the main color or the accent recolors their shades with them.",
+    "ask":  "Image adapted from Servier Medical Art (https://smart.servier.com/), licensed under CC BY 4.0",
+    "askFrom":  "https://smart.servier.com/using-smart-images-what-you-can-do",
+    "how":  "Put the credit in the figure legend or on the figure: Images adapted from Servier Medical Art (https://smart.servier.com/), licensed under CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/). SiliCoDraw writes this line on the page for you.",
+    "changes":  "Converted from Servier\u0027s PowerPoint kits (the drawings are vector shapes there) to SiliCoDraw\u0027s icon format: each drawing of a slide redrawn as SVG, fitted into a 100 × 100 box, text labels left out, coordinates rounded, very small invisible parts dropped, and the main color and accent made recolorable together with their shades. The converted icons remain under CC BY 4.0.",
+    "retrieved":  "2026-11-12",
+    "version":  "2026-11-12"
+}

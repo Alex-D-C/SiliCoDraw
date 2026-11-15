@@ -86,11 +86,27 @@ make_app() {
   rm -rf "$tmp"
 }
 
+# Linux desktop: ~/.local/share/applications/SiliCoDraw.desktop (the applications menu), with the app icon of brand/, opening this
+# folder's start.sh in a terminal (its window is the server; File > Quit SiliCoDraw in the editor stops it). Written only on a
+# desktop session, only when it is missing or names another folder, and not for a folder whose path the entry cannot quote.
+make_desktop() {
+  [ "$KEEPAPP" = 1 ] && return 0
+  [ -n "${DISPLAY:-}${WAYLAND_DISPLAY:-}" ] || return 0
+  case "$DIR" in *'"'*|*'`'*|*'$'*|*'\'*|*'%'*) return 0 ;; esac
+  apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"; f="$apps/SiliCoDraw.desktop"
+  want=$(printf '[Desktop Entry]\nType=Application\nName=SiliCoDraw\nComment=Scientific figure editor (opens in your browser)\nExec=sh "%s/start.sh"\nPath=%s\nIcon=%s/brand/icon-256.png\nTerminal=true\nCategories=Graphics;Science;Education;\n' "$DIR" "$DIR" "$DIR")
+  [ -f "$f" ] && [ "$(cat "$f")" = "$want" ] && return 0
+  mkdir -p "$apps" 2>/dev/null && printf '%s\n' "$want" > "$f" 2>/dev/null && chmod +x "$f" 2>/dev/null
+  return 0
+}
+
 setup() {
   chmod +x ./*.command ./*.sh serve.py update.py 2>/dev/null          # GitHub ZIPs of web-uploaded files are not executable
   if [ $MAC = 1 ]; then
     xattr -dr com.apple.quarantine . 2>/dev/null                       # downloaded files are quarantined: double-clicks are refused
     make_app
+  else
+    make_desktop
   fi
 }
 

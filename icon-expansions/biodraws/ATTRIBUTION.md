@@ -24,3 +24,5 @@ a 100 × 100 box, styles written out as attributes, text, metadata and editor da
 two main colors made recolorable in the editor. Illustrations with embedded pictures, illustrations that did not come
 out the same after conversion (mostly ones with lettering), illustrations over 60 KB and duplicates were left out. The
 site's logos are not part of the pack. The converted icons remain under CC BY-SA 4.0.
+
+**Colorways:** 2 drawings that are the same shapes as another drawing of this pack in other colors are no icons of their own: they are colorways of 2 icons (the icon in their colors, one click away in SiliCoDraw's side panel; their names still find it, and figures that used them keep drawing them). The drawings themselves are unchanged. A drawing that shows another state of a thing is an icon of its own, not a colorway (the 24- and 96-well plates with medium and empty).

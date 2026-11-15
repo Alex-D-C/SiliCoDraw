@@ -130,16 +130,17 @@
         const g = D.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = iconBody(ic, ic.c[0], ic.c[1]); host.appendChild(g); const b = g.getBBox(); g.remove();
         if (b.x < -58 || b.y < -58 || b.x + b.width > 58 || b.y + b.height > 58 || Math.max(b.width, b.height) < 70) bad.push(k + ' (drawn bounds ' + [b.x, b.y, b.width, b.height].map(Math.round).join(' ') + ')'); } } finally { host.remove(); }
       ok(!bad.length, bad.length + ' icons: ' + bad.slice(0, 8).join('; '));
+      const B0 = { packs: false };   // the built-in icons only: imported icon packs (a test run in a folder that has some) must not change these
       const first = { dinoflagellate: 'dinoflagellate', anammox: 'anammox', winogradsky: 'winogradsky', methanotroph: 'methaneoxidation', paddy: 'ricepaddy', peat: 'peatbog', sewage: 'wwtp', mpn: 'mpntubes', oxycline: 'watercolumn', saltern: 'saltpond', sulphur: 'sulfurcycle', streptomyces: 'actinomycete', aquifer: 'aquifer', metagenome: 'metagenome' };
-      for (const w in first) eq((fig.findIcon(w, 1)[0] || {}).kind, first[w], 'the first icon found for "' + w + '"');
+      for (const w in first) eq((fig.findIcon(w, 1, B0)[0] || {}).kind, first[w], 'the first icon found for "' + w + '"');
       const among = { ciliate: 'paramecium', niskin: 'ctdrosette', microbe: 'bacterium', nmds: 'pca', biofilm: 'pipebiofilm', nodule: 'rootnodule', thermophile: 'hotspring', '16s': 'amplicon16s', coliform: 'membranefilter' };   // words added to icons that were there, and new icons beside old ones
-      for (const w in among) ok(fig.findIcon(w, 6).some(x => x.kind === among[w]), '"' + w + '" does not find ' + among[w] + ': ' + fig.findIcon(w, 6).map(x => x.kind).join(', '));
-      eq(fig.findIcon('methanogen', 1)[0].group, 'Environmental microbiology', 'the group of a new icon');
+      for (const w in among) ok(fig.findIcon(w, 6, B0).some(x => x.kind === among[w]), '"' + w + '" does not find ' + among[w] + ': ' + fig.findIcon(w, 6, B0).map(x => x.kind).join(', '));
+      eq(fig.findIcon('methanogen', 1, B0)[0].group, 'Environmental microbiology', 'the group of a new icon');
       // words whose first icon the new ones must not take ("fate" is inside Sulfate, "aerobic" inside Anaerobic, "treatment" a search word of the wastewater plant), and a typed word that is a whole word of a name
       const still = { microscopy: 'microscope', treatment: 'syringe', fate: 'differentiation', copy: 'line1', aerobic: 'vo2max', film: 'biofilm', glia: 'microglia', fluorescence: 'immunofluorescence', myocyte: 'cardiomyocyte', plastic: 'microplastics', mouse: 'mouse', brain: 'brain', bra: 'brain', rna: 'rna', well: 'wellplate',
         mat: 'microbialmat', mag: 'magbinning', station: 'fieldstation', 'enrichment culture': 'winogradsky', 'water well': 'aquifer' };
-      for (const w in still) eq((fig.findIcon(w, 1)[0] || {}).kind, still[w], 'the first icon found for "' + w + '"');
-      ok(fig.findIcon('well', 3).some(x => x.kind === 'aquifer'), '"well" does not list the aquifer and well among the first three');
+      for (const w in still) eq((fig.findIcon(w, 1, B0)[0] || {}).kind, still[w], 'the first icon found for "' + w + '"');
+      ok(fig.findIcon('well', 3, B0).some(x => x.kind === 'aquifer'), '"well" does not list the aquifer and well among the first three');
       // a compound's name drawn in an icon sits on a light pill, so it reads on a dark page too (bare dark text was under 3:1 there)
       const bare = 'landfill peatbog methanogen activatedsludge sip amplicon16s winogradsky decomposition syntrophy rootnodule biodegradation microbialmat'.split(' ').filter(k => { const s = iconBody(ICONS[k], ICONS[k].c[0], ICONS[k].c[1]), n = (s.match(/<text/g) || []).length; return !n || (s.match(/<rect[^>]*>\s*<text/g) || []).length !== n; });
       ok(!bare.length, 'a label without its pill: ' + bare.join(', '));
@@ -447,7 +448,7 @@
       const b = fig.add('icon', { kind: 'mitochondria' }); ok(has(b, /mitochondria.*did you mean mito\b/), 'icon kind mitochondria → mito');
       const c = fig.add('arrow', { head: 'triangle' }); ok(has(c, /head: “triangle”/), 'arrow head not among the choices');
       const d = fig.add('text', { text: 'x' }); ok(fig.update(d, { size: 'abc' }).some(m => /size/.test(m.msg)), 'fig.update returns the warnings');
-      eq(fig.findIcon('mitochondria', 3)[0].kind, 'mito', 'fig.findIcon'); ok(/did you mean text/.test((() => { try { fig.add('textbox'); } catch (e) { return e.message; } })()), 'type textbox → text');
+      eq(fig.findIcon('mitochondria', 3, { packs: false })[0].kind, 'mito', 'fig.findIcon'); ok(/did you mean text/.test((() => { try { fig.add('textbox'); } catch (e) { return e.message; } })()), 'type textbox → text');
       commit(); const h0 = hist.length, before = lastSaved; fig.batch(() => { const m = []; for (let i = 0; i < 20; i++) m.push(fig.add('chip', { x: 40 + i * 30, y: 600 })); m.forEach(id => fig.update(id, { y: 650 })); fig.remove(m.slice(0, 5)); });
       ok(hist[hist.length - 1] === before && (h0 >= 300 || hist.length - h0 === 1), 'fig.batch is one undo step'); undo(); eq(lastSaved, before, 'undo after fig.batch'); redo();
       if (typeof figEnd !== 'function') return;   // older editor
@@ -513,6 +514,57 @@
         ok(/dir=C%3A%5CUsers%5Ca%5CDropbox%5CSiliCoDraw&copy=1/.test(posts[posts.length - 1]), 'the request: ' + posts[posts.length - 1]); const msg = sessionStorage.getItem('fig.storeMsg'); ok(/in Dropbox/.test(msg) && /3 files copied/.test(msg) && /a\.json/.test(msg), 'the message: ' + msg);
         info = { ...info, canChange: false, options: [] }; await storageDialog(); ok(!box().querySelector('#stPath') && /fixed folder/.test(box().textContent), 'a fixed folder offers a change'); closeModal();
       } finally { W.fetch = F; storeReload.fn = null; try { sessionStorage.removeItem('fig.storeMsg'); } catch (e) {} if (!D.querySelector('#modal').hidden) closeModal(); }
+    });
+    // ---------- File ▾ → Quit SiliCoDraw (the desktop version only) ----------
+    test('quit: File ▾ → Quit SiliCoDraw saves first, asks the server to stop and leaves a page that says so; never on the website', async () => {
+      const item = D.querySelector('#fileMenu [data-act=quit]'), hr = D.querySelector('#fileMenu hr[data-quit]');
+      ok(item && hr, 'no Quit item in the File menu');
+      const more = () => { D.querySelector('#bMore').click(); const m = D.querySelector('#ctxMenu'), has = [...m.querySelectorAll('button')].some(b => b.textContent.trim() === 'Quit SiliCoDraw'); m.classList.remove('open'); return has; };
+      if (WEB) { ok(item.hidden && hr.hidden, 'the website shows Quit SiliCoDraw'); ok(!more(), 'the website\'s ⋯ menu has Quit SiliCoDraw'); ok(!(await quitApp({ ask: false })) && !QUIT, 'quitApp did something on the website'); return; }
+      ok(!item.hidden && !hr.hidden, 'Quit SiliCoDraw is hidden in the desktop version'); eq(item.textContent.trim(), 'Quit SiliCoDraw', 'its name'); ok(more(), 'the ⋯ menu (phones) has no Quit SiliCoDraw');
+      blank(); await settle(); await flushSave(); const id = fig.add('text', { x: 120, y: 120, text: 'saved before quitting' });   // a change not saved yet
+      const F = W.fetch, calls = [];
+      W.fetch = (u, o) => { const s = String(u); if (s.startsWith('api/quit')) { calls.push('quit:' + (o && o.method)); return Promise.resolve(new Response(null, { status: 204 })); } if (o && o.method === 'POST' && s.split('?')[0] === FILE) calls.push('save'); return F(u, o); };
+      try {
+        ok(await quitApp({ ask: false }), 'quitApp did not quit');
+        ok(calls.includes('save') && calls.indexOf('save') < calls.indexOf('quit:POST'), 'not saved before the server was asked to stop: ' + calls.join());
+        ok(!tabUnsaved(), 'the change was not in the file when the server stopped');
+        const qp = D.querySelector('#quitPage'); ok(qp && !qp.hidden, 'no stopped page');
+        ok(/SiliCoDraw has stopped/.test(qp.textContent) && /close this tab/.test(qp.textContent), 'the page says: ' + qp.textContent);
+        ok(QUIT && !pollFile.tm, 'the figure is still polled');
+        const n = fig.list().length; fig.select([id]); D.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'Delete', bubbles: true, cancelable: true })); await frame();
+        eq(fig.list().length, n, 'a key changed the figure under the stopped page');
+        eq(calls.filter(c => c.startsWith('quit')).length, 1, 'asked to stop more than once'); ok(!(await quitApp({ ask: false })), 'a second Quit did something');
+      } finally { W.fetch = F; quitPage(false); sel.clear(); try { fig.remove(id); } catch (e) {} await flushSave(); }
+      ok(!QUIT && !D.querySelector('#quitPage'), 'the stopped page did not go');
+      // a tab whose figure went to the trash in another tab can never save it: Quit asks "Quit anyway" instead of refusing for good
+      blank(); await settle(); await flushSave();
+      const A = W.askYes, asked = [], calls2 = []; let yes = false;
+      W.askYes = (t, m, b) => { asked.push(b + ': ' + m); return Promise.resolve(yes); };
+      W.fetch = (u, o) => { if (String(u).startsWith('api/quit')) { calls2.push('quit'); return Promise.resolve(new Response(null, { status: 204 })); } return F(u, o); };
+      let id2 = null;
+      try {
+        fileGone = 'trash'; id2 = fig.add('text', { x: 140, y: 140, text: 'not saved: the file went to the trash' }); await frame();
+        ok(tabUnsaved(), 'no unsaved change to test with');
+        ok(!(await quitApp({ ask: false })) && !QUIT && !calls2.length, 'quit without the user saying "Quit anyway"');
+        ok(asked.length === 1 && /^Quit anyway: /.test(asked[0]) && /Moved to trash/i.test(asked[0]), 'the question: ' + asked.join(' | '));
+        yes = true; ok(await quitApp({ ask: false }), 'Quit anyway did not quit'); eq(calls2.length, 1, 'the server was not asked to stop');
+      } finally { W.fetch = F; W.askYes = A; quitPage(false); fileGone = null; sel.clear(); try { if (id2) fig.remove(id2); } catch (e) {} unGone(); await flushSave(); }
+      ok(!QUIT && !tabUnsaved(), 'the test left the figure unsaved');
+    });
+    test('libraries: QR codes and PowerPoint load from lib/ (no internet); every CDN fallback is pinned by the hash of that same copy', async () => {
+      const libs = [['qrcode-generator', LIB_QR], ['PptxGenJS', LIB_PPTX], ['MathJax', { local: MJ_LOCAL, cdn: MJ_CDN, sri: MJ_SRI }]];
+      for (const [n, L] of libs) {
+        ok(/^sha384-[A-Za-z0-9+/]{64}$/.test(L.sri), n + ': no integrity hash: ' + L.sri); ok(/^https:\/\/(cdnjs\.cloudflare\.com|cdn\.jsdelivr\.net)\//.test(L.cdn) && /@?\d+\.\d+\.\d+/.test(L.cdn), n + ': the CDN address names no exact version: ' + L.cdn);
+        const r = await fetch(L.local, { cache: 'no-store' }); ok(r.ok, n + ': ' + L.local + ' is missing (HTTP ' + r.status + ')');
+        const h = 'sha384-' + btoa(String.fromCharCode(...new Uint8Array(await crypto.subtle.digest('SHA-384', await r.arrayBuffer()))));
+        eq(h, L.sri, n + ': the copy in lib/ is not the file the CDN hash pins');
+      }
+      await loadQrLib(); await loadPptxLib(); ok(typeof W.qrcode === 'function' && typeof W.PptxGenJS === 'function', 'a library did not load');
+      const srcs = [...D.scripts].map(s => s.getAttribute('src') || '');
+      ok(srcs.includes(LIB_QR.local) && srcs.includes(LIB_PPTX.local), 'not loaded from lib/: ' + srcs.filter(s => /qrcode|pptx/.test(s)).join(', '));
+      ok(!srcs.some(s => s === LIB_QR.cdn || s === LIB_PPTX.cdn), 'the CDN was used although lib/ has them');
+      ok([...D.scripts].filter(s => /^https?:/.test(s.getAttribute('src') || '')).every(s => s.integrity && s.crossOrigin === 'anonymous'), 'a script from another host without integrity: ' + srcs.filter(s => /^https?:/.test(s)).join(', '));
     });
     // what must never go over a figure
     // these tests answer the figure's requests themselves: no poll of the editor's own may be on its way (it would bring the real file in the middle), or start
@@ -1544,7 +1596,7 @@
         copySel.tip = 1; fig.animate('tA', { fx: 'fade', start: 'with' });   // bx: path (click 1), back (click 2); tA: fade with the back
         const sig = () => fig.anims().map(x => [x.on, x.fx, x.start]), base = sig(), h0 = hist.length;
         fig.select(['bx']); duplicate(); const d1 = [...sel][0]; ok(d1 && d1 !== 'bx', 'no copy'); eq(sig(), base.concat([[d1, 'custom', 'click'], [d1, 'back', 'click']]), 'Duplicate: the copy has copies of the animations, after the others');
-        eq(new Set(fig.anims().map(x => x.id)).size, fig.anims().length, 'with ids of their own'); eq(fig.anims()[4].from, [50, 60], 'the copied back follows the copied path'); eq(hist.length, h0 + 1, 'one undo step'); ok(/Duplicated with 2 animations/.test(toastT()), 'said: ' + toastT());
+        eq(new Set(fig.anims().map(x => x.id)).size, fig.anims().length, 'with ids of their own'); eq(fig.anims()[4].from, [50, 60], 'the copied back follows the copied path'); ok(h0 >= 300 || hist.length === h0 + 1, 'one undo step: ' + h0 + ' → ' + hist.length);   // (300 steps: the history is full after the earlier tests, so its length stays) ok(/Duplicated with 2 animations/.test(toastT()), 'said: ' + toastT());
         undo(); eq([sig(), !!get(d1)], [base, false], 'undo takes the copy and its animations'); redo(); eq(fig.anims().length, 5, 'redo'); undo();
         fig.select(['bx', 'tA']); copySel(); ok(clip.some(o => Array.isArray(o.animRefs)) && !/animRefs/.test(J(scene)), 'the copy carries them, the figure does not'); pasteClip(clip); const ids = [...sel], nb = ids.find(i => get(i).type === 'box'), nt = ids.find(i => get(i).type === 'text');
         eq(sig().slice(3), [[nb, 'custom', 'click'], [nb, 'back', 'click'], [nt, 'fade', 'with']], 'Paste: in their order, a "with" stays with the copied row of its click step'); ok(/Pasted with 3 animations/.test(toastT()), 'said: ' + toastT()); undo(); eq(sig(), base, 'one step back');
@@ -2183,6 +2235,97 @@
         { const tb = d.querySelector('#hmNav [data-sec=desktop]').getBoundingClientRect(); ok(tb.left >= 0 && tb.right <= 391, 'the Desktop & AI tab is off the row of tabs: ' + tb.left + '–' + tb.right); ok(w.getComputedStyle(d.querySelector('#hmMain .hmbar h2')).display !== 'none', 'Desktop & AI has no title on a phone'); ok(/⋯ → File ▸ → Save all/.test(d.querySelector('#hmMain .hmdk').textContent), 'the phone is told of a File ▾ menu'); }
       } finally { if (fr) fr.remove(); keep.forEach(([st, k, v]) => put(st, k, v)); await wsClean(); }
     }, 240000);
+
+    test('offline: the website registers its worker (never the desktop editor, not on localhost unasked), keeps the app shell, opens and saves a figure from IndexedDB with the network gone, says Offline, and a newer release offers Reload', async () => {
+      const sw = navigator.serviceWorker;
+      if (!WEB) {   // the desktop editor (and the public build): no storage script, no worker, no offline note
+        ok(!(window.SiliCoDrawWeb && SiliCoDrawWeb.offline), 'the desktop editor has the website\'s offline part');
+        ok(!D.querySelector('script[src*="silicodraw-web"]'), 'the desktop editor loads the storage script');
+        if (sw) { eq((await sw.getRegistrations()).map(r => r.scope), [], 'a service worker is registered for the desktop editor'); eq(!!sw.controller, false, 'the desktop editor is controlled by a service worker'); }
+        D.defaultView.dispatchEvent(new Event('offline')); ok(!D.documentElement.classList.contains('net-off'), 'the desktop editor says Offline'); eq(netOff(), false, 'netOff outside the website');
+        return;
+      }
+      const O = window.SiliCoDrawWeb && SiliCoDrawWeb.storage && SiliCoDrawWeb.offline; ok(O, 'the storage script has no offline part (SiliCoDrawWeb.offline)');
+      if (!sw || !isSecureContext) throw new Skip('this browser has no service workers here');
+      ok(/^[0-9a-f]{12}$/.test(O.build), 'the page carries no release id (data-build on the script tag): ' + O.build);
+      // localhost without ?sw=1: nothing registered (the owner's local test build stays without a worker)
+      eq(O.wanted(), false, 'the worker is wanted on localhost without ?sw=1'); eq(await O.registration(), null, 'a worker was registered on localhost unasked');
+      const dir = new URL('.', location.href).href, name = wsPre() + '-offline.json';
+      let fr = null, reg = null; const waitA = async (f, ms) => { const t0 = Date.now(); for (;;) { let v = false; try { v = await f(); } catch (e) {} if (v) return true; if (Date.now() - t0 > ms) return false; await sleep(100); } };
+      const frame = async q => { if (fr) fr.remove(); fr = D.createElement('iframe'); fr.title = 'offline test'; fr.style.cssText = 'position:fixed;left:0;top:0;width:1200px;height:760px;border:0;z-index:2147483000;background:#fff'; fr.src = q.startsWith('/') ? q : location.pathname + q; D.body.appendChild(fr);
+        ok(await waitFor(() => { try { const w = fr.contentWindow; return w.fig && w.eval('typeof fileReady!=="undefined"&&fileReady'); } catch (e) { return false; } }, 60000), 'the editor did not open: ' + q); const w = fr.contentWindow; w.alert = () => {}; w.confirm = () => true; w.onbeforeunload = null; return w; };
+      const offline = on => new Promise((res, rej) => { const ch = new MessageChannel(); const tm = setTimeout(() => rej(new Error('the worker did not answer test-offline')), 5000); sw.addEventListener('message', function f(e) { if (e.data && e.data.silicodraw === 'test-offline') { clearTimeout(tm); sw.removeEventListener('message', f); res(e.data.on); } }); reg.active.postMessage({ silicodraw: 'test-offline', on }); });
+      try {
+        eq((await fetch(name, { method: 'POST', body: JSON.stringify({ version: 4, w: 800, h: 500, bg: '#ffffff', objects: [{ id: 't1', type: 'text', x: 100, y: 100, text: 'Kept in IndexedDB', size: 24 }] }) })).status, 204, 'the test figure was not stored');
+        // an older release's shell holding a file that did not change (its hash is this release's) and a kept pack file this release no longer has
+        const swText = await (await fetch('sw.js', { cache: 'no-store' })).text(), files = JSON.parse((swText.match(/\nvar FILES = (\{.*\});/) || [])[1] || 'null');
+        ok(files && files['editor.html'] && files['lib/mathjax/tex-svg.js'] && files['icon-expansions/index.json'], 'sw.js names no files with their hashes');
+        const libP = 'lib/qrcode-generator/qrcode.min.js', oldShell = 'silicodraw-shell-000000000000';
+        await (await caches.open(oldShell)).put(dir + libP, new Response(await (await fetch(libP)).arrayBuffer(), { headers: { 'content-type': 'text/javascript', 'x-silicodraw-hash': files[libP], 'x-test': 'older release' } }));
+        await (await caches.open('silicodraw-runtime')).put(dir + 'icon-expansions/zz-gone/icons-x.json', new Response('{}', { headers: { 'content-type': 'application/json' } }));
+        // registered (as the website does after load), scope = the editor's folder, the shell kept
+        reg = await O.register(true); ok(reg, 'register(true) did not register');
+        ok(await waitA(async () => { const r = await O.registration(); return r && r.active && r.active.state === 'activated'; }, 60000), 'the worker did not become active'); reg = await O.registration();
+        eq(reg.scope, dir, 'the worker\'s scope');
+        const shell = 'silicodraw-shell-' + O.build; ok((await caches.keys()).includes(shell), 'no shell cache ' + shell + ': ' + (await caches.keys()).join(', '));
+        const kept = (await (await caches.open(shell)).keys()).map(r => r.url.slice(dir.length));
+        for (const f of ['editor.html', 'silicodraw-web.js', 'examples-list.json', 'notices/notices.json', 'lib/mathjax/tex-svg.js', 'lib/mathjax/input/tex/extensions/mhchem.js', 'lib/pptxgenjs/pptxgen.bundle.js', 'lib/qrcode-generator/qrcode.min.js']) ok(kept.includes(f), 'not kept at the first visit: ' + f);
+        ok(!kept.some(f => /^icon-expansions\/[^/]+\/icons-/.test(f)), 'icon packs kept up front: ' + kept.filter(f => /^icon-expansions\/[^/]+\//.test(f)).join(', '));
+        ok(!kept.some(f => /\.json$/.test(f) && !/^(examples|notices|icon-expansions)\/|^examples-list\.json$/.test(f)), 'a figure or API answer is kept: ' + kept.join(', '));
+        // every copy carries the hash of its bytes, the same as sw.js names for this release (so a new release copies what did not change)
+        const sc = await caches.open(shell), pg = await sc.match(dir + 'editor.html');
+        eq(pg && pg.headers.get('x-silicodraw-hash'), files['editor.html'], 'the kept editor is not this release\'s (its hash)');
+        eq((await sc.match(dir + 'lib/mathjax/tex-svg.js')).headers.get('x-silicodraw-hash'), files['lib/mathjax/tex-svg.js'], 'a kept library\'s hash');
+        eq((await sc.match(dir + libP)).headers.get('x-test'), 'older release', 'a file that did not change was not copied from the older release\'s shell');
+        ok(!(await caches.keys()).includes(oldShell), 'the older release\'s shell is still there');
+        ok(!(await (await caches.open('silicodraw-runtime')).match(dir + 'icon-expansions/zz-gone/icons-x.json')), 'a kept pack file this release no longer has is still there');
+        // a shell file missing (a first visit cut short) is fetched again on "fill"
+        await sc.delete(dir + 'notices/notices.json'); reg.active.postMessage({ silicodraw: 'fill' });
+        ok(await waitA(async () => !!(await sc.match(dir + 'notices/notices.json')), 10000), 'fill did not bring back a missing shell file');
+        // the parts of an imported pack handed over (keep) are kept in the runtime cache; Remove from library (forget) deletes them
+        const pk = (await (await fetch('icon-expansions/index.json')).json()).packs.find(p => p.id === 'sbol') || (await (await fetch('icon-expansions/index.json')).json()).packs[0];
+        const pkDir = dir + 'icon-expansions/' + pk.id + '/', pkNames = pkDir + 'names.json';
+        ok(await O.keep([pkNames, 'https://api.crossref.org/works/10.1/x']), 'keep was not posted to the worker');
+        const rt = await caches.open('silicodraw-runtime');
+        ok(await waitA(async () => !!(await rt.match(pkNames)), 10000), 'a pack file handed over was not kept');
+        ok(!(await rt.keys()).some(r => !r.url.startsWith(dir)), 'a file of another host was kept');
+        ok(await O.forget(pk.id), 'forget was not posted');
+        ok(await waitA(async () => !(await rt.keys()).some(r => r.url.startsWith(pkDir)), 10000), 'Remove from library left the pack\'s kept files');
+        // a page under the worker; then the network gone (the worker's stand-in), and a reload
+        let w = await frame('?file=' + encodeURIComponent(name)); ok(await waitFor(() => !!w.navigator.serviceWorker.controller, 20000), 'the page is not under the worker');
+        eq(await offline(true), true, 'the worker did not go offline');
+        w = await frame('?file=' + encodeURIComponent(name) + '&r=' + Date.now());
+        ok(w.fig.list().some(o => o.text === 'Kept in IndexedDB'), 'offline: the figure from IndexedDB is not there');
+        eq(w.SiliCoDrawWeb.offline.build, O.build, 'offline: another release answered');
+        let blocked = null; try { const r = await w.fetch('icon-expansions/zz-not-kept/pack.json', { cache: 'no-store' }); blocked = r.status; } catch (e) { blocked = 'error'; } eq(blocked, 'error', 'offline: a file never kept still reached the server');
+        ok((await w.fetch('lib/qrcode-generator/qrcode.min.js')).ok, 'offline: a kept library does not answer');
+        const id = w.fig.add('text', { text: 'Edited offline', x: 300, y: 300, size: 24 }); await w.flushSave();
+        ok(await waitFor(() => w.document.querySelector('#status').textContent === 'Saved', 10000), 'offline: not saved: ' + w.document.querySelector('#status').textContent);
+        w = await frame('?file=' + encodeURIComponent(name) + '&r=' + Date.now()); ok(w.fig.list().some(o => o.id === id), 'offline: the edit is gone after a reload');
+        // the folder's own address (silicodraw.com/silicodraw/) opens the kept editor offline too
+        w = await frame(new URL(dir).pathname + '?file=' + encodeURIComponent(name) + '&r=' + Date.now()); ok(w.fig.list().some(o => o.id === id), 'offline: the folder address did not open the kept editor');
+        // the Offline note (the browser says it has no connection) and what waits for one
+        Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => false }); w.dispatchEvent(new w.Event('offline'));
+        const st = w.document.querySelector('#status'); ok(w.document.documentElement.classList.contains('net-off'), 'no Offline note'); ok(/Offline/.test(w.getComputedStyle(st, '::after').content), 'the status line does not say Offline: ' + w.getComputedStyle(st, '::after').content);
+        ok(/No internet connection/.test(st.title) && /references/.test(st.title) && /icon packs/.test(st.title), 'the status tooltip does not say what waits: ' + st.title);
+        { const H = w.document.documentElement, had = H.classList.contains('phone'); H.classList.add('phone'); const b = w.getComputedStyle(st, '::before'); ok(/inset/.test(b.boxShadow) || /rgb\(156, 163, 175\)/.test(b.boxShadow), 'the phone layout shows no offline dot: ' + b.boxShadow); if (!had) H.classList.remove('phone'); }
+        w.packMenu(true); ok(w.document.querySelector('#packMenu .pkoff'), 'Import more icons does not say it needs a connection'); w.packMenu(false);
+        Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true }); w.dispatchEvent(new w.Event('online'));
+        ok(!w.document.documentElement.classList.contains('net-off') && !/No internet connection/.test(st.title), 'the Offline note stays when the connection is back');
+        // back online; a newer release taking over says so once, with Reload; the same release says nothing
+        eq(await offline(false), false, 'the worker did not come back online');
+        const tell = b => w.navigator.serviceWorker.dispatchEvent(new w.MessageEvent('message', { data: { silicodraw: 'activated', build: b } }));
+        tell(O.build); await sleep(300); ok(!/new version/i.test(w.document.querySelector('#toast').textContent) || !w.document.querySelector('#toast').classList.contains('show'), 'the same release says a new version is ready');
+        tell('000000000000'); ok(await waitFor(() => /A new version of SiliCoDraw is ready/.test(w.document.querySelector('#toast').textContent) && w.document.querySelector('#toast .tact'), 3000), 'a newer release says nothing: ' + w.document.querySelector('#toast').textContent);
+        eq(w.document.querySelector('#toast .tact').textContent, 'Reload', 'the new-version button');
+      } finally {
+        if (fr) fr.remove();
+        try { if (reg && reg.active) await offline(false); } catch (e) {}
+        try { await O.unregister(); } catch (e) {}
+        try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
+      }
+      eq(await O.registration(), null, 'the worker is still registered after the test'); eq((await caches.keys()).filter(k => k.startsWith('silicodraw-')), [], 'its caches are still there');
+    }, 180000);
 
     test('home: New presentation (bar, card, templates, the file it makes), Import… and figures dropped on Home; the Cite button', async () => {
       if (typeof homeShow !== 'function') throw new Skip('this editor has no Home');
@@ -2824,11 +2967,17 @@
         ok([...box.querySelectorAll('a')].some(a => /LICENSE\.txt$/.test(a.getAttribute('href'))) && /3 icons/.test(box.textContent) && /What SiliCoDraw changed/i.test(box.textContent), 'license link, count, what was changed');
         const go = box.querySelector('#pkGo'), tick = box.querySelector('#pkOk'); ok(go.disabled && !tick.checked, 'Import is off until the box is ticked'); go.click(); await sleep(150); ok(!packImported(TP) && !$q('#modal').hidden, 'a click on it does nothing');
         tick.click(); ok(!go.disabled, 'ticked: Import is on'); go.click(); for (let i = 0; i < 100 && (!packImported(TP) || !$q('#modal').hidden); i++) await sleep(100);
-        ok(packImported(TP) && $q('#modal').hidden, 'imported, the pop-up closed'); eq(palState.cat, 'Test pack', 'the Add panel shows the pack'); ok($q('#packMenu').hidden && D.activeElement === $q('#packBtn'), 'the list closed, the keyboard is on the button');
+        ok(packImported(TP) && $q('#modal').hidden, 'imported, the pop-up closed'); eq(fig.iconLibrary().shown, TP, 'the Add panel shows the pack (the switcher names it)'); ok($q('#packMenu').hidden && D.activeElement === $q('#packBtn'), 'the list closed, the keyboard is on the button');
         const st = await (await fetch('assets/icon-packs.json?t=' + Date.now(), { cache: 'no-store' })).json(); ok(st[TP] && st[TP].imported === true && st[TP].version === '1' && /^\d{4}-\d\d-\d\d$/.test(st[TP].date), 'kept with the figures (assets/icon-packs.json): ' + J(st[TP]));
         ok(fig.iconPacks().find(p => p.id === TP).imported, 'fig.iconPacks() says so');
+        // imported while the pack asked for no credit ("terms read"), and an update made it ask for some: not imported until its terms are accepted again
+        { const was = PACKS.state[TP]; blank(); PACKS.state[TP] = { ...was, accepted: 'terms read' }; ok(!packImported(TP) && !fig.iconPacks().find(p => p.id === TP).imported, 'an acceptance of a pack that asked for no credit does not hold once it asks for some');
+          let e2 = ''; try { fig.add('icon', { kind: TPK('alpha') }); } catch (e) { e2 = e.message; } ok(/not imported here/.test(e2), 'fig.add refuses its icons: ' + e2);
+          packMenu(true); const rs = $q('#packMenu .pkrow[data-id="' + TP + '"]'); ok(rs && /Terms changed/.test(rs.textContent) && !/Imported/.test(rs.textContent), 'its row says so: ' + (rs && rs.textContent)); packMenu(false);
+          packDialog(TP); ok(/terms changed since you imported it/.test($q('#modalBox').textContent) && $q('#modalBox #pkOk'), 'its pop-up says so and asks for the box again'); closeModal();
+          await fig.importIconPack(TP, { accept: true }); ok(packImported(TP) && PACKS.state[TP].accepted === 'attribution is my responsibility', 'imported again: ' + J(PACKS.state[TP])); }
         // its own group, the boxes, search
-        ok(PALETTE.some(s => s[0] === 'Test pack · Test' && s[1].length === 3), 'a group of its own'); ok([...D.querySelectorAll('#palCats .pcat')].some(c => c.dataset.cat === 'Test pack'), 'and a chip');
+        ok(PALETTE.some(s => s[0] === 'Test pack · Test' && s[1].length === 3), 'a group of its own'); ok(!palNames().includes('Test pack') && fig.iconLibrary().shown === TP && [...D.querySelectorAll('#palCats .pcat')].some(c => c.dataset.cat === 'Test pack · Test'), 'no pack chip anywhere; the Add panel shows its library with its groups as chips');
         eq([...D.querySelectorAll('#palList .pitem')].length, 3, 'the chip shows only the pack\'s icons');
         const R = $q('#packShow'); ok(!R.hidden && /Show icons from/.test(R.textContent), 'Show icons from'); ok(R.querySelector('input[data-src="builtin"]').checked && R.querySelector('input[data-src="' + TP + '"]').checked, 'both on');
         const S = $q('#palSearch'), search = async v => { S.value = v; buildPalette(); await sleep(60); return [...D.querySelectorAll('#palList .pitem')]; };
@@ -2837,7 +2986,7 @@
         packTip(it); const tip = $q('#packTip'); ok(!tip.hidden && /Alpha disc/.test(tip.textContent) && /from Test pack/.test(tip.textContent) && /by Test Author A/.test(tip.textContent) && /CC BY 4\.0/.test(tip.textContent), 'the tooltip: ' + tip.textContent); packTip(null); ok(tip.hidden, 'and it goes');
         eq(fig.findIcon('zzbeta')[0], { kind: TPK('beta'), name: 'Beta peak', group: 'Test pack' }, 'fig.findIcon finds it');
         // hidden: neither in the groups nor in the search; shown again with its box
-        eq(fig.showIconPacks({ [TP]: false })[TP], false, 'fig.showIconPacks'); its = await search('zzalpha'); eq(its.length, 0, 'hidden: not in the search'); ok(!PALETTE.some(s => s[2] && s[2].pack === TP) || !palNames().includes('Test pack'), 'nor a chip');
+        eq(fig.showIconPacks({ [TP]: false })[TP], false, 'fig.showIconPacks'); its = await search('zzalpha'); eq(its.length, 0, 'hidden: not in the search'); ok(fig.iconLibrary().libraries.find(l => l.id === TP).hidden && ![...D.querySelectorAll('#palCats .pcat')].some(c => /^Test pack/.test(c.dataset.cat)), 'nor a chip (its library is marked hidden)');
         ok(!fig.findIcon('zzbeta').some(x => x.kind === TPK('beta')), 'nor in fig.findIcon'); ok(fig.findIcon('zzbeta', 8, { packs: true }).some(x => x.kind === TPK('beta')), 'unless asked for (packs: true)'); ok(!fig.iconPacks().find(p => p.id === TP).shown, 'shown: false');
         { const cb = $q('#packShow input[data-src="' + TP + '"]'); ok(cb && !cb.checked, 'its box is off'); cb.click(); } its = await search('zzalpha'); eq(its.length, 1, 'the box brings it back');
         fig.showIconPacks({ builtin: false }); its = await search('mouse'); ok(!its.some(b => /\|icon:mouse$/.test(b.dataset.key)), 'SiliCoDraw off: no built-in icon in the search'); ok((await search('zzalpha')).length === 1 && (await search('rectangle')).length >= 1, 'the pack and the shapes stay');
@@ -3143,6 +3292,74 @@
       } finally { blank(); await dropPack(); }
     }, 240000);
 
+    test('icon packs: colorways (one icon for drawings that differ only in color), aliases of the old keys', async () => {
+      // a kept icon with two colorways and the old key of one of them, as dev/icon-import/colorways.js writes them (cw in the icon, alias in names.json)
+      const K = TPK('zzcw'), OLD = TPK('zzcw-blue'), OTHER = TPK('zzcw-recolored');
+      const SVG = '<rect x="-40" y="-30" width="80" height="60" rx="6" fill="#c0392b"/><circle cx="-14" r="12" fill="#922b21"/><circle cx="18" cy="4" r="9" fill="#f1c40f"/>';
+      const BLUE = { '#c0392b': '#2f6fd0', '=#922b21': '#1c3f80' }, GRAY = { '#c0392b': '#8a8a8a', '=#922b21': '#555555', '#f1c40f': '#d0d0d0' }, PALE = { '#c0392b': '#dddddd', '=#922b21': '#dddddd', '#f1c40f': '#dedede' };
+      const VAR = SVG.replace('#c0392b', '#2f6fd0').replace('#922b21', '#1c3f80');   // the variant as its library drew it
+      const px = svg => new Promise((res, rej) => { const im = new Image(); im.onload = () => { const c = D.createElement('canvas'); c.width = c.height = 96; const x = c.getContext('2d'); x.fillStyle = '#ffffff'; x.fillRect(0, 0, 96, 96); x.drawImage(im, 0, 0, 96, 96); res(x.getImageData(0, 0, 96, 96).data); }; im.onerror = () => rej(new Error('not drawn')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100" width="96" height="96">' + svg + '</svg>'); });
+      const lab = (r, g, b) => { const f = v => (v /= 255) <= .04045 ? v / 12.92 : ((v + .055) / 1.055) ** 2.4, [R, G, B] = [f(r), f(g), f(b)], x = (R * .4124 + G * .3576 + B * .1805) / .95047, y = R * .2126 + G * .7152 + B * .0722, z = (R * .0193 + G * .1192 + B * .9505) / 1.08883, h = t => t > .008856 ? Math.cbrt(t) : 7.787 * t + 16 / 116; return [116 * h(y) - 16, 500 * (h(x) - h(y)), 200 * (h(y) - h(z))]; };
+      const dE = async (s1, s2) => { const A = await px(s1), B = await px(s2); let n = 0, s = 0; for (let i = 0; i < A.length; i += 4) { const a = lab(A[i], A[i + 1], A[i + 2]), b = lab(B[i], B[i + 1], B[i + 2]); s += Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]); n++; } return s / n; };
+      try {
+        await usePack(true); blank();
+        registerIcon(K, { n: 'Test cell', t: 'test cell zzcw blue gray grey', pack: TP, svg: SVG, k: ['#c0392b', '#f1c40f'], c: ['#c0392b', '#f1c40f'], b: [80, 60], cwn: 'Red', cw: [{ n: 'Blue', grp: BLUE, v: 'Test cell (blue)' }, { n: 'Gray', grp: GRAY, v: 'Test cell (gray)' }, { n: 'Pale', grp: PALE, v: 'Test cell (pale)' }] }); ICONS[K].lib = true; PACKS.keys.add(K);
+        PACKS.alias.set(OLD, [K, 'Blue']); PACKS.alias.set(OTHER, [K, 'Gray']);
+        // the API: the colorways listed, one applied (one undo step), as made again
+        const id = fig.add('icon', { kind: K, x: 300, y: 300, size: 200 }); await settle(); let ci = fig.iconColors(id);
+        eq(ci.colorways.map(c => c.n), ['as made', 'Blue', 'Gray', 'Pale'], 'fig.iconColors lists the colorways'); eq(ci.colorway, 'as made', 'as made at first'); eq(ci.colorways[0].name, 'Red', 'the name of its own colors');
+        fig.iconColors(id, { colorway: 'blue' }); let o = get(id); eq(J(o.grp), J(BLUE), 'a colorway sets grp to its preset'); eq(fig.iconColors(id).colorway, 'Blue', 'and is named as shown');
+        { const m = await dE(iconIds(grpBody(o, ICONS[K]), o), VAR); ok(m < 1, 'the colorway draws the variant as its library drew it (mean ΔE ' + m.toFixed(2) + ')'); }
+        undo(); await settle(); ok(!('grp' in get(id)) && fig.iconColors(id).colorway === 'as made', 'one undo step takes it back'); redo(); await settle(); eq(fig.iconColors(id).colorway, 'Blue', 'redo');
+        let err = ''; try { fig.iconColors(id, { colorway: 'Purple' }); } catch (e) { err = e.message; } ok(/no colorway/.test(err) && /Blue, Gray/.test(err), 'an unknown colorway is refused: ' + err);
+        fig.iconColors(id, { 1: '#00aa00' }); eq(fig.iconColors(id).colorway, null, 'a group changed by hand: no colorway'); fig.iconColors(id, { colorway: 'as made' }); ok(!('grp' in get(id)), '"as made" takes grp off');
+        // a colorway is a drawing of its library as made: its groups that look alike are no warning of the color check; the same colors set by hand are
+        { const al = () => fig.check([id]).some(r => /look alike after recoloring/.test(r.msg)); fig.iconColors(id, { colorway: 'Pale' }); ok(!al(), 'a colorway whose groups look alike: no warning');
+          fig.update(id, { grp: { '#c0392b': '#dddddd', '#f1c40f': '#dfdfdf' } }); ok(al(), 'the same by hand: the warning ' + J(fig.check([id]))); fig.iconColors(id, null); }
+        // c1 / c2 follow a colorway applied before the drawing came (cwSync, when its part arrives)
+        { const z = fig.add('icon', { kind: K, x: 700, y: 500 }), oz = get(z); oz.grp = JSON.parse(J(BLUE)); oz.c1 = '#c0392b'; ok(cwSync(oz) && oz.c1 === '#2f6fd0', 'c1 = the colorway\'s largest group: ' + oz.c1); ok(!cwSync(oz), 'and stays'); fig.remove(z); }
+        // exports keep the colors of a colorway
+        fig.iconColors(id, { colorway: 'Gray' }); const s = await svgString({}); ok(s.includes('fill="#8a8a8a"') && s.includes('fill="#555555"') && s.includes('fill="#d0d0d0"') && !s.includes('fill="#c0392b"'), 'SVG export: the colorway\'s colors');
+        { const sv = sceneSvg(fig.get(), 160, 90); ok(sv.includes('#8a8a8a'), 'a thumbnail too'); } await checkPng(300, 'colorway');
+        // the panel: Colorways before the groups, as made first; a click is one undo step; the arrows move along; names for screen readers
+        fig.iconColors(id, null); fig.select([id]); await settle(); const P = $q('#props'), cw = () => [...P.querySelectorAll('.cwrow .cwsw')];
+        ok(P.querySelector('.cwrow[role=group]') && P.querySelector('.cwrow').getAttribute('aria-label'), 'a row named for screen readers'); eq(cw().map(b => b.getAttribute('aria-label')), ['As made (Red)', 'Colorway Blue', 'Colorway Gray', 'Colorway Pale'], 'a swatch per colorway, as made first');
+        ok(cw().every(b => b.title && b.type === 'button'), 'each with a tooltip'); eq(cw().map(b => b.getAttribute('aria-pressed')), ['true', 'false', 'false', 'false'], 'as made pressed');
+        eq(cw().map(b => b.tabIndex), [0, -1, -1, -1], 'one Tab stop for the row (roving)'); eq(P.querySelector('.cwrow .cwnow').textContent, 'As made (Red)', 'the row names the colorway shown (a touch screen has no tooltip)');
+        { const sw = cw().map(b => [...b.querySelectorAll('i')].map(i => i.style.background).join('|')); eq(new Set(sw).size, sw.length, 'every swatch looks different: ' + J(sw)); ok(sw[1].startsWith('rgb(47, 111, 208)'), 'a colorway\'s swatch shows what it changes first'); }
+        cw()[1].click(); await settle(); eq(J(get(id).grp), J(BLUE), 'a click applies the colorway'); eq(cw().map(b => b.getAttribute('aria-pressed')), ['false', 'true', 'false', 'false'], 'and shows it pressed'); eq(P.querySelector('.cwrow .cwnow').textContent, 'Blue', 'and names it'); eq(cw().map(b => b.tabIndex), [-1, 0, -1, -1], 'the Tab stop on it'); ok(D.activeElement === cw()[1] || !D.hasFocus(), 'the focus stays on it');
+        ok(P.querySelector('.grpsw i').style.background.replace(/\s/g, '') === 'rgb(47,111,208)', 'the group swatches show the colorway\'s colors');
+        undo(); await settle(); ok(!('grp' in get(id)), 'one undo step'); redo(); await settle();
+        cw()[1].focus(); P.querySelector('.cwrow').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })); eq(D.activeElement, cw()[2], 'ArrowRight: the next colorway');
+        P.querySelector('.cwrow').dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true })); eq(D.activeElement, cw()[3], 'End: the last'); P.querySelector('.cwrow').dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true })); eq(D.activeElement, cw()[0], 'Home: as made'); cw()[0].blur();
+        cw()[0].click(); await settle(); ok(!('grp' in get(id)), 'as made');
+        // old keys: fig.add, fig.update, paste, a file without the drawing; one recolored by hand keeps its old drawing
+        const a = fig.add('icon', { kind: OLD, x: 500, y: 300 }); o = get(a); ok(o.kind === K && J(o.grp) === J(BLUE), 'fig.add with an old key: the kept icon in that colorway ' + J(o));
+        const u = fig.add('icon', { kind: K, x: 600, y: 300 }); fig.update(u, { kind: OTHER }); ok(get(u).kind === K && J(get(u).grp) === J(GRAY), 'fig.update with an old key too');
+        const oldDef = { n: 'Test cell (gray)', t: '', pack: TP, svg: SVG, k: ['#c0392b', '#f1c40f'], c: ['#c0392b', '#f1c40f'] };
+        pasteObjs([{ id: 'p1', type: 'icon', kind: OLD, x: 100, y: 100, s: 1, r: 0, size: 80, c1: '#c0392b', c2: '#f1c40f', iconDef: oldDef }, { id: 'p2', type: 'icon', kind: OLD, x: 200, y: 100, s: 1, r: 0, size: 80, c1: '#00ff00', c2: '#f1c40f', iconDef: oldDef }]); await settle();
+        { const L = scene.objects.slice(-2); ok(L[0].kind === K && J(L[0].grp) === J(BLUE), 'pasted with an old key: the kept icon in that colorway'); ok(L[1].kind === OLD && !L[1].grp, 'one recolored by hand keeps its old drawing (it still draws from its copy)'); ok(ICONS[OLD] && !PACKS.keys.has(OLD), 'its drawing registered from the copy, not a pack icon');
+          // Duplicate (and Alt-drag, the same path) copy what is on the slide exactly: the old key recolored by hand stays so
+          fig.select([L[1].id]); duplicate(); await settle(); const dc = scene.objects[scene.objects.length - 1]; ok(dc.id !== L[1].id && dc.kind === OLD && dc.c1 === '#00ff00' && !dc.grp, 'Duplicate keeps an old key recolored by hand as it is ' + J(dc));
+          fig.select([L[0].id]); duplicate(); await settle(); const d0 = scene.objects[scene.objects.length - 1]; ok(d0.kind === K && J(d0.grp) === J(BLUE), 'and a kept icon in its colorway'); }
+        { blank(); fig.set({ version: 4, w: 800, h: 600, bg: '#ffffff', objects: [{ id: 'h1', type: 'icon', kind: OTHER, x: 100, y: 100, s: 1, r: 0, size: 80 }] }); await settle(); const h = get('h1'); ok(h && h.kind === K && J(h.grp) === J(GRAY), 'a file naming an old key without its drawing: the kept icon in that colorway ' + J(h)); }
+        { blank(); delete ICONS[OLD]; fig.set({ version: 4, w: 800, h: 600, bg: '#ffffff', objects: [{ id: 'e1', type: 'icon', kind: OLD, x: 100, y: 100, s: 1, r: 0, size: 80, c1: '#c0392b', c2: '#f1c40f' }], icons: { [OLD]: oldDef } }); await settle(); ok(get('e1').kind === OLD && node('e1').innerHTML.includes('#c0392b'), 'a figure that embeds the old drawing: unchanged, drawn from its copy'); }
+        // search: the colorway's name finds the kept icon, and the Add panel adds it in that colorway
+        ok(palIconTags(K).split(' ').includes('blue'), 'the variants\' words are the kept icon\'s search words'); eq(cwQuery(K, 'blue test cell').n, 'Blue', 'a search naming a colorway'); eq(cwQuery(K, 'test cell (gray)').n, 'Gray', 'or the variant\'s own name'); eq(cwQuery(K, 'red test cell'), null, 'its own colors: as made');
+        { const z = addObjAt('icon', { kind: K }, 400, 400, 'Gray'); ok(J(z.grp) === J(GRAY), 'dragged from a search that names a colorway: added in it, as a click adds it'); fig.remove(z.id); }
+        { const rows = [{ n: 'Test cell', t: '', ty: 'icon', src: TP, k: K, a: cwAlt(K) }, { n: 'Test cells (blue) 2', t: '', ty: 'icon', src: TP, k: 'zz2' }, { n: 'Cell', t: 'test blue', ty: 'icon', src: TP, k: 'zz3' }], h = palRank('Test cell (blue)', rows).hits;
+          eq(h[0].r.k, K, 'a merged drawing\'s own name finds the icon it became first ' + J(h.map(x => [x.r.k, x.s]))); ok(h[0].s === 9.4, 'as a name, under an icon named so itself'); }
+        // the detection (dev/icon-import/colorways.js, in the development copy only): one shape in other colors is found, another shape and the same colors are not
+        let src = ''; for (const b of [new URL('/dev/icon-import/colorways.js', location.origin).href]) { try { const r = await fetch(b, { cache: 'no-store' }); if (r.ok) src = await r.text(); } catch (e) {} }
+        if (src) { const CW = new Function(src + '\nreturn {cwDetect};')(), mk = (svg, n) => ({ n, t: '', svg, k: [], c: ['#000000', '#000000'], b: [80, 60] }), S2 = '<rect x="-40" y="-30" width="80" height="60" rx="6" fill="#c0392b"/><circle cx="14" cy="-10" r="12" fill="#922b21"/><circle cx="18" cy="4" r="9" fill="#f1c40f"/>';
+          const ic = { 'zzd:a': mk(SVG, 'Cell (red)'), 'zzd:b': mk(VAR, 'Cell (blue)'), 'zzd:c': mk(S2.replace('#c0392b', '#2f6fd0'), 'Cell moved'), 'zzd:d': mk(SVG, 'Cell copy') }, names = {}; for (const k of Object.keys(ic)) names[k] = { n: ic[k].n };
+          const r = await CW.cwDetect('zzd', { data: { id: 'zzd', names, ic, pack: {}, parts: [], def: {} }, post: false }); eq(J(r.groups), J({ a: ['b'] }), 'detection: the same drawing in other colors, nothing else ' + J(r)); ok(r.detail.b && r.detail.b.mean < 1, 'its colorway checked against it');
+          // a pair listed in "cwApart" (another state, e.g. empty vs filled: the pixels cannot tell it from a color) is never proposed, in either order
+          const r2 = await CW.cwDetect('zzd', { data: { id: 'zzd', names, ic, pack: {}, parts: [], def: { cwApart: [['b', 'a', 'another state: empty vs filled']] } }, post: false }); eq(J(r2.groups), J({}), 'detection: a pair kept apart by hand (cwApart) is no colorway ' + J(r2.groups)); ok(r2.apart.some(x => /cwApart/.test(x.why)), 'and is said so: ' + J(r2.apart));
+        }   // (colorways.js is in the development copy only: a published copy does not test the detection)
+      } finally { blank(); PACKS.alias.delete(OLD); PACKS.alias.delete(OTHER); PACKS.keys.delete(K); delete ICONS[K]; delete ICONS[OLD]; await dropPack(); }
+    }, 120000);
+
     test('icon packs: the shipped packs are complete and safe', async () => {
       await packInit(); const packs = PACKS.list.filter(p => p.id !== TP); if (!packs.length) throw new Skip('no icon packs in this copy (icon-expansions/index.json)');
       const host = D.createElementNS('http://www.w3.org/2000/svg', 'svg'); host.setAttribute('viewBox', '-50 -50 100 100'); host.style.cssText = 'position:absolute;left:-9999px;top:0;width:100px;height:100px'; D.body.appendChild(host);
@@ -3153,38 +3370,930 @@
           for (const k of ['id', 'name', 'url', 'license', 'licenseUrl', 'credit', 'how', 'plain', 'changes', 'retrieved', 'version']) ok(typeof P[k] === 'string' && P[k].trim(), W1 + 'pack.json has no ' + k);
           ok(/^https:\/\//.test(P.url) && /^https:\/\//.test(P.licenseUrl) && (P.askFrom === undefined || /^https:\/\//.test(P.askFrom)), W1 + 'links'); ok(['required', 'none', 'mixed'].includes(P.attribution), W1 + 'attribution: ' + P.attribution); ok(typeof P.shareAlike === 'boolean' && typeof P.perIcon === 'boolean', W1 + 'shareAlike / perIcon');
           ok(/^\d{4}-\d\d-\d\d$/.test(P.retrieved), W1 + 'retrieved'); ok(P.count > 0 && Array.isArray(P.chunks) && P.chunks.length, W1 + 'count and parts'); if (P.shareAlike) ok(typeof P.shareAlikeText === 'string' && P.shareAlikeText.length > 40, W1 + 'share-alike is explained');
-          eq(J((await (await get1(P.dir + 'pack.json')).json()).chunks), J(P.chunks), W1 + 'index.json and pack.json agree');
+          ok(Array.isArray(P.fields) && P.fields.length >= 1 && P.fields.length <= 3 && P.fields.every(f => PACK_FIELDS.some(x => x[0] === f)) && new Set(P.fields).size === P.fields.length, W1 + 'fields (the Import more icons list filters by them): ' + J(P.fields));
+          { const pj = await (await get1(P.dir + 'pack.json')).json(); eq(J(pj.chunks), J(P.chunks), W1 + 'index.json and pack.json agree'); eq(J(pj.fields), J(P.fields), W1 + 'index.json and pack.json agree on fields'); }
           const lic = await (await get1(P.dir + 'LICENSE.txt')).text(), att = await (await get1(P.dir + 'ATTRIBUTION.md')).text(); ok(lic.length > 1500 && /Retrieved:\s+\d{4}-\d\d-\d\d/.test(lic), W1 + 'LICENSE.txt with its retrieval date'); ok(/What SiliCoDraw changed/.test(att) && /asks to be credited/.test(att), W1 + 'ATTRIBUTION.md');
           if (P.perIcon) ok(/\| Icon \| Creator \|/.test(att), W1 + 'ATTRIBUTION.md lists the credits per icon');
           const names = await (await get1(P.dir + 'names.json')).json(), pv = await (await get1(P.dir + 'preview.json')).json(); ok(Object.keys(pv).length >= 6 && Object.keys(pv).length <= 16, W1 + 'preview icons: ' + Object.keys(pv).length);
-          const seen = new Set(), inkKeys = []; let n = 0, bytes = 0;
+          const alias = names.alias || {}; delete names.alias; ok(alias && typeof alias === 'object' && !Array.isArray(alias), W1 + 'names.json alias');   // the old keys of drawings merged into another as its colorways
+          const seen = new Set(), inkKeys = [], cwOfK = new Map(); let n = 0, bytes = 0;
           for (let ci = 0; ci < P.chunks.length; ci++) {
             const ch = P.chunks[ci], r = await get1(P.dir + ch.file), tx = await r.text(), d = JSON.parse(tx); bytes += tx.length; ok(tx.length < 4e6, W1 + ch.file + ' is ' + tx.length + ' bytes (parts stay under a few MB)'); eq(Object.keys(d).length, ch.count, W1 + ch.file + ' count');
             for (const k of Object.keys(d)) {
               const v = d[k], w = k + ': '; n++; ok(new RegExp('^' + P.id + ':[a-z0-9][a-z0-9-]*$').test(k), w + 'key not in the pack\'s namespace'); ok(!seen.has(k), w + 'twice'); seen.add(k);
-              ok(typeof v.n === 'string' && v.n.trim(), w + 'no name'); ok(typeof v.t === 'string', w + 'no tags'); ok(typeof v.svg === 'string' && v.svg.length > 20 && v.svg.length <= (150000), w + 'drawing size ' + (v.svg || '').length);   
+              ok(typeof v.n === 'string' && v.n.trim(), w + 'no name'); ok(typeof v.t === 'string', w + 'no tags'); ok(typeof v.svg === 'string' && v.svg.length > 20 && v.svg.length <= (P.id === 'servier' || P.id === 'nih-bioart' || P.id === 'reactome' || P.id === 'bioicons' ? 300000 : P.id === 'anatomogram' ? 720000 : 150000), w + 'drawing size ' + (v.svg || '').length);   // (NIH BioArt Source, Reactome, Bioicons and Servier: every drawing up to 300 KB; the Expression Atlas anatomograms, whole bodies and plants in fine line work: up to 700 KB)
               ok(svgScrub(v.svg) === v.svg, w + 'svgScrub changes it');
               { const idm = new Map(); for (const m of v.svg.matchAll(/<([a-zA-Z]+)\b[^>]*?\sid="([^"]+)"/g)) { ok(!idm.has(m[2]), w + 'the id ' + m[2] + ' is used twice'); idm.set(m[2], m[1]); }   // (the page clip once had the id of the 31st gradient: that shape lost its fill)
-                for (const m of v.svg.matchAll(/\b(fill|stroke|clip-path|mask)="url\(#([^)]+)\)"/g)) { const tg = idm.get(m[2]); ok(tg && (m[1] === 'clip-path' ? tg === 'clipPath' : m[1] === 'mask' ? tg === 'mask' : /Gradient$|^pattern$/.test(tg)), w + m[1] + ' points to ' + (tg || 'nothing') + ' (' + m[2] + ')'); } } ok(!/<\s*(script|foreignObject|image|text|style|use|a)\b|\son[a-z]+\s*=|javascript:|href="(?!#)|url\((?!#)|data:/i.test(v.svg), w + 'holds something an icon must not');
+                for (const m of v.svg.matchAll(/\b(fill|stroke|clip-path|mask|filter)="url\(#([^)]+)\)"/g)) { const tg = idm.get(m[2]); ok(tg && (m[1] === 'clip-path' ? tg === 'clipPath' : m[1] === 'mask' ? tg === 'mask' : m[1] === 'filter' ? tg === 'filter' : /Gradient$|^pattern$/.test(tg)), w + m[1] + ' points to ' + (tg || 'nothing') + ' (' + m[2] + ')'); } } ok(!/<\s*(script|foreignObject|image|text|style|use|a)\b|\son[a-z]+\s*=|javascript:|href="(?!#)|url\((?!#)|data:/i.test(v.svg), w + 'holds something an icon must not');
               ok(Array.isArray(v.k) && v.k.length <= 2 && v.k.every(c => /^#[0-9a-f]{6}$/.test(c)) && Array.isArray(v.c) && v.c.length === 2, w + 'colors k / c'); if (v.k.length) ok(v.svg.includes('"' + v.k[0] + '"'), w + 'its main color is not in the drawing (not recolorable)');
-              if ('kt' in v) ok(Array.isArray(v.kt) && v.kt.length >= 1 && v.kt.length <= v.k.length && v.kt.every(L => Array.isArray(L) && L.every(c => /^#[0-9a-f]{6}$/.test(c) && v.svg.includes('"' + c + '"') && !v.k.includes(c))), w + 'shades kt: ' + J(v.kt)); if ('kt' in v) ok(v.kt.every(L => L.length <= 256), w + 'more than 256 shades of a key (the editor reads 256)');  if (v.fixed) ok(v.fixed === true && !v.k.length, w + 'fixed');
+              if ('kt' in v) ok(Array.isArray(v.kt) && v.kt.length >= 1 && v.kt.length <= v.k.length && v.kt.every(L => Array.isArray(L) && L.every(c => /^#[0-9a-f]{6}$/.test(c) && v.svg.includes('"' + c + '"') && !v.k.includes(c))), w + 'shades kt: ' + J(v.kt)); if ('kt' in v) ok(v.kt.every(L => L.length <= 256), w + 'more than 256 shades of a key (the editor reads 256)'); if (P.id === 'servier' && v.k.some(c => { const [, s, l] = rgbHsl(c); return (s < .15 && l < .25) || (s < .1 && l > .9); })) inkKeys.push(k + ' ' + v.k.join('/')); if (v.fixed) ok(v.fixed === true && !v.k.length, w + 'fixed');
               ok(Array.isArray(v.b) && v.b.length === 2 && v.b.every(x => x > 0 && x <= 96.6) && Math.max(...v.b) >= 90, w + 'does not fit its box: ' + J(v.b));
               const nm = names[k]; ok(nm && nm.n === v.n && nm.f === ci, w + 'names.json does not know it (or its part)');
+              if ('cw' in v || (nm && 'cw' in nm)) {   // colorways: [{n, grp, v}], the same in names.json; every key a color of the drawing (or =color), every value a color
+                const L = v.cw; ok(Array.isArray(L) && L.length && J(L) === J(nm.cw), w + 'colorways in the part and in names.json'); ok(new Set(L.map(c => c.n.toLowerCase())).size === L.length && !L.some(c => /^as made$/i.test(c.n)), w + 'colorway names one each');
+                for (const c of L) { ok(typeof c.n === 'string' && c.n.trim() && typeof c.v === 'string' && c.grp && typeof c.grp === 'object' && Object.keys(c.grp).length >= 1 && Object.keys(c.grp).length <= 256, w + 'colorway ' + J(c).slice(0, 120)); for (const [q, x] of Object.entries(c.grp)) ok(/^=?#[0-9a-f]{6}$/.test(q) && /^#[0-9a-f]{6}$/.test(x) && (s => { const c = q.replace(/^=/, ''); return c === '#000000' || s.includes(c) || c[1] === c[2] && c[3] === c[4] && c[5] === c[6] && s.includes('#' + c[1] + c[3] + c[5]); })(v.svg.toLowerCase()), w + 'colorway ' + c.n + ': ' + q + ' → ' + x); }
+                if ('cwn' in v) ok(typeof v.cwn === 'string' && v.cwn.trim() && nm.cwn === v.cwn, w + 'cwn'); cwOfK.set(k, L.map(c => c.n));
+              }
               if (P.perIcon) ok(typeof v.src === 'string' && /^https:\/\//.test(v.src) && typeof v.lic === 'string' && v.lic, w + 'no page or license (the pack is credited per icon)');
-              if (P.attribution === 'mixed') ok(/^(CC BY 4\.0|CC0 1\.0)$/.test(v.lic), w + 'license ' + v.lic); for (const f of ['by', 'doi', 'cat']) if (f in v) ok(typeof v[f] === 'string' && v[f].trim(), w + 'empty ' + f);
+              if (P.attribution === 'mixed') ok(/^(CC BY 4\.0|CC BY 3\.0|CC BY-SA 4\.0|CC0 1\.0|Public Domain|Public Domain Mark 1\.0|MIT)$/.test(v.lic), w + 'license ' + v.lic); for (const f of ['by', 'doi', 'cat']) if (f in v) ok(typeof v[f] === 'string' && v[f].trim(), w + 'empty ' + f);
+              if (P.id === 'bioicons' && /^bioicons:(fruit-fly|pipette|phage|arabidopsis-top-view|tomato-fruit|dna-double-helix|smiling-mouse-head|bacteria-swimming|moss-colony)$/.test(k)) {   // drawings traced from a picture: the picture's white page is no part of the icon (a white box on a dark slide)
+                const s = v.svg.replace(/<defs>[\s\S]*?<\/defs>/g, ''), m = /<(path|rect|polygon|circle|ellipse)\b[^>]*>/.exec(s), f = m && (/ fill="(#[0-9a-f]{6})"/.exec(m[0]) || /<g\b[^>]*\sfill="(#[0-9a-f]{6})"/.exec(s)), c = f ? f[1] : '';
+                ok(c && !/^#(e[e-f]|f[0-9a-f]){3}$/.test(c), w + 'drawn on the white page it was traced from (first shape ' + c + ')'); }
               if (n % 9 === 0) { const g = D.createElementNS('http://www.w3.org/2000/svg', 'g'); g.innerHTML = v.svg; host.appendChild(g); const b = g.getBBox(); g.remove(); ok(b.width > 1 && b.height > 1 && [b.x, b.y, b.width, b.height].every(Number.isFinite), w + 'draws nothing'); }
             }
             await frame();
           }
+          // aliases: an old key is no icon any more and leads to a kept icon of this pack and one of its colorways; the preview names none of them
+          for (const [a, t] of Object.entries(alias)) ok(new RegExp('^' + P.id + ':[a-z0-9][a-z0-9-]*$').test(a) && !seen.has(a) && !(a in pv) && Array.isArray(t) && seen.has(t[0]) && (cwOfK.get(t[0]) || []).includes(t[1]), W1 + 'alias ' + a + ' → ' + J(t));
+          for (const [k, L] of cwOfK) ok(L.every(c => Object.values(alias).some(t => t[0] === k && t[1] === c)), W1 + k + ': every colorway has the old key of its drawing');
+          ok(Object.keys(names).every(k => seen.has(k)), W1 + 'names.json names an icon no part has: ' + Object.keys(names).filter(k => !seen.has(k)).slice(0, 3).join(', '));
+          // a drawing that shows another state or meaning (empty vs filled, a screen off, a lamp lit, another allele, nucleotide or sugar, a lab coat, a stained smear, another
+          // cell subtype or vesicle type, another ripeness or species, a fluorophore) is an icon of its own, never a colorway nor left out as another color
+          // (packs/<id>.json "cwApart", read too where the development copy has it): both keys are icons, neither is an old key, and neither has the other as a colorway
+          { const AP = { 'nih-bioart': [['heterozygous-alleles-204', 'homozygous-alleles-205'], ['erlenmeyer-flask-filled-631', 'erlenmeyer-flask-empty-630'], ['computer-monitor-827', 'computer-monitor-with-blank-screen-832'], ['vial-with-liquid-964', 'vial-empty-962'], ['short-hair-person-3-748', 'short-hair-person-in-lab-coat-3-751'], ['blood-smear-unstained-675', 'blood-smear-wright-giemsa-stain-676'], ['plasmid-410', 'plasmid-412']],
+              bioicons: [['gfp-patch', 'stem-cell-colony'], ['falcon-50-media', '50-falcon'], ['nucleotide-t-ul', 'nucleotide-u-ul'], ['fluoresent-bead-blue', 'fluoresent-bead-green'], ['fluoresent-bead-blue', 'fluoresent-bead-orange'], ['fluoresent-bead-blue', 'fluoresent-bead-red'], ['fluoresent-bead-blue', 'fluoresent-bead-yellow']],
+              // another meaning: a nucleotide, sugar, damaged base, T or B cell subtype, receptor, vesicle type (Reactome); another ripeness or species (Open Crop Icons)
+              reactome: [['adenylated-mrna-014580', 'uridylated-mrna-014640'], ['generic-nucleotide-1-012756', 'generic-nucleotide-2-012757'], ['generic-nucleotide-1-012756', 'generic-nucleotide-3-012758'], ['dna-damaged-base-01-012632', 'dna-damaged-base-03-014869'], ['dna-damaged-base-02-014810', 'dna-damaged-base-04-014864'], ['notch1-013090', 'prenotch-013223'],
+                ['immature-t-cell-012887', 'naive-cd4-t-cell-014838'], ['immature-t-cell-012887', 'naive-cd8-t-cell-014849'], ['immature-t-cell-012887', 't-cell-progenitor-014834'], ['naive-cd4-t-cell-014838', 'naive-cd8-t-cell-014849'], ['t-cell-013420', 'regulatory-t-cell-014297'], ['b-cell-012460', 'regulatory-b-cell-014247'], ['detailed-cd28-014024', 'ctla4-014006'],
+                ['exosome-012694', 'copi-vesicle-013575'], ['exosome-012694', 'copii-vesicle-013572'], ['copi-vesicle-013575', 'copii-vesicle-013572'], ['arabinose-012446', 'lyxose-012967'], ['arabinose-012446', 'fructose-012731'], ['allose-012412', 'generic-sugar-1-012760'], ['allose-012412', 'generic-sugar-2-012761']],
+              opencrop: [['green-bell-pepper', 'red-bell-pepper'], ['green-bell-pepper', 'orange-bell-pepper'], ['green-bell-pepper', 'yellow-bell-pepper'], ['green-tabasco-pepper', 'red-tabasco-pepper'], ['green-serrano-pepper', 'red-serrano-pepper'], ['sweet-potato', 'japanese-yam'], ['black-salsify', 'salsify'], ['peach', 'nectratine'], ['blue-oyster', 'pink-oyster'], ['blue-oyster', 'white-oyster'], ['blue-oyster', 'yellow-oyster']], biodraws: [['96-well-plate-with-dmem', '96-well-plates-empty'], ['24-well-plate-with-dmem', '24-well-plates-empty-09']],
+              servier: [['general-items-9-1', 'general-items-9-2'], ['general-items-9-1', 'general-items-9-3'], ['general-items-9-1', 'general-items-9-4']] }[P.id] || [];
+            let dev = null; try { const r = await fetch(new URL('/dev/icon-import/packs/' + P.id + '.json', location.origin).href, { cache: 'no-store' }); if (r.ok) dev = await r.json(); } catch (e) {}
+            const devP = dev && Array.isArray(dev.cwApart) ? dev.cwApart : [], cwv = (k, o) => ((names[k] && names[k].cw) || []).some(c => names[o] && c.v === names[o].n), to = k => alias[k] ? alias[k][0] : k;
+            if (dev && AP.length) ok(AP.every(([a, b]) => devP.some(q => q[0] === a && q[1] === b)), W1 + 'packs/' + P.id + '.json keeps the drawings of another state apart (cwApart)');
+            for (const [a, b] of AP) { const ka = P.id + ':' + a, kb = P.id + ':' + b; ok(seen.has(ka) && seen.has(kb) && !(ka in alias) && !(kb in alias) && !cwv(ka, kb) && !cwv(kb, ka), W1 + 'another state, an icon of its own: ' + a + ' / ' + b); }
+            // every pair of cwApart: never one icon (either may be a colorway of a third icon, as long as not of the same one)
+            for (const [a, b] of devP) { const ka = P.id + ':' + a, kb = P.id + ':' + b; ok((seen.has(ka) || ka in alias) && (seen.has(kb) || kb in alias) && to(ka) !== to(kb), W1 + 'cwApart ' + a + ' / ' + b + ': not one icon'); } }
           if (P.id === 'scidraw') {   // every author the repository names; no likeness of a real person, no logo of the repository; a numbered library name keeps the title its author gave
             eq(names['scidraw:mouse-ded16e1d'] && names['scidraw:mouse-ded16e1d'].by, 'Lex Kravitz, Ethan Tyler', W1 + 'co-authors'); ok(!Object.keys(names).some(k => /einstein|scidraw-(logo|icon)/.test(k)), W1 + 'an icon that is left out on purpose is back');
             { const m = names['scidraw:mouse-09d7b739']; ok(m && m.n === 'Mouse 2' && m.title === 'Mouse', W1 + 'title of a numbered name: ' + J(m)); } ok(/adapted/.test(P.credit) && /adapted/.test(P.how), W1 + 'the credit says that the drawings were adapted'); }
+          if (P.id === 'nih-bioart') {   // one icon per drawing (color versions left out, also those uploaded as entries of their own), the keys of its first version kept, Public Domain only
+            ok(P.attribution === 'none' && P.perIcon && /^public domain$/i.test(P.license), W1 + 'terms: ' + P.attribution + ' / ' + P.license);
+            ok(Object.values(names).every(m => m.lic === 'Public Domain' && typeof m.by === 'string' && m.by.trim() && /^https:\/\/bioart\.niaid\.nih\.gov\/bioart\/\d+$/.test(m.src)), W1 + 'every icon Public Domain, with its creator and page: ' + J(Object.entries(names).find(([, m]) => !(m.lic === 'Public Domain' && m.by && m.src))));
+            for (const k of ['lab-mouse-280', 'tick-nymph-feeding-48hr-264', 'antibody-17', 'unfed-tick-grey-yellow-glands-531']) ok(names['nih-bioart:' + k], W1 + 'a key of the first version is gone: ' + k);
+            ok(!Object.values(names).some(m => /[-\s](grey|gray|bw|black ?and ?white|[a-z]+[-\s]hue)$/i.test(m.title || m.n)), W1 + 'a color version among the drawings');
+            { const br = Object.values(names).filter(m => /\bgrey|labelled|colour|tumour|\bcentre\b|\bfibre/i.test(m.n)).map(m => m.n); eq(br.length, 0, W1 + 'names in British spelling (American in the library, the site\'s own as the title): ' + br.join(', ')); }
+            // other colors of a kept drawing (separate entries of the site), the same drawing uploaded again, and drawings with labels, scale bars and an atlas badge drawn in are left out;
+            // their words still find the kept icon. A drawing of another state or meaning (a stained smear, a plain plasmid beside one with a segment highlighted) is an icon of its own
+            for (const k of ['human-male-outline-type-iii-235', 'human-male-outline-type-vi-238', 'vsv-545', 'shipping-cane-labelled-493', 'shipping-cane-labelled-faded-494', 'plasmid-411', 'tick-nymph-feeding-72hr-265', 'intercalated-duct-569', 'acinus-pancreas-568', 'chorionic-terminal-villus-702']) ok(!names['nih-bioart:' + k], W1 + 'left out on purpose, and back: ' + k);
+            for (const k of ['blood-smear-wright-giemsa-stain-676', 'plasmid-410']) ok(names['nih-bioart:' + k] && !alias['nih-bioart:' + k], W1 + 'another state or meaning, an icon of its own: ' + k);
+            for (const [k, w] of [['human-male-outline-type-ii-234', 'vi'], ['blood-smear-unstained-675', 'unstained'], ['blood-smear-wright-giemsa-stain-676', 'giemsa'], ['blood-smear-wright-giemsa-stain-676', 'stained'], ['shipping-cane-unlabelled-495', 'labeled'], ['tick-nymph-feeding-day-3-104', '72hr'], ['plasmid-410', 'plasmid'], ['vsv-544', 'vsv']]) { const m = names['nih-bioart:' + k]; ok(m && m.t.split(' ').includes(w), W1 + k + ' is not found by "' + w + '": ' + (m && m.t)); }
+            ok(!names['nih-bioart:blood-smear-unstained-675'].t.split(' ').includes('giemsa'), W1 + 'the unstained smear is found by the words of the stained one');
+            // the stained smear is named so (packs/nih-bioart.json itemNames; the site's title kept for the credits), and "stained smear" ranks it before the unstained one
+            { const s = names['nih-bioart:blood-smear-wright-giemsa-stain-676'], u = names['nih-bioart:blood-smear-unstained-675']; ok(s && s.n === 'Blood Smear Wright-Giemsa Stained' && s.title === 'Blood Smear Wright-Giemsa Stain' && s.t.split(' ').includes('stain'), W1 + 'the stained smear: ' + J(s));
+              const h = palRank('stained smear', [u, s].map((m, i) => ({ n: m.n, t: m.t, ty: 'icon', src: 'nih-bioart', k: 'k' + i }))).hits; eq(h[0] && h[0].r.n, s.n, W1 + '"stained smear" finds the stained smear first'); }
+            // the male outline's skin tones are colorways of one icon, as the female outline's are
+            for (const [v, n] of [['iii-235', 'Type III'], ['iv-236', 'Type IV'], ['v-237', 'Type V'], ['vi-238', 'Type VI']]) eq(J(alias['nih-bioart:human-male-outline-type-' + v]), J(['nih-bioart:human-male-outline-type-ii-234', n]), W1 + 'the male outline in skin tone ' + n + ' is a colorway');
+            // and their own colors ("as made") are named by skin type as their colorways are (packs/nih-bioart.json "cwNames")
+            eq([names['nih-bioart:human-female-outline-type-i-215'].cwn, names['nih-bioart:human-male-outline-type-ii-234'].cwn].join(), 'Type I,Type II', W1 + 'the outlines as made are Type I and Type II');
+            // white and light parts stay on a dark page (a plate's white body, a white strand, a light gray tick lost them once): what shows on #1e1e1e at 128 px
+            const svgOf = async k => { const m = names['nih-bioart:' + k]; return (await (await get1(P.dir + P.chunks[m.f].file)).json())['nih-bioart:' + k].svg; };
+            const onDark = svg => new Promise((res, rej) => { const im = new Image(); im.onload = () => { const c = D.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d'); x.fillStyle = '#1e1e1e'; x.fillRect(0, 0, 128, 128); x.drawImage(im, 0, 0, 128, 128); const d = x.getImageData(0, 0, 128, 128).data; let n = 0; for (let i = 0; i < d.length; i += 4) if (Math.abs(d[i] * .299 + d[i + 1] * .587 + d[i + 2] * .114 - 30) > 25) n++; res(n); }; im.onerror = () => rej(new Error('not drawn')); im.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="-50 -50 100 100" width="128" height="128">' + svg + '</svg>'); });
+            for (const [k, min] of [['96-well-plate-7', 5200], ['chromatin-77', 1700], ['unfed-tick-grey-blue-glands-530', 3000], ['unfed-tick-grey-yellow-glands-531', 3000]]) { const n = await onDark(await svgOf(k)); ok(n >= min, W1 + k + ' on a dark page: ' + n + ' pixels show (at least ' + min + ')'); }
+            ok(/<pattern\b/.test(await svgOf('mature-adult-male-395')), W1 + 'a pattern fill (an argyle sweater) is kept');
+          }
+          if (P.id === 'arcadia') {   // CC0, no credit asked; per icon Arcadia Science, the library's DOI and the file's page; each organism in both styles; the ten drawings adapted from PhyloPic name the uploader
+            ok(P.license === 'CC0 1.0' && P.attribution === 'none' && P.perIcon && !P.shareAlike, W1 + 'terms: ' + P.attribution + ' / ' + P.license);
+            const okM = m => m.lic === 'CC0 1.0' && /^Arcadia Science\b/.test(m.by || '') && m.doi === '10.5281/zenodo.18395998' && /^https:\/\/arcadia-science\.github\.io\/organism-illustration-library\/files\/[A-Za-z0-9.-]+-(tricolorstroke|silhouette)\.svg$/.test(m.src || '');
+            ok(Object.values(names).every(okM), W1 + 'every icon CC0, with creator, DOI and page: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            const keys = Object.keys(names).map(k => k.slice(8)), plain = keys.filter(k => !/-silhouette$/.test(k)); ok(plain.length >= 60 && keys.length === plain.length * 2 && plain.every(k => keys.includes(k + '-silhouette')), W1 + 'each organism as its three-color drawing and as its silhouette: ' + plain.length + ' / ' + keys.length);
+            { const PP = ['aedes-aegypti', 'agaricus-bisporus', 'aspergillus-nidulans', 'callithrix-jacchus', 'callorhinchus-milii', 'diplonema-papillatum', 'macaca-mulatta', 'pan-troglodytes', 'perkinsus-marinus', 'taeniopygia-guttata'], got = keys.filter(k => / \(modified from PhyloPic silhouette, uploaded by [A-Z][^()]+\)$/.test(names['arcadia:' + k].by)).sort();   // the library's ten, from PhyloPic images that are CC0 or Public Domain Mark there (packs/arcadia.license.txt)
+              ok(got.join(' ') === PP.flatMap(k => [k, k + '-silhouette']).sort().join(' '), W1 + 'the ten drawings adapted from PhyloPic, both styles, each naming its uploader: ' + got.join(' ')); }
+            { const bad = keys.filter(k => { const n = names['arcadia:' + k].n; return /-silhouette$/.test(k) ? !/\), silhouette$/.test(n) : !/\)$/.test(n) || /silhouette/.test(n); }); ok(!bad.length, W1 + 'every name whole ("<common name> (<species>)", ", silhouette" on a silhouette): ' + bad.map(k => names['arcadia:' + k].n).join(' | ')); }
+            { const m = names['arcadia:aedes-aegypti']; ok(m && /PhyloPic silhouette, uploaded by T\. Michael Keesey/.test(m.by), W1 + 'a drawing adapted from PhyloPic names the uploader, as the library does: ' + (m && m.by)); }
+            { const m = names['arcadia:danio-rerio'], t = m ? m.t.split(' ') : []; ok(m && m.n === 'Zebrafish (Danio rerio)' && t.includes('danio') && t.includes('zebrafish'), W1 + 'common and scientific name: ' + J(m)); }
+            ok(!Object.keys(names).some(k => /logo|arcadia/i.test(k.slice(8))) && !Object.values(names).some(m => /\b(logo|arcadia)\b/i.test(m.n)), W1 + 'a logo or the repository\'s name among the icons');
+          }
+          if (P.id === 'reactome') {   // CC BY 4.0, credited per icon with its designer; from Reactome's GitHub repository; the label badges, arrows, backgrounds and labeled drawings left out
+            ok(P.license === 'CC BY 4.0' && P.attribution === 'required' && P.perIcon && !P.shareAlike && /adapted$/.test(P.credit) && /adapted/.test(P.how), W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            const okM = m => m.lic === 'CC BY 4.0' && typeof m.by === 'string' && /^[A-Z][a-z]+ [A-Z][a-z]+(, [A-Z][a-z]+ [A-Z][a-z]+)*$/.test(m.by) && /^https:\/\/github\.com\/reactome\/reactome_illustrations\/blob\/main\/icons\/R-ICO-\d{6}\.svg$/.test(m.src || '');
+            ok(Object.values(names).every(okM), W1 + 'every icon CC BY 4.0, with its designer and page: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            ok(Object.keys(names).every(k => /-\d{6}$/.test(k)), W1 + 'every key ends in the icon\'s Reactome number');
+            eq(names['reactome:neuron-013681'] && names['reactome:neuron-013681'].by, 'Sam Norwitz', W1 + 'the designer the metadata names');
+            // left out on purpose: label badges (a name written into a pill or hexagon), arrows and pathway backgrounds, drawings with a label written in
+            for (const k of ['cdk1-012540', 'atp-012399', 'serotonin-013601', 'nilotinib-014413', 'il-10-012858', 'process-arrow-012348', 'clr-012574', 'lat-013585', 'shr-013354', 'panx1-heptamer-014619', 'efna-012653', 'lrr-012962']) ok(!names['reactome:' + k], W1 + 'left out on purpose, and back: ' + k);
+            for (const k of ['n-protein-decamer-014631', 'antibody-012425', 'prion-014509', 'gpcr-generic-012791']) ok(names['reactome:' + k], W1 + 'a drawing taken for a label: ' + k);
+            // names as Reactome writes them (mRNA, not MRNA); other colors of a kept drawing are left out and their names find it
+            eq(names['reactome:mrna-013027'] && names['reactome:mrna-013027'].n, 'mRNA', W1 + 'the name\'s case as Reactome writes it');
+            { const m = names['reactome:allose-012412'], t = m ? m.t.split(' ') : []; ok(m && t.includes('glucose') && t.includes('mannose') && !names['reactome:glucose-012773'], W1 + 'a sugar drawn in another color: left out, its name finds the one kept: ' + (m && m.t)); }
+            // a drawing whose color or detail tells what it is stays an icon of its own, and the icon it was once folded into is no longer found by its name
+            for (const [kept, w] of [['arabinose-012446', 'lyxose'], ['arabinose-012446', 'fructose'], ['exosome-012694', 'copii'], ['immature-t-cell-012887', 'naive'], ['t-cell-013420', 'regulatory'], ['b-cell-012460', 'regulatory'], ['detailed-cd28-014024', 'ctla4'], ['notch1-013090', 'prenotch'], ['adenylated-mrna-014580', 'uridylated'], ['allose-012412', 'generic']]) { const m = names['reactome:' + kept]; ok(m && !m.t.split(' ').includes(w), W1 + kept + ' is still found by "' + w + '", an icon of its own: ' + (m && m.t)); }
+            // families drawn alike whose SVGs differ a little (packs/reactome.json sameAs), and the drawings of the same shape behind them: one kept per family
+            for (const [kept, gone] of [['generic-transporter-014831', ['slc2a2-013364', 'nmdars-013085', 'uniporter-02-013565', 'slc22a5-013821', 'slc4a1-013367']], ['abcd1-013839', ['abca4-014168', 'abcb11-014130', 'abcc1-014432']], ['lysosome-012966', ['melanosome-013000', 'vacuole-013515']], ['gene-01-013594', ['mt-te-013713', 'mt-co2-013716', 'hsp2-013719']], ['gpcr-generic-012791', ['p2ry1-013144', 'p2ry12-013145']], ['tnf-013442', ['faslg-012706', 'tnfsf10-013446']]]) {
+              const m = names['reactome:' + kept], t = m ? m.t.split(' ') : [];
+              ok(m && gone.every(g => !names['reactome:' + g] && t.includes(g.replace(/-\d{6}$/, '').split('-')[0])), W1 + 'another color of ' + kept + ' left out, its name finding it: ' + gone.filter(g => names['reactome:' + g] || !t.includes(g.replace(/-\d{6}$/, '').split('-')[0])).join(', '));
+            }
+            ok(!Object.values(names).some(m => /\b(logo|reactome)\b/i.test(m.n)), W1 + 'a logo or the repository\'s name among the icons');
+          }
+          if (P.id === 'bioicons') {   // per icon CC0 / CC BY 4.0 / CC BY-SA 4.0 / MIT, credited per icon with its creator; from Bioicons' GitHub repository; no logos, brands or re-hosted libraries
+            ok(P.attribution === 'mixed' && P.perIcon && P.shareAlike && /two in five/.test(P.mixedShare || '') && /adapted$/.test(P.credit) && /CC BY-SA 4\.0/.test(P.shareAlikeText) && /Please always cite the individual icons/.test(P.ask), W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            const LIC = new Set(['CC0 1.0', 'CC BY 4.0', 'CC BY-SA 4.0', 'MIT']), okM = m => LIC.has(m.lic) && typeof m.by === 'string' && m.by.trim() && /^https:\/\/github\.com\/duerrsimon\/bioicons\/blob\/main\/static\/icons\/(cc-0|cc-by-4\.0|cc-by-sa-4\.0|mit)\/[^/]+\/[^/]+\/[^/]+\.svg$/.test(m.src || '') && m.src.split('/')[9] === { 'CC0 1.0': 'cc-0', 'CC BY 4.0': 'cc-by-4.0', 'CC BY-SA 4.0': 'cc-by-sa-4.0', MIT: 'mit' }[m.lic];
+            ok(Object.values(names).every(okM), W1 + 'every icon with its license (the folder it is filed in), creator and file: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            { const by = {}; for (const m of Object.values(names)) by[m.lic] = (by[m.lic] || 0) + 1; ok(by['CC0 1.0'] > 200 && by['CC BY 4.0'] > 80 && by['CC BY-SA 4.0'] > 10 && by.MIT > 20, W1 + 'licenses: ' + J(by)); }
+            eq(names['bioicons:neutrophil'] && names['bioicons:neutrophil'].by, 'Helicase 11', W1 + 'the creator as Bioicons shows it');
+            eq(names['bioicons:amphiprion-ocellaris-adult'] && names['bioicons:amphiprion-ocellaris-adult'].lic, 'CC BY-SA 4.0', W1 + 'a share-alike icon');
+            { const m = names['bioicons:1-5-tube']; ok(m && m.n === '1.5 ml tube' && m.title === '1 5 TUBE', W1 + 'a name the file does not spell out, the file\'s own kept for the credits: ' + J(m)); }
+            // never: logos and brand marks, the libraries Bioicons re-hosts (the held-back medical art library, DBCLS TogoTV, SwissBioPics), an icon without a creator
+            ok(!Object.entries(names).some(([k, m]) => /logo|python|julia|rust|keras|colab|galaxy|pubchem|gromacs|openmm|nf-core|nvidia|tensorflow|pytorch|jupyter|pacbio|spectral|agilent|aekta|tecan|cytoflex/i.test(k + ' ' + m.n + ' ' + m.src)), W1 + 'a logo or a brand among the icons');
+            ok(!Object.values(names).some(m => /dbcls|togo|swissbiopics|smart\.serv/i.test(m.by + ' ' + m.src + ' ' + m.t) || /\/(DBCLS|SwissBioPics|ModifiedFrom_[A-Za-z]+)\//.test(m.src) || /\/cc-by-3\.0\//.test(m.src)), W1 + 'a drawing of a re-hosted library');
+            for (const k of ['alpaca', 'beakers', 'camera', 'mosquito-gender', 'cytosine', 'blosum62', 'morse-potential', 'scientific-article', 'pill-red', 'immuneglobuline-igg-green', 'acute-text', 'round-bottomed-flask-1-1000ml', 'u-tube', 'plant-intercellular-communication', 'gut-bacteria-fang-fangyang', '12-wp-plaque', 'shark']) ok(!names['bioicons:' + k], W1 + 'left out on purpose, and back: ' + k);
+            // other colors of a kept drawing are left out and their names find it; the hazard pictograms drawn a second time find the official ones
+            for (const [kept, w] of [['pill-blue', 'red'], ['immuneglobuline-igg-blue', 'green'], ['flammable-unece', 'flammable'], ['acute-toxicity', 'toxic'], ['health-hazard', 'acute'], ['serious-health-hazard', 'chronic'], ['96well-pcr-plate-kelly', 'sky']]) { const m = names['bioicons:' + kept]; ok(m && m.t.split(' ').includes(w), W1 + kept + ' is not found by "' + w + '": ' + (m && m.t)); }
+            // a fluorescent bead's color is its fluorophore: each color an icon of its own, named by it; the second transporter is another drawing, not another color
+            for (const c of ['blue', 'green', 'orange', 'red', 'yellow']) { const m = names['bioicons:fluoresent-bead-' + c]; ok(m && m.n === 'Fluorescent bead (' + c + ')' && !m.t.split(' ').some(w => w !== c && /^(blue|green|orange|red|yellow)$/.test(w)), W1 + 'the ' + c + ' fluorescent bead: ' + J(m)); }
+            ok(names['bioicons:pink-transporter-2'] && names['bioicons:pink-transporter'], W1 + 'the two transporter drawings');
+            ok(!Object.values(names).some(m => /\b(logo|bioicons)\b/i.test(m.n)), W1 + 'a logo or the repository\'s name among the icons');
+          }
+          if (P.id === 'phylopic') {   // per icon Public Domain Mark / CC0 / CC BY 3.0 / CC BY 4.0 as PhyloPic's record states it (never NonCommercial or ShareAlike), credited with PhyloPic's attribution; one per taxon; no human figure
+            ok(P.attribution === 'mixed' && P.perIcon && !P.shareAlike && /adapted$/.test(P.credit) && /must be credited to the creator/.test(P.ask) && /never required/.test(P.ask) && /CC BY 3\.0 or CC BY 4\.0/.test(P.mixedShare || ''), W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.mixedShare);
+            const LIC = new Set(['Public Domain Mark 1.0', 'CC0 1.0', 'CC BY 3.0', 'CC BY 4.0']), okM = (k, m) => LIC.has(m.lic) && /^https:\/\/www\.phylopic\.org\/images\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(m.src || '') && m.src.slice(32, 40) === k.slice(-8) && (!/^CC BY/.test(m.lic) || typeof m.by === 'string' && m.by.trim());
+            ok(Object.entries(names).every(([k, m]) => okM(k, m)), W1 + 'every icon with its license, its page and (CC BY) its creator: ' + J(Object.entries(names).find(([k, m]) => !okM(k, m))));
+            { const by = {}; for (const m of Object.values(names)) by[m.lic] = (by[m.lic] || 0) + 1; ok(by['CC0 1.0'] > 1000 && by['CC BY 4.0'] > 300 && by['CC BY 3.0'] > 100 && by['Public Domain Mark 1.0'] > 100, W1 + 'licenses: ' + J(by)); }
+            // one silhouette per taxon (its title, the scientific name the credits print); a group of PhyloPic's clades for every icon; never a human figure
+            { const tt = Object.values(names).map(m => m.title || m.n); eq(new Set(tt).size, tt.length, W1 + 'one icon per taxon'); }
+            // and one taxon per genus within a group, also where PhyloPic writes a subgenus ("Nuculana (Saccella) confusa") or the species in parentheses ("Hyla (versicolor)")
+            { const g = {}, dup = []; for (const m of Object.values(names)) { const t = m.title || m.n, x = /^([A-Z][a-z]+(?:-[a-z]+)?)(?: \([A-Z][a-z]+\))? \(?[a-z]/.exec(t); if (!x) continue; const key = m.cat + '|' + x[1]; if (g[key]) dup.push(g[key] + ' / ' + t); else g[key] = t; } ok(!dup.length, W1 + 'one taxon per genus: ' + dup.slice(0, 6).join('; ')); }
+            ok(P.chunks.every(c => /^(Birds|Dinosaurs and pterosaurs|Mammals|Reptiles|Amphibians|Other tetrapods|Fishes|Insects|Arachnids|Other arthropods|Mollusks|Other animals|Plants and algae|Fungi|Protists|Bacteria|Viruses|Other organisms)$/.test(c.cat)), W1 + 'groups: ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            ok(!Object.values(names).some(m => /^(Homo|Australopithecus|Paranthropus|Ardipithecus|Sahelanthropus|Orrorin|Kenyanthropus)\b/.test(m.title || m.n) || /^(human|person|people|man|woman)$/i.test(m.n)), W1 + 'a human figure: ' + J(Object.values(names).find(m => /^(Homo|Australopithecus|Paranthropus)\b/.test(m.title || m.n) || /^(human|person|people|man|woman)$/i.test(m.n))));
+            // a tracing of someone else's work is public domain here only when that original is (an old illustration, a U.S. government work); never one made from a NonCommercial image
+            ok(!Object.values(names).some(m => !/^CC BY/.test(m.lic) && /\b(vectori[sz]\w*|photo\w*|original|after|based on|adapted|modified)\b/i.test(m.by || '') && !/\b(1[5-8]\d\d|19[01]\d|192[0-5])\b|Smit|Coulter|Lankester|Haeckel|Gould|Curtis|Walcott|Knight|Horsfall|Harder|Frohawk|Lodge|Filhol|Geoffroy|Castelnau|Blanco|Huet|Audubon|Milne Edwards|Wolf|Lefroy|Mivart|Tillyard|Orbigny|NOAA|National Park Service|Fish and Wildlife Service|USFWS/.test(m.by)), W1 + 'a public-domain tracing of another person\'s work');
+            ok(!Object.values(names).some(m => /\bNC\b|non-?commercial|-SA\b|share-?alike/i.test(m.by || '') && !/^CC BY/.test(m.lic)), W1 + 'a tracing of a NonCommercial or ShareAlike image');
+            // names: the taxon as PhyloPic names it (the credits print it); its vernacular names, in many languages, are search words; model organisms are in
+            { const m = Object.entries(names).find(([k]) => /^phylopic:mus-musculus-[0-9a-f]{8}$/.test(k)), w = m ? m[1].t.split(' ') : []; ok(m && m[1].n === 'Mus musculus' && !m[1].title && w.includes('house') && w.includes('mouse') && w.includes('hausmaus'), W1 + 'the house mouse, named by its taxon, found by its common names: ' + J(m)); }
+            for (const sp of ['danio-rerio', 'caenorhabditis-elegans', 'arabidopsis-thaliana', 'saccharomyces-cerevisiae', 'rattus-norvegicus', 'tyrannosaurus-rex', 'escherichia-coli']) ok(Object.keys(names).some(k => k.startsWith('phylopic:' + sp + '-')), W1 + 'a model organism is missing: ' + sp);
+            ok(!Object.values(names).some(m => /\b(logo|phylopic)\b/i.test(m.n)), W1 + 'a logo or the repository\'s name among the icons');
+            ok(P.bytes > PACK_EAGER, W1 + 'its parts are fetched as they are used (over ' + PACK_EAGER + ' bytes)');
+          }
+          if (P.id === 'healthicons') {   // CC0 for every icon file, no credit asked, no creator per icon; one style (48 px filled) in one color; no letters, shapes, logos or UI glyphs
+            ok(P.license === 'CC0 1.0' && P.attribution === 'none' && !P.perIcon && !P.shareAlike && /^Health Icons \(healthicons\.org\), CC0 1\.0$/.test(P.credit) && /no credit needed/.test(P.ask) && P.askFrom === 'https://healthicons.org/licenses', W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            const okM = m => m.lic === 'CC0 1.0' && !('by' in m) && /^https:\/\/github\.com\/resolvetosavelives\/healthicons\/blob\/main\/public\/icons\/svg\/filled\/[a-z0-9-]+\/[A-Za-z0-9_!-]+\.svg$/.test(m.src || '') && m.c[0] === m.c[1];
+            ok(Object.values(names).every(okM), W1 + 'every icon CC0, the filled style, one color, its file: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            ok(P.chunks.every(c => /^(Blood|Body|Conditions|Contraceptives|Devices|Diagnostics|Emotions|Exercise|Graphs|Medications|Nutrition|Objects|People|Places|PPE|Specialties|Symbols|Vehicles|Zoonoses)$/.test(c.cat)), W1 + 'groups (no typography or shapes): ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            // logos, trademarks and user-interface glyphs are left out; brand names and the DHIS2 ids are no search words
+            ok(!Object.keys(names).some(k => /^healthicons:(.*logo.*|loinc|icd(-\d+)?|ui-.*|question.*|yes|no|positive|negative|cancel|stop|info|alert|alert-circle|network-\dg|[23]g|(low|medium|high)-bars|qr-code|magic-wand|database|war|provider-fst|imm|[a-z]|\d)$/.test(k)), W1 + 'a logo, a letter or a UI glyph: ' + Object.keys(names).filter(k => /logo|loinc|^healthicons:(icd|ui-|question|war$)/.test(k)).join(', '));
+            ok(!Object.values(names).some(m => /\b(logo|dhis2|excel|macos|jeep)\b/i.test(m.n + ' ' + m.t)), W1 + 'a logo, a brand or a DHIS2 id among the names and words');
+            // names: the titles without "ALT", in American spelling; the malaria rapid tests named by result; the source's "Mixed Positve" and "Obstetricsmonia" corrected
+            { const bad = Object.values(names).filter(m => /\bALT\b|oesophag|orthopaed|traveller|tumour|haemat|Positve|Obstetricsmonia/i.test(m.n)).map(m => m.n); eq(bad.length, 0, W1 + 'names: ' + bad.join(', ')); }
+            eq(names['healthicons:oesophagus-cancer'] && names['healthicons:oesophagus-cancer'].n, 'Esophagus Cancer', W1 + 'American spelling'); eq(names['healthicons:rdt-result-pf-rectangular'] && names['healthicons:rdt-result-pf-rectangular'].n, 'Rapid Diagnostic Test PF, rectangular', W1 + 'a rapid test'); { const m = names['healthicons:rdt-result-pf'], w = m ? m.t.split(' ') : []; ok(w.includes('pv') && w.includes('invalid'), W1 + 'the PV Invalid test, drawn exactly as PF in the source, is found by its name: ' + (m && m.t)); }
+            { const m = names['healthicons:diabetes']; ok(!names['healthicons:diabetes-blood-sample'] && m && m.t.split(' ').includes('endocrinology'), W1 + 'the second "Diabetes" (the same drawing under Symbols) is folded into the first, whose words take its own: ' + (m && m.t)); }
+            for (const k of ['lungs', 'mosquito', 'malaria-testing', 'syringe-vaccine', 'ppe-mask-n95', 'microscope', 'virus', 'animal-bat', 'hospital', 'doctor-female']) ok(names['healthicons:' + k], W1 + 'missing: ' + k);
+            ok(P.bytes < PACK_EAGER && Object.keys(names).length >= 600, W1 + 'small enough to load at once: ' + P.bytes + ' bytes, ' + Object.keys(names).length + ' icons');
+          }
+          if (P.id === 'ocha') {   // public domain (CC0), no credit asked (OCHA appreciates one), no creator per icon; black files only, one color; no UI symbols, conflict, violence, military, religious buildings or UN lettering; no wording of UN endorsement
+            ok(P.license === 'CC0 1.0' && P.attribution === 'none' && !P.perIcon && !P.shareAlike && /^OCHA Humanitarian Icons \(un-ocha\.github\.io\/humanitarian-icons\), CC0 1\.0$/.test(P.credit) && /^While attribution is not required, we would appreciate: Crediting OCHA where feasible\.$/.test(P.ask) && P.askFrom === 'https://github.com/UN-OCHA/humanitarian-icons/blob/main/README.md', W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            ok(/their meaning and representation do not imply acceptance or endorsement by the United Nations/.test(P.plain) && /not endorsed by OCHA or the United Nations/.test(P.plain) && /no UN emblem/.test(P.plain), W1 + 'the pop-up says that the pack is not endorsed and has no UN emblem: ' + P.plain);
+            ok(![P.name, P.by, P.credit, P.how, P.changes].some(s => /\b(official|endorsed|approved|authori[sz]ed)\b/i.test(s)), W1 + 'a wording that suggests UN endorsement');
+            const okM = m => m.lic === 'CC0 1.0' && !('by' in m) && /^https:\/\/github\.com\/UN-OCHA\/humanitarian-icons\/blob\/main\/SVG\/black\/[A-Za-z0-9%-]+\.svg$/.test(m.src || '') && m.c[0] === m.c[1];
+            ok(Object.values(names).every(okM), W1 + 'every icon CC0, a black file of the repository, one color: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            ok(P.chunks.every(c => /^(Natural hazards|Health|Water and sanitation|Food and agriculture|People|Shelter and buildings|Infrastructure and transport|Communication and technology|Data and coordination)$/.test(c.cat)), W1 + 'groups: ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            // left out on purpose: user-interface and file symbols, status marks, lettering, conflict, violence and the military, religious buildings, UN lettering
+            { const bad = Object.keys(names).filter(k => /^ocha:(about|add|add-document|agile|ai-chat|alert|api|apps|blog|bookmark|calendar|chat|checked-mail|copy|.*-file|zip-compressed|damaged-affected|destroyed|not-affected|physical-closure|delete-account|validate-account|document|down|download|upload|up|e-mail|edit|exit-cancel|expand-.*|favourite|filter|folder|go|help|hidden|see|search|internet|link|meeting|menu|more-options|next-item|previous-item|notification|out-of-platform|p-code|password|pause|print|remove|remove-document|response|return|save|selected|settings|share|stop|table|time|user|users|video|warning-error|information-management|ngo-office|non-food-items|un-.*|peacekeeping-force|abduction-kidnapping|airport-military|arrest-detention|assault|attack|carjacking|checkpoint|child-combatant|civil-military-coordination|conflict|forced-.*|gender-based-violence|harassment-intimidation|military-gate|mine|murder|national-army|rebel|robbery|sexual-violence|buddhist-temple|church|hindu-temple|mosque)$/.test(k)); eq(bad.length, 0, W1 + 'left out on purpose, and back: ' + bad.join(', ')); }
+            ok(!Object.values(names).some(m => /\b(UN|United Nations|logo|army|military|soldier|weapon|violence|murder|church|mosque|temple)\b/i.test(m.n + ' ' + (m.title || ''))), W1 + 'UN lettering, a logo, the military, violence or a religious building among the names: ' + J(Object.values(names).find(m => /\b(UN|United Nations|logo|army|military|violence|church|mosque|temple)\b/i.test(m.n))));
+            // names: the file names in words, American spelling, the file name as the title where the library spells it out or corrects it
+            { const m = names['ocha:humanitarian-programme-cycle']; ok(m && m.n === 'Humanitarian Program Cycle' && m.title === 'Humanitarian Programme Cycle' && m.t.split(' ').includes('programme'), W1 + 'American spelling, the source\'s own kept: ' + J(m)); }
+            eq(names['ocha:coordinated-assessement'] && names['ocha:coordinated-assessement'].n, 'Coordinated Assessment', W1 + 'a typo corrected'); eq(names['ocha:covid-19'] && names['ocha:covid-19'].n, 'COVID-19', W1 + 'COVID-19');
+            ok(!Object.values(names).some(m => /programme|favourite|colour|centre|grey/i.test(m.n)), W1 + 'a British spelling among the names');
+            for (const k of ['cyclone', 'flood', 'tsunami', 'volcano', 'earthquake', 'drought', 'locust-infestation', 'bacteria', 'virus', 'laboratory', 'vaccine', 'handwashing', 'livestock', 'road', 'chart', 'people-in-need', 'dangerous-area']) ok(names['ocha:' + k], W1 + 'missing: ' + k);
+            // drawn edge to edge on their page (a road, a bar chart): no page clip, which would draw those edges twice anti-aliased
+            { const m = names['ocha:road'], s = m && (await (await get1(P.dir + P.chunks[m.f].file)).json())['ocha:road'].svg; ok(s && !/clip-path/.test(s), W1 + 'a drawing that only reaches its page edge has no page clip'); }
+            ok(P.bytes < PACK_EAGER && Object.keys(names).length >= 280, W1 + 'small enough to load at once: ' + P.bytes + ' bytes, ' + Object.keys(names).length + ' icons');
+          }
+          if (P.id === 'electric') {   // CC0 (the repository's LICENSE and the sheet's own metadata), no credit asked, no creator per symbol; taken out of one sheet: markers as shapes, text as outlines; no USB trident, no repeats
+            ok(P.license === 'CC0 1.0' && P.attribution === 'none' && !P.perIcon && !P.shareAlike && P.ask === undefined && /^Inkscape Electric Symbols, Paderborn University LEA \(github\.com\/upb-lea\/Inkscape_electric_Symbols\), CC0 1\.0$/.test(P.credit) && P.url === 'https://github.com/upb-lea/Inkscape_electric_Symbols', W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            ok(/not endorsed by Paderborn University/.test(P.plain) && !/\b(official|endorsed by Paderborn|approved)\b/i.test([P.name, P.by, P.credit, P.how].join(' ')), W1 + 'the pop-up says that the pack is not endorsed: ' + P.plain);
+            const okM = m => m.lic === 'CC0 1.0' && !('by' in m) && /^https:\/\/github\.com\/upb-lea\/Inkscape_electric_Symbols\/blob\/[0-9a-f]{40}\/Inkscape_Symbols_All\.svg$/.test(m.src || '');
+            ok(Object.values(names).every(okM), W1 + 'every icon CC0, from the sheet at a pinned commit: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            ok(P.chunks.every(c => /^(Passive components|Semiconductors|Sources and meters|Switches and protection|Connectors and ground|Power conversion and machines|Control blocks|Logic|Devices and instruments|Energy and buildings|Signals and magnetics)$/.test(c.cat)), W1 + 'groups: ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            const all = {}; for (const c of P.chunks) Object.assign(all, await (await get1(P.dir + c.file)).json());
+            // markers (arrowheads) became shapes, text became outlines: nothing of either is left, and both are drawn (a closed outline: an arrowhead of the potentiometer, the V of the voltmeter)
+            ok(!Object.values(all).some(v => /marker|<text|font-family/i.test(v.svg)), W1 + 'a marker or live text left in a drawing: ' + (Object.entries(all).find(([, v]) => /marker|<text|font-family/i.test(v.svg)) || [''])[0]);
+            for (const k of ['potentiometer', 'voltmeter', 'motor', 'and-gate', 'abc-to-dq-transformation', 'jk-flip-flop', 'current-source-arrow']) { const v = all['electric:' + k]; ok(v && /<path\b[^>]*\bd="[^"]*[zZ]\s*"/.test(v.svg), W1 + k + ': its arrowhead or letters are not drawn'); }
+            // the line color is the color key: every symbol recolorable
+            ok(Object.values(all).every(v => v.k.length >= 1), W1 + 'a drawing that cannot be recolored: ' + (Object.entries(all).find(([, v]) => !v.k.length) || [''])[0]);
+            ok(['resistor', 'diode', 'igbt', 'operational-amplifier', 'transformer-yd'].every(k => all['electric:' + k] && all['electric:' + k].k[0] === '#000000'), W1 + 'the black line is Color 1');
+            // names: SiliCoDraw's, from the sheet's titles (kept as the title and a search word); the transformations keep their small letters
+            { const m = names['electric:resistor-us']; ok(m && m.n === 'Resistor (US)' && m.title === 'Resistor US' && m.t.split(' ').includes('zigzag'), W1 + 'the sheet\'s title kept: ' + J(m)); }
+            eq(names['electric:abc-to-dq-transformation'] && names['electric:abc-to-dq-transformation'].n, 'abc to dq transformation', W1 + 'small letters kept');
+            // names say what is drawn: no bare "2" for the sheet's second symbol of a title (Valve, Summing point, Limitation), and the block the sheet calls Integrator shows s, not 1/s
+            ok(!Object.values(names).some(m => /\s\d$|1\/s/.test(m.n)), W1 + 'a name that does not say what is drawn: ' + (Object.values(names).find(m => /\s\d$|1\/s/.test(m.n)) || {}).n);
+            ok(names['electric:valve-one-mark'] && names['electric:valve-two-marks'] && names['electric:summing-point-two-minus-inputs-left-and-bottom'] && names['electric:integrator-block-s'], W1 + 'the variants named by what differs');
+            for (const k of ['resistor', 'capacitor', 'inductor', 'transformer', 'diode', 'zener-diode', 'thyristor', 'igbt', 'mosfet-enhancement-type-normally-off', 'npn-transistor', 'led', 'optocoupler', 'earth', 'voltmeter', 'ammeter', 'battery', 'switch', 'relay', 'fuse', 'dc-ac-converter', 'motor', 'transformer-yd', 'pi-controller', 'operational-amplifier', 'and-gate', 'jk-flip-flop', 'multiplexer', 'oscilloscope', 'laptop', 'wind-turbine', 'solar-panel-sun', 'toroidal-transformer', 'square-wave', 'hysteresis-curve', 'contact-normally-open']) ok(names['electric:' + k], W1 + 'missing: ' + k);
+            // left out on purpose: the USB trident, the sizes, turns and second drawings of a kept symbol, plain symbols framed as blocks
+            ok(!Object.entries(names).some(([k, m]) => /usb(?!-c)|trident|logo|paderborn|upb/i.test(k + ' ' + m.n)), W1 + 'a logo or trademark among the icons');
+            ok(names['electric:usb-c-socket'] && !Object.keys(names).some(k => /^electric:(opamp|ota-small|valve-block|multiplexer-[345]|demultiplexer-[345])/.test(k)), W1 + 'a symbol left out on purpose is back');
+            ok(P.bytes < PACK_EAGER && Object.keys(names).length >= 200, W1 + 'small enough to load at once: ' + P.bytes + ' bytes, ' + Object.keys(names).length + ' icons');
+          }
+          if (P.id === 'wmo-weather') {   // CC BY 4.0 (LICENSE.md and every file's cc:license), one line for the pack (the repository gives no wording), the creator each file's metadata names; markers drawn as shapes; one symbol per drawing; no Southern Hemisphere mirror images
+            ok(P.license === 'CC BY 4.0' && P.attribution === 'required' && !P.perIcon && !P.shareAlike && /^WorldWeatherSymbols, OGC MetOcean DWG and WMO \(github\.com\/OGCMetOceanDWG\/WorldWeatherSymbols\), CC BY 4\.0, adapted$/.test(P.credit) && /adapted/.test(P.how) && /no wording of its own/.test(P.how) && /This website is released under the Creative Commons Attribution 4\.0 International \(CC BY 4\.0\) license\.$/.test(P.ask) && P.askFrom === 'https://github.com/OGCMetOceanDWG/WorldWeatherSymbols/blob/master/LICENSE.md', W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            ok(/not endorsed by the WMO, ICAO or the OGC/.test(P.plain) && /CC BY 3\.0/.test(P.plain) && !/\b(official|endorsed by the WMO|approved)\b/i.test([P.name, P.by, P.credit, P.how].join(' ')), W1 + 'the pop-up says that the pack is not endorsed, and why the files still name CC BY 3.0: ' + P.plain);
+            const okM = m => m.lic === 'CC BY 4.0' && /^WMO (CBS IPET-DR&C|CAeM), contributor Chris Little$/.test(m.by || '') && /^https:\/\/github\.com\/OGCMetOceanDWG\/WorldWeatherSymbols\/blob\/[0-9a-f]{40}\/symbols\/[A-Za-z0-9_]+\/WeatherSymbol_(WMO|ICAO)_[A-Za-z0-9_-]+\.svg$/.test(m.src || '') && m.c[0] === '#000000' && m.c[1] === '#000000';
+            ok(Object.values(names).every(okM), W1 + 'every icon CC BY 4.0, with the creator its metadata names, its file at a pinned commit, in black: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            ok(P.chunks.every(c => /^(Present weather|Present weather, automatic station|Present weather, additional|Past weather|Clouds|Fronts|Pressure|Wind and swell|State of the ground|Aviation significant weather)$/.test(c.cat)), W1 + 'groups: ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            const all = {}; for (const c of P.chunks) Object.assign(all, await (await get1(P.dir + c.file)).json());
+            // arrowheads (SVG markers in the source) drawn as shapes: no marker left, and the arrowheads of symbols that drew them so (tornado, wall of dust, ship, snow cover) are closed shapes
+            ok(!Object.values(all).some(v => /marker|<text|font-family/i.test(v.svg)), W1 + 'a marker or live text left in a drawing');
+            // editing remnants taken out (an empty path that a round cap draws as a stray dot: C 9, CH 2) and no symbol cut off at its page: the automatic
+            // station triangle whole (wider than high, not two strokes cut at the top), the tropical cyclones with their arms (taller than wide, not a disc)
+            { const dot = v => /\bd="M0 0A0 0 0 0 0 0 0/.test(v.svg), clip = v => /clip-path="url\(#x\w+_c\)"/.test(v.svg); ok(!Object.values(all).some(v => dot(v) || clip(v)), W1 + 'a stray dot or a page clip left: ' + (Object.entries(all).find(([, v]) => dot(v) || clip(v)) || [''])[0]); }
+            { const t = all['wmo-weather:n-totalcloudcover-automatic'], c = all['wmo-weather:tropical-cyclone-nhge']; ok(t && t.b[0] > t.b[1] * 1.05 && c && c.b[1] > c.b[0] * 1.4, W1 + 'cut off at its page: ' + J([t && t.b, c && c.b])); }
+            for (const k of ['wawa-99', 'w1w1-09', 'ds-shipdirection-ds', 'eprime-5']) { const v = all['wmo-weather:' + k]; ok(v && /<path\b[^>]*\bd="[^"]*[zZ]\s*"/.test(v.svg), W1 + k + ': its arrowhead is not drawn'); }
+            ok(Object.values(all).every(v => v.k.length === 1 && v.k[0] === '#000000'), W1 + 'every symbol recolorable, black as Color 1: ' + (Object.entries(all).find(([, v]) => !(v.k.length === 1 && v.k[0] === '#000000')) || [''])[0]);
+            // names: the WMO code and its description, footnote marks and the French of the hail footnote taken off, typos of the titles corrected; the title as the file has it
+            { const m = names['wmo-weather:ww-95']; ok(m && /^ww 95: Thunderstorm, slight or moderate, without hail, but with rain/.test(m.n) && m.n.length <= 72 && /\*\*\*/.test(m.title) && m.t.split(' ').includes('ww') && m.t.split(' ').includes('95'), W1 + 'named by code and description, the title kept: ' + J(m)); }
+            { const bad = m => /\*|French|grêle|^ww \d+: (og|rizzle)\b|nimbostratusx|\b(?!ICAO\b)[A-Z]{3,}\b|\bOR\b|^.{73,}$|\b(the|of|at|to|during)…$/.test(m.n); ok(!Object.values(names).some(bad), W1 + 'a footnote, a typo of the source, capitals or a long or cut-off name: ' + (Object.values(names).find(bad) || {}).n); }
+            ok(names['wmo-weather:ww-42'] && /^ww 42: Fog or ice fog, sky visible/.test(names['wmo-weather:ww-42'].n) && /: og or ice fog/.test(names['wmo-weather:ww-42'].title), W1 + 'a typo of the title corrected, the title as the file has it: ' + J(names['wmo-weather:ww-42'])); eq(names['wmo-weather:ww-60'] && names['wmo-weather:ww-60'].n, 'ww 60: Rain, not freezing, intermittent, slight', W1 + '"at time of observation" left off the name'); eq(names['wmo-weather:wawa-27'] && names['wmo-weather:wawa-27'].n, 'wawa 27: Blowing or drifting snow or sand', W1 + 'a title in capitals');
+            eq(names['wmo-weather:icao-moutain-obscuration'] && names['wmo-weather:icao-moutain-obscuration'].n, 'Mountain obscuration (ICAO)', W1 + 'an ICAO symbol named from its file name');
+            ok(!Object.values(names).some(m => /centre/i.test(m.n)), W1 + 'a British spelling among the names');
+            // one symbol per drawing: a code table's copy of a kept symbol is left out, its code finds the kept one
+            for (const [gone, kept, w] of [['wawa-10', 'ww-10', 'wawa'], ['icao-front-cold-at-surface', 'front-cold-at-surface', 'icao'], ['w1w2-6', 'ww-60', 'w1w2'], ['w1w1-69b', 'ww-69', 'w1w1'], ['wawa-92b', 'ww-95b', 'wawa'], ['wind-arrow-calm-00', 'n-0', 'calm']]) { const m = names['wmo-weather:' + kept]; ok(!names['wmo-weather:' + gone] && m && m.t.split(' ').includes(w), W1 + gone + ' is (as good as) a copy of ' + kept + ', whose words find it: ' + (m && m.t)); }
+            // left out on purpose: the Southern Hemisphere mirror images, the rates of fall written as digits, E 9 (draws nothing as published)
+            ok(!Object.keys(names).some(k => /-sh(ge|lt)?(-\d+)?$|wind-arrow-sh-|^wmo-weather:(w1w1-(5[0-7]|6[0-7]|7[0-7])|e-9|wawa-notsignificant)$/.test(k)), W1 + 'left out on purpose, and back: ' + Object.keys(names).filter(k => /wind-arrow-sh-|-sh(ge|lt)$|w1w1-[5-7][0-7]$|e-9$/.test(k)).join(', '));
+            ok(!Object.values(names).some(m => /\b(logo|OGC|WorldWeatherSymbols)\b/.test(m.n)), W1 + 'a logo or the repository\'s name among the icons');
+            for (const k of ['ww-00', 'ww-45', 'ww-60', 'ww-71', 'ww-95', 'ww-99', 'cl-9', 'c-9', 'n-4', 'a-2', 'front-cold-at-surface', 'front-warm-at-surface', 'front-occluded-at-surface', 'front-quasi-stationary-at-surface', 'wind-arrow-nh-05', 'tropical-cyclone-nhge', 'e-3', 'eprime-4', 'icao-severe-turbulence', 'icao-volcanic-eruption']) ok(names['wmo-weather:' + k], W1 + 'missing: ' + k);
+            ok(P.bytes < PACK_EAGER && Object.keys(names).length >= 350, W1 + 'small enough to load at once: ' + P.bytes + ' bytes, ' + Object.keys(names).length + ' icons');
+          }
+          if (P.id === 'sbol') {   // the glyphs CC0 (the exception in the repository's otherwise CC BY 4.0 LICENSE.html), no credit asked, no creator per glyph; from GitHub only, never sbolstandard.org (CC BY-NC-ND); glyphs only (no specification, example or Deprecated drawing); characters set as outlines, the marker drawn as a shape
+            ok(P.license === 'CC0 1.0' && P.attribution === 'none' && !P.perIcon && !P.shareAlike && /^SBOL Visual glyphs, the SBOL developers \(github\.com\/SynBioDex\/SBOL-visual\), CC0 1\.0$/.test(P.credit) && /^Exception: to the extent possible under law, the SBOL developers have waived all copyright and related or neighboring rights to SBOL Visual glyphs\.$/.test(P.ask) && P.askFrom === 'https://github.com/SynBioDex/SBOL-visual/blob/master/LICENSE.html' && P.url === 'https://github.com/SynBioDex/SBOL-visual', W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            ok(/not endorsed by the SBOL developers/.test(P.plain) && /CC BY 4\.0/.test(P.plain) && /sbolstandard\.org website is under another license and was not used/.test(P.plain) && /ask for none/.test(P.how) && !/\b(official|endorsed by the SBOL|approved)\b/i.test([P.name, P.by, P.credit, P.how].join(' ')), W1 + 'the pop-up says what the CC0 covers, that the website was not used and that the pack is not endorsed: ' + P.plain);
+            ok(![P.url, P.askFrom, P.site, P.credit].some(s => /sbolstandard\.org/i.test(s || '')), W1 + 'a link to the website (CC BY-NC-ND), not to the repository');
+            const okM = m => m.lic === 'CC0 1.0' && !('by' in m) && /^https:\/\/github\.com\/SynBioDex\/SBOL-visual\/blob\/f6b2f53a22105c768d376ecf68d67cc7f4516115\/Glyphs\/(SequenceFeatures|MolecularSpecies|Interactions|InteractionNodes)\/[A-Za-z-]+\/[A-Za-z-]+\.svg$/.test(m.src || '') && !/-(specification|example)|Deprecated/.test(m.src) && m.c[0] === '#000000' && m.c[1] === '#000000';
+            ok(Object.values(names).every(okM), W1 + 'every icon CC0, a glyph file of the repository at a pinned commit (no specification, example or deprecated drawing), in black: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            ok(P.chunks.every(c => /^(Sequence features|Molecular species|Interactions|Interaction nodes)$/.test(c.cat)), W1 + 'groups: ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            const all = {}; for (const c of P.chunks) Object.assign(all, await (await get1(P.dir + c.file)).json());
+            // the characters some glyphs are made of (?, [ ], ..., AAA, the asterisks) are outlines, the arrowhead of Origin of transfer (a marker) a shape: nothing of either is left, and both are drawn
+            ok(!Object.values(all).some(v => /marker|<text|font-family/i.test(v.svg)), W1 + 'a marker or live text left in a glyph: ' + (Object.entries(all).find(([, v]) => /marker|<text|font-family/i.test(v.svg)) || [''])[0]);
+            for (const k of ['polya', 'unspecified', 'transcription-end', 'translation-end', 'omitted-detail', 'no-glyph-assigned', 'origin-of-transfer']) { const v = all['sbol:' + k]; ok(v && /<path\b[^>]*\bd="[^"]*[zZ]\s*"/.test(v.svg), W1 + k + ': its character or arrowhead is not drawn'); }
+            ok(Object.values(all).every(v => v.k.length === 1 && v.k[0] === '#000000'), W1 + 'every glyph recolorable, black as Color 1: ' + (Object.entries(all).find(([, v]) => !(v.k.length === 1 && v.k[0] === '#000000')) || [''])[0]);
+            // the two files whose view box is zero wide (they draw nothing in a browser as published) came out as the glyph: a double helix wider than high, the blunt site's two brackets taller than wide
+            { const h = all['sbol:dsna'], b = all['sbol:blunt-restriction-site']; ok(h && h.b[0] > h.b[1] * 2 && b && b.b[1] > b.b[0] * 1.5, W1 + 'the zero-width view boxes: ' + J([h && h.b, b && b.b])); }
+            // the single-stranded nucleic acid's open wave is not filled white (a white patch on a dark page, convert option openFills); the Process node and Dissociation keep the white interiors they are drawn with
+            { const s = all['sbol:ssna'], p = all['sbol:process-node']; ok(s && !/fill="#fff(fff)?"/i.test(s.svg) && /fill="none"/.test(s.svg), W1 + 'the open wave of ssNA filled white: ' + (s && s.svg)); ok(p && /fill="#ffffff"/.test(p.svg), W1 + 'the Process node lost its white interior'); }
+            // a glyph filed in several glyph sets is in the pack once, and the other sets' names find it; deprecated glyphs and the specification and example drawings are not there
+            ok(!Object.keys(names).some(k => /^sbol:(halfround-rectangle|replacement-glyph|unspecified-glyph|insulator|.*-specification.*|.*-example.*)$/.test(k)), W1 + 'left out on purpose, and back: ' + Object.keys(names).filter(k => /halfround|replacement|insulator|specification|example/.test(k)).join(', '));
+            for (const [kept, w] of [['na-sbgn', 'dsna'], ['na-sbgn', 'unspecified'], ['unspecified', 'interaction'], ['unspecified', 'molecular'], ['no-glyph-assigned', 'molecular']]) { const m = names['sbol:' + kept]; ok(m && m.t.split(' ').includes(w), W1 + kept + ' is not found by "' + w + '": ' + (m && m.t)); }
+            // names: the glyph sets of the repository, alternates named by what sets them apart; the set's SO / SBO terms are search words
+            eq(names['sbol:ribosome-entry-site'] && names['sbol:ribosome-entry-site'].n, 'Ribosome entry site (RBS)', W1 + 'a name'); eq(names['sbol:cds-arrow'] && names['sbol:cds-arrow'].n, 'CDS, block arrow', W1 + 'an alternate named by what sets it apart');
+            { const m = names['sbol:promoter'], t = m ? m.t.split(' ') : []; ok(m && t.includes('0000167') && t.includes('sbol') && t.includes('synthetic'), W1 + 'the SO term of the set and the standard\'s name are search words: ' + (m && m.t)); }
+            ok(!Object.values(names).some(m => /\b(logo|SynBioDex)\b/i.test(m.n) || /\s\d$/.test(m.n)), W1 + 'a logo, the repository\'s name or a bare number among the names');
+            for (const k of ['promoter', 'cds', 'terminator', 'ribosome-entry-site', 'operator', 'origin-of-replication', 'aptamer', 'specific-recombination-site', 'five-prime-overhang', 'three-prime-overhang', 'five-prime-sticky-restriction-site', 'three-prime-sticky-restriction-site', 'nuclease-site', 'location-rna', 'protein-stability-element', 'protein', 'macromolecule', 'simple-chemical-hexagon', 'ssna', 'dsna', 'complex-sbgn', 'inhibition', 'stimulation', 'control', 'degradation', 'process', 'association', 'dissociation', 'process-node']) ok(names['sbol:' + k], W1 + 'missing: ' + k);
+            ok(P.bytes < PACK_EAGER && Object.keys(names).length >= 60, W1 + 'small enough to load at once: ' + P.bytes + ' bytes, ' + Object.keys(names).length + ' icons');
+          }
+          if (P.id === 'opencrop') {   // CC0 (the README and package.json; no LICENSE file), no credit asked (one welcomed), no creator per icon; from GitHub at a pinned commit; one drawing per crop, misspelled names corrected; no cannabis, no psilocybin, no color copies
+            ok(P.license === 'CC0 1.0' && P.attribution === 'none' && !P.perIcon && !P.shareAlike && /^Open Crop Icons, OpenFarm contributors \(github\.com\/openfarmcc\/open-crop-icons\), CC0 1\.0$/.test(P.credit) && P.url === 'https://github.com/openfarmcc/open-crop-icons', W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            ok(/A credit somewhere to help other people find them would be in good spirit, but is not required\./.test(P.ask) && /^https:\/\/github\.com\/openfarmcc\/open-crop-icons\//.test(P.askFrom) && /not endorsed by OpenFarm/.test(P.plain) && !/\b(official|endorsed by OpenFarm|approved)\b/i.test([P.name, P.by, P.credit, P.how].join(' ')), W1 + 'their own words, and not endorsed: ' + P.plain);
+            const okM = m => m.lic === 'CC0 1.0' && !('by' in m) && /^https:\/\/github\.com\/openfarmcc\/open-crop-icons\/blob\/[0-9a-f]{40}\/icons\/([a-z0-9-]+)\/\1\.svg$/.test(m.src || '');
+            ok(Object.values(names).every(okM), W1 + 'every icon CC0, no creator, one drawing per crop at a pinned commit: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            ok(P.chunks.every(c => /^(Fruits & nuts|Grains & field crops|Peppers & chilies|Fruiting vegetables|Leaf & stem vegetables|Roots, tubers & onions|Beans & peas|Herbs & medicinal plants|Mushrooms|Flowers & other plants)$/.test(c.cat)), W1 + 'groups: ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            // misspelled folder names corrected in the library name; the folder's words still find it
+            for (const [k, nm, w] of [['atrichoke', 'Artichoke', 'atrichoke'], ['majoram', 'Marjoram', 'majoram'], ['youkon-gold-potato', 'Yukon Gold Potato', 'youkon'], ['chantrelle', 'Chanterelle', 'chantrelle'], ['portabello', 'Portobello Mushroom', 'portabello'], ['brussel-sprout', 'Brussels Sprout', 'brussel'], ['lacianto-kale', 'Lacinato Kale', 'lacianto'], ['fatilii-pepper', 'Fatalii Pepper', 'fatilii'], ['chile-de-aborol-pepper', 'Chile de Árbol Pepper', 'aborol'], ['jalapeno', 'Jalapeño Pepper', 'jalapeno'], ['generic-apple', 'Apple', 'generic']]) { const m = names['opencrop:' + k]; ok(m && m.n === nm && m.t.split(' ').includes(w), W1 + k + ' named ' + nm + ', found by "' + w + '": ' + J(m)); }
+            ok(!Object.values(names).some(m => /atrichoke|nectratine|majoram|youkon|chantrelle|portabello|brussel |lacianto|fatilii|aborol|generic/i.test(m.n)), W1 + 'a misspelled name: ' + (Object.values(names).find(m => /atrichoke|nectratine|majoram|youkon|chantrelle|portabello|brussel |lacianto|fatilii|aborol|generic/i.test(m.n)) || {}).n);
+            // left out on purpose: cannabis and psilocybin (by key, name or search word), and the other colors of a drawing, whose names find the one kept
+            ok(!Object.entries(names).some(([k, m]) => /cannabis|psilocyb|marijuana/i.test(k + ' ' + m.n + ' ' + m.t)), W1 + 'cannabis or psilocybin among the icons');
+            for (const [gone, kept, w] of [['purple-carrot', 'carrot', 'purple'], ['yellow-carrot', 'carrot', 'yellow'], ['wax-bean', 'blue-lake-bean', 'wax'], ['red-cabbage', 'green-cabbage', 'red'], ['granny-smith-apple', 'golden-delicious-apple', 'granny'], ['white-onion', 'red-onion', 'white'], ['black-habanero', 'habanero-pepper', 'black'], ['red-chard', 'swiss-chard', 'red']]) { const m = names['opencrop:' + kept]; ok(!names['opencrop:' + gone] && m && m.t.split(' ').includes(w), W1 + gone + ' is another color of ' + kept + ', whose words find it: ' + (m && m.t)); }
+            // another ripeness or species drawn the same is an icon of its own, named for it, and the other is not found by its words
+            for (const [k, nm, other, w] of [['red-bell-pepper', 'Red Bell Pepper', 'green-bell-pepper', 'red'], ['orange-bell-pepper', 'Orange Bell Pepper', 'green-bell-pepper', 'orange'], ['yellow-bell-pepper', 'Yellow Bell Pepper', 'green-bell-pepper', 'yellow'], ['red-tabasco-pepper', 'Red Tabasco Pepper', 'green-tabasco-pepper', 'red'], ['red-serrano-pepper', 'Red Serrano Pepper', 'green-serrano-pepper', 'red'],
+              ['nectratine', 'Nectarine', 'peach', 'nectarine'], ['japanese-yam', 'Japanese Yam', 'sweet-potato', 'yam'], ['salsify', 'Salsify', 'black-salsify', '-'], ['pink-oyster', 'Pink Oyster Mushroom', 'blue-oyster', 'pink'], ['white-oyster', 'White Oyster Mushroom', 'blue-oyster', 'white'], ['yellow-oyster', 'Yellow Oyster Mushroom', 'blue-oyster', 'yellow']]) {
+              const m = names['opencrop:' + k], o = names['opencrop:' + other]; ok(m && m.n === nm && !alias['opencrop:' + k] && o && !o.t.split(' ').includes(w), W1 + k + ' (another ripeness or species) is an icon of its own: ' + J(m) + ' / ' + (o && o.t)); }
+            eq(['green-bell-pepper', 'blue-oyster'].map(k => names['opencrop:' + k] && names['opencrop:' + k].n).join(), 'Green Bell Pepper,Blue Oyster Mushroom', W1 + 'the kept drawing is named for its own color');
+            for (const k of ['wheat', 'rice', 'corn', 'barley', 'oat', 'soy-bean', 'cotton', 'sugar-cane', 'tomato', 'russet-potato', 'carrot', 'garlic', 'broccoli', 'basil', 'shiitake', 'strawberry', 'sunflower', 'hemp', 'asian-pear']) ok(names['opencrop:' + k], W1 + 'missing: ' + k);
+            ok(!names['opencrop:cantaloupe'], W1 + 'the cantaloupe, which failed the comparison with its original, is back: look at it before letting it in');
+            ok(P.bytes < PACK_EAGER && Object.keys(names).length >= 200, W1 + 'small enough to load at once: ' + P.bytes + ' bytes, ' + Object.keys(names).length + ' icons');
+          }
+          if (P.id === 'anatomogram') {   // CC BY 4.0 (the README; the Expression Atlas licence page names the anatomograms), one line for the pack citing the article EMBL-EBI asks for; the male body's CC0 outline named; no EBI logo; tissues filled under the outline
+            ok(P.license === 'CC BY 4.0' && P.attribution === 'required' && !P.perIcon && !P.shareAlike && /^Anatomograms from Expression Atlas, EMBL-EBI \(Expression Atlas in 2026, Nucleic Acids Research, doi:10\.1093\/nar\/gkaf1238\), CC BY 4\.0, adapted$/.test(P.credit) && /provided you give us credit by citing: Expression Atlas in 2026: enabling FAIR and open expression data through community collaboration and integration \(Nucleic Acids Research, 10 December 2025\)\.$/.test(P.ask) && P.askFrom === 'https://www.ebi.ac.uk/gxa/licence.html' && P.url === 'https://github.com/ebi-gene-expression-group/anatomogram' && /adapted/.test(P.how) && /gkaf1238/.test(P.how), W1 + 'terms: ' + P.attribution + ' / ' + P.license + ' / ' + P.credit);
+            ok(/not endorsed by EMBL-EBI/.test(P.plain) && /public-domain drawing on Wikimedia Commons \(by Vsion, SVG by Sjef, text by tsaitgaist\)/.test(P.plain) && !/CC0/.test(P.plain) && /species anatomograms/.test(P.plain) && !/\b(official|endorsed by EMBL|approved)\b/i.test([P.name, P.by, P.credit, P.how].join(' ')), W1 + 'the pop-up says where the license is stated, the public-domain outline (its Commons page: a public-domain release by Vsion, not CC0) and that the pack is not endorsed: ' + P.plain);
+            const okM = m => m.lic === 'CC BY 4.0' && /^https:\/\/github\.com\/ebi-gene-expression-group\/anatomogram\/blob\/9fcc37022cce1e2862692a5f5fbfb78572b87e67\/src\/svg\/[a-z_]+(\.[a-z_]+)?\.svg$/.test(m.src || '') && (!('by' in m) || /^Vsion, SVG by Sjef, text by .* \(outline: Human body features, Wikimedia Commons, public domain\)/.test(m.by));
+            ok(Object.values(names).every(okM), W1 + 'every icon CC BY 4.0, its file at a pinned commit: ' + J(Object.entries(names).find(([, m]) => !okM(m))));
+            { const m = names['anatomogram:homo-sapiens-male']; ok(m && /^Vsion, SVG by Sjef, text by Kevin \(tsaitgaist\) REDON \(outline: Human body features, Wikimedia Commons, public domain\); tissues EMBL-EBI Expression Atlas$/.test(m.by || ''), W1 + 'the male body names the authors of its public-domain outline (its file and its Commons page): ' + J(m)); ok(Object.entries(names).filter(([, m]) => 'by' in m).length === 1, W1 + 'only the male body\'s file names a creator'); }
+            ok(P.chunks.every(c => /^(Human|Animals|Plants|Plant parts)$/.test(c.cat)), W1 + 'groups: ' + [...new Set(P.chunks.map(c => c.cat))].join(', '));
+            const all = {}; for (const c of P.chunks) Object.assign(all, await (await get1(P.dir + c.file)).json());
+            // the EBI attribution logo (its green #009600 mark on a white disc) is taken out; the tissues are filled in the one tissue red, under the gray outline, and both are the color keys
+            ok(!Object.values(all).some(v => /#009600/i.test(v.svg)), W1 + 'the EBI logo left in a drawing: ' + (Object.entries(all).find(([, v]) => /#009600/i.test(v.svg)) || [''])[0]);
+            ok(Object.entries(all).every(([k, v]) => k === 'anatomogram:anolis-carolinensis' ? v.k[0] === '#a0a1a2' : v.k.length === 2 && v.k.includes('#a0a1a2') && v.k.includes('#e0544a')), W1 + 'outline gray and tissue red as the colors: ' + (Object.entries(all).find(([k, v]) => k !== 'anatomogram:anolis-carolinensis' && !(v.k.includes('#a0a1a2') && v.k.includes('#e0544a'))) || [''])[0]);
+            { const s = all['anatomogram:homo-sapiens-female'] && all['anatomogram:homo-sapiens-female'].svg, i = s ? s.indexOf('#e0544a') : -1, o = s ? s.lastIndexOf('#a0a1a2') : -1; ok(i >= 0 && o > i, W1 + 'the tissues are drawn under the outline'); }
+            // names: common name and species; the tissues a drawing holds are its search words
+            eq(names['anatomogram:mus-musculus-female'] && names['anatomogram:mus-musculus-female'].n, 'Mouse, female (Mus musculus)', W1 + 'a name');
+            { const m = names['anatomogram:homo-sapiens-female'], t = m ? m.t.split(' ') : []; ok(m && ['heart', 'liver', 'kidney', 'uterus', 'anatomogram'].every(w => t.includes(w)), W1 + 'the tissues are search words: ' + (m && m.t)); }
+            ok(!Object.values(names).some(m => /\b(logo|EBI|EMBL)\b/.test(m.n)), W1 + 'a logo or the repository\'s name among the icons');
+            for (const k of ['homo-sapiens-male', 'homo-sapiens-female', 'homo-sapiens-brain', 'mus-musculus-male', 'mus-musculus-female', 'mus-musculus-brain', 'rattus-norvegicus', 'gallus-gallus', 'arabidopsis-thaliana', 'zea-mays-whole-plant', 'oryza-sativa-whole-plant', 'triticum-aestivum-flower-parts', 'solanum-lycopersicum-flower-parts']) ok(names['anatomogram:' + k], W1 + 'missing: ' + k);
+            // left out: the three drawings over 700 KB (fine line work), not to put a megabyte into every figure that shows one
+            ok(!['solanum-tuberosum', 'brachypodium-distachyon-whole-plant', 'sorghum-bicolor-flower-parts'].some(k => names['anatomogram:' + k]), W1 + 'a drawing over 700 KB is back: look at its size first');
+            ok(P.bytes < PACK_EAGER && Object.keys(names).length >= 28, W1 + 'small enough to load at once: ' + P.bytes + ' bytes, ' + Object.keys(names).length + ' icons');
+          }          
+          if (P.id === 'servier') {   // CC BY 4.0, credited in Servier's own wording with "adapted"; neither its logo nor its name in an icon; a part per kit
+            ok(P.license === 'CC BY 4.0' && P.attribution === 'required' && !P.perIcon && !P.shareAlike, W1 + 'license'); ok(/^Images adapted from Servier Medical Art \(https:\/\/smart\.servier\.com\/\), licensed under CC BY 4\.0/.test(P.credit), W1 + 'credit: ' + P.credit);
+            ok(!Object.keys(names).some(k => /logo|servier|smart/i.test(k.replace(/^servier:/, ''))) && !Object.values(names).some(m => /\b(logo|servier)\b/i.test(m.n)), W1 + 'a logo or the repository\'s name among the icons');
+            { const glued = [], brit = []; for (const [key, m] of Object.entries(names)) { if (/[a-z]{3}[A-Z][a-z]/.test(m.n)) glued.push(key + ' ' + m.n); if (/f(oe|œ)t|analyser|haem|oedem|tumour|colour/i.test(m.n)) brit.push(key + ' ' + m.n); }
+              ok(!inkKeys.length, W1 + 'an outline ink or a near-white highlight as a color key (Main color would recolor outlines): ' + inkKeys.slice(0, 5).join(', ')); ok(!glued.length, W1 + 'words glued together in a name: ' + glued.slice(0, 5).join(', ')); ok(!brit.length, W1 + 'British spelling in a name: ' + brit.slice(0, 5).join(', ')); }
+            ok(P.chunks.every(c => typeof c.cat === 'string' && c.cat), W1 + 'every part names its kit'); ok(new Set(P.chunks.map(c => c.cat)).size >= 40, W1 + 'parts by kit: ' + new Set(P.chunks.map(c => c.cat)).size);
+          }
           eq(n, P.count, W1 + 'icons in the parts'); eq(Object.keys(names).length, n, W1 + 'names.json'); ok(Object.keys(pv).every(k => seen.has(k)), W1 + 'a preview icon that is not in the pack'); total += n; note.push(P.id + ' ' + n + ' (' + (bytes / 1e6).toFixed(1) + ' MB)');
         }
       } finally { host.remove(); }
       return { note: total + ' icons: ' + note.join(', ') };
     }, 480000);
 
+    test('icon packs: many packs: the import list by field and search, Show icons from folded, the Add panel made as it scrolls, built-in icons first', async () => {
+      await packInit(); await usePack(false);   // the test pack (no fields) beside the shipped ones
+      const shipped = PACKS.list.filter(P => P.id !== TP); if (shipped.length < PACK_MANY) throw new Skip('fewer than ' + PACK_MANY + ' icon packs in this copy (icon-expansions/index.json)');
+      const was = new Map(shipped.map(P => [P.id, packImported(P.id)])), showWas = J(PACKS.show); let openWas = null; try { openWas = localStorage.getItem(PACK_SHOW + 'Open'); } catch (e) {}
+      const S = $q('#palSearch'), L = $q('#palList'), note = [];
+      try {
+        ok(fig.iconPacks().every(p => Array.isArray(p.fields)), 'fig.iconPacks() has fields'); eq(J(fig.iconPacks().find(p => p.id === TP).fields), '[]', 'a pack without fields: []');
+        // the list: a search and the field chips on top, one row per pack
+        packFind.q = ''; packFind.f = ''; packMenu(true); const M = $q('#packMenu'); let F = M.querySelector('#pkFind'); const rows = () => [...M.querySelectorAll('.pkrow')], vis = () => rows().filter(b => !b.hidden).map(b => b.dataset.id);
+        ok(F && M.querySelector('.pkfields') && M.querySelector('.pkhead'), 'a search field and the field chips'); eq(rows().length, PACKS.list.length, 'one row per pack'); eq(vis().length, PACKS.list.length, 'all shown');
+        const chips = [...M.querySelectorAll('.pkf')].map(c => c.dataset.f); ok(chips[0] === '' && PACK_FIELDS.every(([k]) => !shipped.some(P => packFields(P).includes(k)) === !chips.includes(k)), 'a chip per field that has packs: ' + J(chips));
+        ok(rows().every(b => { const P = PACKS.by.get(b.dataset.id), fl = packFields(P); return !fl.length ? !b.querySelector('.pkfl') : b.querySelector('.pkfl').textContent === fl.map(packFieldName).join(' · '); }), 'each row names its fields');
+        { const m = M.getBoundingClientRect(), p = $q('#palette').getBoundingClientRect(), h = m.height, lh = $q('#palList').getBoundingClientRect().height; ok(m.bottom <= p.bottom + 1 && M.scrollHeight > h + 1 && h >= Math.min(300, p.height * 0.5), 'the list takes the panel\'s height and scrolls: ' + Math.round(h) + ' of ' + Math.round(p.height) + ' px'); ok(lh >= 60, 'a strip of the icons stays below it: ' + Math.round(lh) + ' px'); M.scrollTop = 400; await frame(); ok(Math.abs(M.querySelector('.pkhead').getBoundingClientRect().top - M.getBoundingClientRect().top) < 3, 'the search and chips stay on top while it scrolls'); M.scrollTop = 0; }
+        const chip = f => { M.querySelector('.pkf[data-f="' + f + '"]').click(); return vis(); };
+        { const v = chip('earth'); ok(v.includes('wmo-weather') && !v.includes('electric') && !v.includes(TP) && v.every(id => packFields(PACKS.by.get(id)).includes('earth')), 'Earth & weather: ' + v.join(', ')); eq(M.querySelector('.pkf[data-f="earth"]').getAttribute('aria-pressed'), 'true', 'its chip is pressed');
+          ok(new RegExp('^' + v.length + ' of ' + PACKS.list.length + ' packs$').test(M.querySelector('#pkCount').textContent), 'how many: ' + M.querySelector('#pkCount').textContent); }
+        { const v = chip('engineering'); ok(v.includes('electric') && v.includes('sbol') && !v.includes('servier') && !v.includes('wmo-weather'), 'Engineering: ' + v.join(', ')); }
+        { const v = chip('life'); ok(v.includes('reactome') && v.includes('phylopic') && !v.includes('electric'), 'Life sciences: ' + v.join(', ')); }
+        packMenu(true); ok(vis().every(id => packFields(PACKS.by.get(id)).includes('life')) && M.querySelector('.pkf.on').dataset.f === 'life', 'the filter stays when the list is drawn again (an import, Remove)'); F = M.querySelector('#pkFind');
+        eq(chip('').length, PACKS.list.length, 'All: every pack again');
+        const find = v => { F.value = v; F.dispatchEvent(new Event('input', { bubbles: true })); return vis(); };
+        ok(find('weather').includes('wmo-weather') && !find('weather').includes('electric'), 'search "weather": ' + find('weather').join(', ')); ok(find('mushroom').includes('opencrop'), 'a category of the pack counts ("mushroom": Open Crop Icons): ' + find('mushroom').join(', '));
+        ok(find('CC BY-SA').includes('biodraws') && find('CC BY-SA').length < PACKS.list.length, 'the license counts: ' + find('CC BY-SA').join(', ')); ok(find('test pack').includes(TP), 'a pack without fields is found by name');
+        { F.value = 'weather'; F.dispatchEvent(new Event('input', { bubbles: true })); chip('engineering'); eq(vis().length, 0, 'search and field together: nothing'); ok(!M.querySelector('#pkNone').hidden, '"No pack matches"'); M.querySelector('#pkAll').click(); eq(vis().length, PACKS.list.length, 'Show all packs: the search and the field reset'); eq(F.value, '', 'the search emptied'); eq(D.activeElement, F, 'the focus in the search'); }
+        // the keyboard: ↓ from the search into the rows shown, ↑ back; Esc empties the search first, then closes the list
+        find('icons'); const kd = (el, key) => el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+        { const v = rows().filter(b => !b.hidden); ok(v.length >= 2, 'several packs named "icons"'); F.focus(); kd(F, 'ArrowDown'); eq(D.activeElement, v[0], '↓: the first row shown'); kd(v[0], 'ArrowDown'); eq(D.activeElement, v[1], '↓: the next row shown'); kd(v[1], 'ArrowUp'); kd(v[0], 'ArrowUp'); eq(D.activeElement, F, '↑ from the first row: the search'); }
+        kd(F, 'Escape'); ok(!M.hidden && F.value === '' && vis().length === PACKS.list.length, 'Esc in a search with words: emptied, the list stays open'); kd(F, 'Escape'); ok(M.hidden, 'Esc again: the list closes');
+        // every shipped pack imported: Show icons from folds its boxes behind one line
+        for (const P of shipped) if (!packImported(P.id)) await fig.importIconPack(P.id, { accept: true });
+        fig.showIconPacks(Object.fromEntries(['builtin', 'my', ...PACKS.list.map(p => p.id)].map(k => [k, true]))); try { localStorage.removeItem(PACK_SHOW + 'Open'); } catch (e) {} packBar();
+        const R = $q('#packShow'), T = () => R.querySelector('#packShowT'), box = () => R.querySelector('#packShowBox'), sum = () => T().textContent.trim(), nSrc = R.querySelectorAll('input').length;
+        ok(nSrc > PACK_MANY && T() && box().hidden && T().getAttribute('aria-expanded') === 'false', 'folded behind one line: ' + (T() && sum())); eq(sum(), 'All ' + nSrc + ' sources', 'it says what is shown'); ok(R.getBoundingClientRect().height < 48, 'one line high: ' + Math.round(R.getBoundingClientRect().height) + ' px');
+        T().click(); ok(!box().hidden && T().getAttribute('aria-expanded') === 'true' && D.activeElement === T(), 'its button unfolds the boxes, the focus stays on it'); eq(localStorage.getItem(PACK_SHOW + 'Open'), '1', 'remembered in this browser');
+        const srcIds = () => [...R.querySelectorAll('input')].map(c => c.dataset.src), shownAs = v => { const s = fig.showIconPacks({}); return srcIds().every(k => s[k] === v) && [...R.querySelectorAll('input')].every(c => c.checked === v); };   // (the sources with a box: My icons only when there are some)
+        R.querySelector('[data-all="0"]').click(); ok(shownAs(false) && sum() === 'None of ' + nSrc + ' sources', 'None: ' + sum());
+        R.querySelector('input[data-src="reactome"]').click(); ok(fig.showIconPacks({}).reactome === true && new RegExp('^1 of ' + nSrc + ' · ' + (nSrc - 1) + ' hidden$').test(sum()), 'one ticked: ' + sum());
+        R.querySelector('[data-all="1"]').click(); ok(shownAs(true) && sum() === 'All ' + nSrc + ' sources', 'All: ' + sum());
+        fig.showIconPacks({ phylopic: false }); eq(sum(), (nSrc - 1) + ' of ' + nSrc + ' · hidden: PhyloPic', 'a few hidden are named: ' + sum()); fig.showIconPacks({ phylopic: true });
+        T().click(); ok(box().hidden, 'folded again');
+        // the Add panel: only the first groups are made at once, the others as they come near the view (or the keyboard reaches them)
+        S.value = ''; palState.cat = 'All'; let t0 = performance.now(); buildPalette(); const msAll = performance.now() - t0;
+        const shownN = () => [...L.querySelectorAll('h3:not(.closed) .n')].reduce((n, x) => n + (+x.textContent || 0), 0), made = () => L.querySelectorAll('.pitem').length, all = shownN();
+        ok(all > 5000 && made() < all / 4 && L.querySelectorAll('.grid.lazy').length > 10, 'made at once: ' + made() + ' of ' + all + ' items'); ok(msAll < 3000, 'the whole list in ' + Math.round(msAll) + ' ms'); note.push('Add panel, all ' + all + ' items: ' + Math.round(msAll) + ' ms, ' + made() + ' made');
+        { const g = L.querySelector('.grid.lazy'); ok(g.style.height && parseFloat(g.style.height) > 0, 'an empty group keeps the height of its items: ' + g.style.height); }
+        const lastG = () => { const gs = L.querySelectorAll('.grid'); return gs[gs.length - 1]; };
+        L.scrollTop = L.scrollHeight; for (let i = 0; i < 60 && lastG().classList.contains('lazy'); i++) { await sleep(50); L.scrollTop = L.scrollHeight; }
+        { const gs = L.querySelectorAll('.grid'), last = gs[gs.length - 1]; ok(!last.classList.contains('lazy') && last.querySelector('.pitem'), 'scrolled to the end: the last group is made'); }
+        L.scrollTop = 0; buildPalette(); { const first = L.querySelector('.pitem'); first.focus(); kd(first, 'End'); const gs = L.querySelectorAll('.grid'); ok(D.activeElement.classList.contains('pitem') && gs[gs.length - 1].contains(D.activeElement), 'End: the last item, its group made for it'); }
+        palFillAll(); eq(made(), all, 'palFillAll makes every group'); S.focus();
+        // search: a built-in icon before pack icons that match as well, a closer name before it
+        t0 = performance.now(); S.value = 'mitochondria'; buildPalette(); const msS = performance.now() - t0; note.push('search "mitochondria": ' + Math.round(msS) + ' ms');
+        ok(/\|icon:mito$/.test(L.querySelector('.pitem').dataset.key), 'the Add panel: "mitochondria" lists the built-in Mitochondrion first: ' + L.querySelector('.pitem').dataset.key);
+        S.value = 'mouse'; buildPalette(); ok(/\|icon:mouse$/.test(L.querySelector('.pitem').dataset.key), '"mouse": the built-in Mouse first');
+        S.value = 'mito'; buildPalette(); ok(/\|icon:mito$/.test(L.querySelector('.pitem').dataset.key), '"mito": the built-in Mitochondrion first, not a pack group with more matches');
+        S.value = ''; buildPalette();
+        eq(fig.findIcon('mitochondria', 3, { packs: true })[0].kind, 'mito', 'fig.findIcon("mitochondria") with every pack: mito first'); eq(fig.findIcon('mouse', 3, { packs: true })[0].kind, 'mouse', 'and mouse'); eq(fig.findIcon('heart', 3, { packs: true })[0].kind, 'heart', 'and heart');
+        if (PACKS.by.has('wmo-weather')) eq(fig.findIcon('rain', 1, { packs: true })[0].kind, 'wmo-weather:icao-rain', 'a closer name still comes first: a pack\'s "Rain" before the built-in Raincloud plot');
+        { const r = fig.findIcon('mitochondria', 12, { packs: true }).filter(x => /^Mitochondria\b/.test(x.name) && x.kind.includes(':')); ok(r.length >= 2 && r.every((x, i) => !i || r[i - 1].name.length <= x.name.length || r[i - 1].name !== 'Mitochondria'), 'among pack icons the shorter name first: ' + r.map(x => x.name).join(' | ')); }
+        { const before = J(fig.findIcon('neuron', 12, { packs: true })); await packRemove('biodraws'); await fig.importIconPack('biodraws', { accept: true }); eq(J(fig.findIcon('neuron', 12, { packs: true })), before, 'the order does not depend on the order the packs were imported in'); }
+        return { note: note.join('; ') };
+      } finally {
+        try { S.value = ''; packFind.q = ''; packFind.f = ''; packMenu(false); } catch (e) {}
+        for (const P of shipped) { try { if (!was.get(P.id) && packImported(P.id)) await packRemove(P.id); else if (was.get(P.id) && !packImported(P.id)) await fig.importIconPack(P.id, { accept: true }); } catch (e) {} }
+        PACKS.show = JSON.parse(showWas); packShowSave(); try { if (openWas == null) localStorage.removeItem(PACK_SHOW + 'Open'); else localStorage.setItem(PACK_SHOW + 'Open', openWas); } catch (e) {}
+        palState.cat = 'All'; await dropPack(); buildPalette();
+      }
+    }, 300000);
+    test('icon packs: libraries and relevance search: the ranking (pure, a table of real queries), Most relevant then More results by library, findIcon agrees, the library switcher, timings', async () => {
+      // the ranking itself (palRank, palTop): pure functions of the query and the rows, no pack needed
+      const R = (q, rows) => palRank(q, rows.map(r => typeof r === 'string' ? { n: r, t: '', ty: 'icon', src: 'p1' } : { t: '', ty: 'icon', src: 'p1', ...r }), {}), names = (q, rows) => R(q, rows).hits.map(h => h.r.n);
+      eq(J(names('mouse', ['Dormouse', 'Mousetrap', 'Lab mouse', { n: 'Rodent', t: 'mouse' }, 'Mouse cage', 'Mouse', 'Cat'])), J(['Mouse', 'Mouse cage', 'Lab mouse', 'Rodent', 'Mousetrap', 'Dormouse']), 'exact > starts with the word > a whole word of the name > a synonym that is the whole name > the start of a long word > inside a word; no match left out');
+      eq(J(names('mouse', ['Mouse lever', 'Mouse alert', 'Mouse (Mus musculus)', 'Mouse (gray)'])), J(['Mouse (gray)', 'Mouse (Mus musculus)', 'Mouse lever', 'Mouse alert']), 'a name without its brackets counts as the name ("Mouse (Mus musculus)" before "Mouse lever")');
+      eq(names('zebrafish', ['Zebrafish Brain top view', 'Zebrafish (Danio rerio), silhouette', 'Zebrafish eggs'])[0], 'Zebrafish (Danio rerio), silhouette', 'and without ", silhouette"');
+      eq(J(names('rain', ['Rainforest', 'Raincloud plot', 'Rainbow', 'ww 61: Rain, slight', 'Heavy rain'])), J(['Heavy rain', 'ww 61: Rain, slight', 'Rainbow', 'Rainforest', 'Raincloud plot']), 'a whole word before the start of a word, a short rest of the word before a long one');
+      // several words: written together, one-letter words, phrase synonyms
+      { const rows = ['Red blood cell', 'Blood Cells', 'Border cell', 'Plasma B Cell', 'BCell', { n: 'B lymphocyte', src: 'p2' }, 'Senescent cell burden'], n = names('b cell', rows);
+        ok(n.indexOf('BCell') === 0 && n.indexOf('Plasma B Cell') === 1 && n.indexOf('B lymphocyte') === 2 && ['Red blood cell', 'Blood Cells', 'Border cell'].every(x => n.indexOf(x) > 2) && !n.includes('Senescent cell burden'), '"b cell": BCell (the words written together), Plasma B Cell, B lymphocyte (a phrase synonym), and only then a "b" that is the initial of the word before "cell" (Blood, Border); never "b" elsewhere: ' + J(n)); }
+      { const n = names('c elegans', ['Cyclanorbis elegans', { n: 'Nematode', t: 'c elegans worm' }, 'C. elegans']); eq(n[0], 'C. elegans', '"c elegans": the name'); ok(n.indexOf('Nematode') < n.indexOf('Cyclanorbis elegans'), 'a tag before an initial that only happens to fit: ' + J(n)); }
+      eq(names('e coli', ['Coccolithophore', 'Escherichia coli', 'E. coli'])[0], 'E. coli', '"e coli": E. coli first'); ok(names('e coli', ['Coccolithophore', 'Escherichia coli']).join() === 'Escherichia coli', 'the initial of the word before (Escherichia coli), never "coli" inside Coccolithophore');
+      eq(names('zebra fish', ['Zebrasoma velifer', { n: 'Stegostoma', t: 'zebra shark fish' }, 'Zebrafish'])[0], 'Zebrafish', '"zebra fish": Zebrafish (the words written together)');
+      eq(names('flow cytometry', [{ n: 'FACS', src: 'p1' }, 'Flow cytometer cell sorter', 'Plate reader']).join(), 'FACS,Flow cytometer cell sorter', 'a typed phrase finds the other terms of its synonym group');
+      // words under 5 letters inside a word: no chance hits; after a combining form they still count
+      for (const [q, bad] of [['nk cell', 'Y-Link'], ['mast cell', 'Leishmania amastigote form'], ['axon', 'Phylogenetic tree'], ['nk cell', 'Synapses (pink)']]) ok(!names(q, [{ n: bad, t: 'cell taxon' }, 'Mast cell', 'NK cell', 'Myelinated axon']).includes(bad), '"' + q + '" is not found inside "' + bad + '"');
+      eq(names('film', ['Biofilm', 'Cat']).join(), 'Biofilm', '"film" in Biofilm still (a combining form)');
+      eq(names('corn', ['Cornufer guentheri', { n: 'Maize', src: 'builtin' }, 'Corn smut'])[1], 'Maize', 'a synonym that is the whole name ("corn" → Maize) before a long word that only starts with the word');
+      { const r = R('mouze', ['Mouse', 'House cat']); ok(r.fuzzy && r.hits.length && r.hits[0].r.n === 'Mouse', 'a typo is forgiven when the words as typed find nothing: ' + J(r.hits.map(h => h.r.n))); }
+      eq(J(names('nueron', ['Sad Neuron', 'Relay neuron', 'Neuron', 'Neuronal net'])), J(['Neuron', 'Neuronal net', 'Sad Neuron', 'Relay neuron']), 'a typo: the whole name first, then its first word, then another word');
+      { const r = R('qwertyuiopz', ['Mouse', 'House cat']); ok(!r.fuzzy && !r.hits.length, 'no word close to it: nothing, without a second pass'); }
+      eq(names('petri dish', ['Dish', 'Dish of petri', 'Petri dish with agar', 'Petri dish'])[0], 'Petri dish', 'two words: the phrase first'); eq(J(names('petri dish', ['Dish', 'Dish of petri', 'Petri dish with agar', 'Petri dish'])), J(['Petri dish', 'Petri dish with agar', 'Dish of petri']), 'every word must match, the phrase before the words apart');
+      for (const [q, n] of [['haemoglobin', 'Hemoglobin'], ['grey', 'Gray fox'], ['colour', 'Color wheel'], ['kidneys', 'Kidney'], ['mice', 'Mouse'], ['tumour', 'Tumor']]) eq(names(q, [n, 'Something else'])[0], n, 'spelling and plurals: "' + q + '" finds ' + n);
+      eq(names('cardiac', ['Heart', 'Cardiomyocyte unrelated', 'Lung'])[0], 'Heart', 'a synonym ("cardiac" → Heart)');
+      eq(J(R('mitochondria', [{ n: 'Mitochondria', src: 'p1' }, { n: 'Mitochondrion', src: 'builtin' }]).hits.map(h => h.r.src)), J(['builtin', 'p1']), 'a built-in icon before a pack icon that matches as well');
+      eq(names('rain', [{ n: 'Raincloud plot', src: 'builtin' }, 'Heavy rain'])[0], 'Heavy rain', 'a closer name still wins over the built-in bonus ("rain": Heavy rain before Raincloud plot)');
+      eq(R('mito', [{ n: 'Mitochondria', src: 'p1' }, { n: 'Mitochondrion', src: 'builtin', k: 'mito' }]).hits[0].r.k, 'mito', 'the key typed exactly first');
+      { const rows = [...Array.from({ length: 10 }, (_, i) => ({ n: 'Mouse ' + (i + 1), src: 'p1' })), ...['p2', 'p3', 'p4'].map(src => ({ n: 'Mouse', src })), ...['p5', 'p6', 'p7'].map(src => ({ n: 'Lab mouse', src }))];
+        const top = palTop(R('mouse', rows).hits, 10); eq(top.length, 10, 'ten'); eq(top[0].r.n, 'Mouse', 'the best stays first'); ok(top.filter(h => h.r.src === 'p1').length <= 4, 'variety: not ten copies of one drawing from one pack: ' + J(top.map(h => h.r.n + '/' + h.r.src))); ok(top.some(h => h.r.n === 'Lab mouse'), 'other drawings come up'); }
+      eq(J(palTop(R('x', []).hits, 10)), '[]', 'nothing found: nothing');
+      { const rows = [{ n: 'Rainbow', src: 'p1' }, { n: 'Rainforest', src: 'p1' }, ...['slight', 'moderate', 'heavy', 'freezing', 'shower', 'drizzle', 'violent', 'continuous', 'intermittent', 'mixed', 'snow'].map((w, i) => ({ n: 'ww ' + (60 + i) + ': Rain, ' + w, src: 'p2' }))];
+        const top = palTop(R('rain', rows).hits, 10); ok(top.length === 10 && top.every(h => h.r.src === 'p2'), 'variety never lets a lower kind of match jump ahead (the names with Rain as a word before Rainbow, all from one pack): ' + J(top.map(h => h.r.n))); }
+      eq(palBase('Blister Pills Oval x14'), palBase('Blister Pills Oval x1'), 'counts such as x14 are variants of one drawing');
+      // with every pack imported: the Add panel and fig.findIcon
+      await packInit(); const shipped = PACKS.list.filter(P => P.id !== TP); if (shipped.length < PACK_MANY) throw new Skip('fewer than ' + PACK_MANY + ' icon packs in this copy (icon-expansions/index.json)');
+      const was = new Map(shipped.map(P => [P.id, packImported(P.id)])), showWas = J(PACKS.show), S = $q('#palSearch'), L = $q('#palList'), note = []; let libWas = null; try { libWas = localStorage.getItem('fig.palLib'); } catch (e) {}
+      const kd = (el, key) => el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }));
+      try {
+        for (const P of shipped) if (!packImported(P.id)) await fig.importIconPack(P.id, { accept: true });
+        fig.showIconPacks(Object.fromEntries(['builtin', 'my', ...shipped.map(p => p.id)].map(k => [k, true]))); fig.iconLibrary('all');
+        // the table of real queries: what comes first, and the panel's ten agree with fig.findIcon
+        const want = { mouse: /^mouse$/, mitochondria: /^mito$/, neuron: /^neuron$/, antibody: /^antibody$/, 't cell': /^tcell$/, dna: /(^|:)dna$/, heart: /^heart$/, kidney: /^kidney$/, resistor: /^electric:resistor/, rain: /rain/, wheat: /^wheat$/, zebrafish: /^(fish|zebrafish)$|zebrafish/, 'petri dish': /petri-dish/, pipette: /^pipette$/, virus: /^virus$/, liver: /^liver$/, 'e coli': /coli/, chloroplast: /^chloroplast$/, receptor: /^receptor$/, beaker: /^beaker$/ };
+        let tot = 0, max = 0, keys = 0;
+        for (const [q, re] of Object.entries(want)) {
+          let typed = ''; for (const ch of q) { typed += ch; S.value = typed; const t0 = performance.now(); buildPalette(); const ms = performance.now() - t0; tot += ms; max = Math.max(max, ms); keys++; }   // each keystroke, as typed
+          const top = [...L.querySelectorAll('.paltopg .pitem')], kinds = top.map(b => (b.dataset.key.split('|icon:')[1] || '')), first = kinds[0], f = fig.findIcon(q, 20, { packs: true }).map(x => x.kind);
+          ok(top.length === Math.min(10, top.length + [...L.querySelectorAll('h3.pallib')].reduce((n, h) => n + (+h.querySelector('.n').textContent || 0), 0)), q + ': ten in Most relevant (or every result)');
+          ok(re.test(first), '"' + q + '": the first is sensible: ' + kinds.slice(0, 5).join(', '));
+          eq(f[0], first, '"' + q + '": fig.findIcon has the same first icon'); ok(kinds.filter(Boolean).every(k => f.includes(k)), '"' + q + '": the panel\'s ten icons are fig.findIcon\'s too: ' + kinds.join(', ') + ' / ' + f.join(', '));
+          const srcBase = new Map(); top.forEach(b => { const k = (b.dataset.key.split('|icon:')[1] || '').split(':')[0] + '|' + palBase(b.querySelector('span').textContent); srcBase.set(k, (srcBase.get(k) || 0) + 1); }); const total = top.length + [...L.querySelectorAll('h3.pallib')].reduce((n, h) => n + (+h.querySelector('.n').textContent || 0), 0); ok(total <= 15 || Math.max(...srcBase.values()) <= 4, '"' + q + '": variety in the ten (' + total + ' results): ' + J([...srcBase]));
+        }
+        note.push('search with every pack imported: ' + (tot / keys).toFixed(1) + ' ms per keystroke on average, ' + Math.round(max) + ' ms at most (' + keys + ' keystrokes)');
+        ok(tot / keys < 100, 'a keystroke rebuilds the results in ' + (tot / keys).toFixed(1) + ' ms on average (aim: 50)');
+        eq(J(fig.findIcon('mitochondria', 3, { packs: true }).map(x => x.kind).slice(0, 1)), J(['mito']), 'findIcon keeps its signature (word, n, {packs}) and returns kinds');
+        // the results: Most relevant (not foldable), More results by library (each folds, counted), nothing listed twice, the keyboard through them
+        S.value = 'mouse'; buildPalette();
+        { const h = L.querySelector('h3.paltop'); ok(h && /Most relevant/.test(h.textContent) && h.querySelector('.n').textContent === '10' && !h.querySelector('.h3b'), 'Most relevant, 10, no fold button'); ok(L.querySelector('.palmore') && /More results · \d+/.test(L.querySelector('.palmore').textContent), 'More results with its count');
+          const libs = [...L.querySelectorAll('h3.pallib')]; ok(libs.length >= 3 && libs.every(x => x.querySelector('.h3b') && x.querySelector('.libmk') && +x.querySelector('.n').textContent > 0), 'one header per library with its mark, count and fold button: ' + libs.map(x => x.dataset.lib).join(', '));
+          ok(new Set(libs.map(x => x.dataset.lib)).size === libs.length, 'each library once'); const more = +L.querySelector('.palmore').textContent.match(/\d+/)[0]; eq(libs.reduce((n, x) => n + +x.querySelector('.n').textContent, 0), more, 'the counts add up');
+          palFillAll(); const ks = [...L.querySelectorAll('.pitem')].map(b => b.dataset.key); eq(new Set(ks).size, ks.length, 'no item listed twice'); ok(/the 10 most relevant first/.test($q('#palRes').textContent), 'the result line says so: ' + $q('#palRes').textContent);
+          const lb = libs[0].dataset.lib; libs[0].querySelector('.h3b').click(); { const h2 = L.querySelector('h3.pallib[data-lib="' + lb + '"]'); ok(h2.classList.contains('closed') && !(h2.nextElementSibling && h2.nextElementSibling.classList.contains('grid')) && palState.rclosed.has(lb), 'a library folds'); ok(JSON.parse(localStorage.getItem('fig.palResClosed')).includes(lb), 'remembered'); h2.querySelector('.h3b').click(); ok(!palState.rclosed.has(lb) && L.querySelector('h3.pallib[data-lib="' + lb + '"]').nextElementSibling.classList.contains('grid'), 'and opens'); }
+          S.focus(); kd(S, 'ArrowDown'); ok(D.activeElement === L.querySelector('.paltopg .pitem'), '↓ from the search: the best match'); const lh = L.querySelector('h3.pallib .h3b'); lh.focus(); kd(lh, 'ArrowUp'); const tg = [...L.querySelectorAll('.paltopg .pitem')]; ok(tg.includes(D.activeElement), '↑ from the first library\'s header: back into Most relevant (past "More results")');
+          tg[tg.length - 1].focus(); kd(tg[tg.length - 1], 'ArrowDown'); ok(D.activeElement === lh || D.activeElement.classList.contains('h3b'), '↓ from Most relevant\'s last row: the first library\'s header'); }
+        // the library switcher: All, SiliCoDraw, My icons (when there are some), every imported pack with mark and count
+        S.value = ''; buildPalette(); const B = () => $q('#palLibBtn'), M = () => $q('#palLibMenu');
+        { const libs = fig.iconLibrary().libraries; ok(libs[0].id === 'all' && libs[1].id === 'builtin' && shipped.every(P => libs.some(l => l.id === P.id && l.count === P.count)), 'the libraries with their counts: ' + libs.map(l => l.id + ' ' + l.count).join(', ')); eq(libs[0].count, libs.slice(1).filter(l => !l.hidden).reduce((n, l) => n + l.count, 0), 'All = the sum');
+          ok(B() && /All libraries/.test(B().textContent) && B().getAttribute('aria-haspopup') === 'listbox' && /Library: All libraries/.test(B().getAttribute('aria-label')), 'the button names the library shown'); }
+        B().focus(); kd(B(), 'ArrowDown'); ok(!M().hidden && B().getAttribute('aria-expanded') === 'true' && M().getAttribute('role') === 'listbox', '↓ opens the list'); { const os = [...M().querySelectorAll('[role=option]')]; eq(os.length, fig.iconLibrary().libraries.length, 'one option per library'); eq(D.activeElement, os[0], 'on the one shown'); eq(os[0].getAttribute('aria-selected'), 'true', 'selected');
+          ok(os.slice(1).every(o => o.querySelector('.libmk') && /\d/.test(o.querySelector('.n').textContent)), 'each with its mark and count'); kd(os[0], 'End'); eq(D.activeElement, os[os.length - 1], 'End'); kd(D.activeElement, 'Home'); kd(D.activeElement, 'Escape'); ok(M().hidden && D.activeElement === B(), 'Esc closes it, back on the button'); }
+        B().click(); { const o = M().querySelector('[data-lib="scidraw"]'); ok(o, 'SciDraw in the list'); o.focus(); kd(o, 'Enter'); }
+        { const v = fig.iconLibrary(); eq(v.shown, 'scidraw', 'Enter picks it'); eq(localStorage.getItem('fig.palLib'), 'scidraw', 'remembered in this browser'); ok(/SciDraw/.test(B().textContent) && $q('#palLibAll'), 'the button says SciDraw, an All button back');
+          const its = [...L.querySelectorAll('.pitem')]; ok(its.length > 0 && its.every(b => b.dataset.kind && b.dataset.kind.startsWith('scidraw:')), 'only SciDraw\'s icons'); ok([...L.querySelectorAll('h3')].every(h => !/^SciDraw · /.test(h.textContent)), 'its groups without the pack\'s name');
+          const chips = [...$q('#palCats').querySelectorAll('.pcat:not(.pcmore)')]; ok(chips[0].dataset.cat === 'All' && chips.slice(1).every(c => c.dataset.cat.startsWith('SciDraw · ') && !c.textContent.startsWith('SciDraw')), 'its groups as chips: ' + chips.slice(0, 4).map(c => c.textContent).join(', '));
+          chips[1].click(); ok(fig.iconLibrary().shown === 'scidraw' && fig.iconLibrary().group === chips[1].dataset.cat && [...L.querySelectorAll('h3')].length === 1, 'a chip: one group, the library stays'); $q('#palCats .pcat[data-cat="All"]').click(); eq(fig.iconLibrary().group, 'All', 'All: every group of SciDraw again'); eq(fig.iconLibrary().shown, 'scidraw', 'still SciDraw'); }
+        // a search in a library looks in it (its line and the button say so); All beside the switcher searches every library, keeping the words; a library picked keeps them too
+        S.value = 'mouse'; buildPalette(); { const its = (palFillAll(), [...L.querySelectorAll('.pitem')]); ok(L.querySelector('h3.paltop') && its.length && its.every(b => (b.dataset.kind || '').startsWith('scidraw:')), 'the search looks in SciDraw only'); ok(/SciDraw/.test(B().textContent) && /looks in SciDraw only/.test(B().getAttribute('aria-label')) && /in SciDraw/.test($q('#palRes').textContent) && $q('#palLibAll'), 'the button, its label and the result line say so: ' + $q('#palRes').textContent); ok($q('#palCats').hidden, 'no group chips while searching'); }
+        S.value = 'resistor'; buildPalette(); ok(/in the other libraries/.test(L.textContent) && $q('#palAllLibs'), 'nothing in SciDraw: how many the other libraries have, and Search every library'); $q('#palAllLibs').click(); ok(fig.iconLibrary().shown === 'all' && S.value === 'resistor' && L.querySelector('h3.paltop'), 'Search every library: the words stay, the results come');
+        fig.iconLibrary('scidraw'); ok(S.value === 'resistor', 'picking a library keeps the words'); S.value = ''; buildPalette(); eq(fig.iconLibrary().shown, 'scidraw', 'the search emptied: SciDraw again'); ok(!$q('#palCats').hidden, 'and its chips');
+        // a group chosen inside a pack's library stays when the sources shown change (it is no chip under All)
+        { const c = [...$q('#palCats').querySelectorAll('.pcat:not(.pcmore)')][1]; c.click(); const g = fig.iconLibrary().group; fig.showIconPacks({ phylopic: false }); eq(fig.iconLibrary().group, g, 'Show icons from changed: the group stays'); fig.showIconPacks({ phylopic: true }); eq(fig.iconLibrary().group, g, 'and again'); $q('#palCats .pcat[data-cat="All"]').click(); }
+        $q('#palLibAll').click(); eq(fig.iconLibrary().shown, 'all', 'All: back to every library'); ok(!$q('#palLibAll'), 'the All button goes');
+        // the list: SiliCoDraw and My icons first, then the packs A to Z; letters typed quickly go to the library starting with them
+        { const ls = fig.iconLibrary().libraries.filter(l => l.id !== 'all' && l.id !== 'builtin' && l.id !== 'my').map(l => l.name); eq(J(ls), J([...ls].sort((a, b) => a.localeCompare(b, 'en', { sensitivity: 'base' }))), 'the packs A to Z: ' + ls.join(', '));
+          B().click(); const o0 = M().querySelector('[role=option]'); o0.focus(); palLibMenu.ta = null; kd(o0, 's'); kd(D.activeElement, 'c'); eq(D.activeElement.dataset.lib, 'scidraw', '"sc" typed quickly: SciDraw (not s → SiliCoDraw, then c)'); palLibMenu.ta.at = 0; kd(D.activeElement, 'p'); eq(D.activeElement.dataset.lib, 'phylopic', 'a pause, then "p": PhyloPic'); kd(D.activeElement, 'Escape'); }
+        // the headings: Most relevant and More results level 3, the libraries under it level 4; where the list is under All is read too (no aria-hidden)
+        S.value = 'cell'; buildPalette(); { const m = L.querySelector('.palmore'); ok(m && m.getAttribute('role') === 'heading' && m.getAttribute('aria-level') === '3' && [...L.querySelectorAll('h3.pallib')].every(h => h.getAttribute('aria-level') === '4'), 'More results is a level-3 heading, its libraries level 4'); } S.value = ''; buildPalette(); ok(!$q('#palHere').hasAttribute('aria-hidden'), '#palHere is read out');
+        // Text size Large: the switcher grows with the rest of the panel
+        { const was = fig.prefs().text, f = s => parseFloat(getComputedStyle($q(s)).fontSize), a = f('#palLibBtn'); fig.prefs({ text: 'large' }); await frame(); const b = f('#palLibBtn'); fig.prefs({ text: was }); ok(PHONE() || b > a, 'Large text: the switcher\'s button ' + a + ' → ' + b + ' px'); }
+        // no pack chips under All (the switcher alone picks libraries: the chips are the shared categories); a pack's name set as the group (earlier versions, a script) still shows its library; a hidden library is shown again when it is picked
+        { const cs = [...$q('#palCats').querySelectorAll('.pcat:not(.pcmore)')]; ok(!cs.some(x => x.dataset.cat === 'PhyloPic') && cs.slice(1).every(x => x.dataset.cat.startsWith('cat:')), 'no chip per pack under All: ' + cs.map(x => x.textContent).join(', ')); palState.cat = 'PhyloPic'; buildPalette(); eq(fig.iconLibrary().shown, 'phylopic', 'a pack\'s name as the group shows that library'); palState.cat = 'All'; fig.iconLibrary('all'); }
+        fig.showIconPacks({ phylopic: false }); B().click(); ok(M().querySelector('[data-lib="phylopic"] .plh'), 'a hidden library is marked'); palLibMenu(false); fig.iconLibrary('phylopic'); ok(fig.showIconPacks({}).phylopic === true && fig.iconLibrary().shown === 'phylopic', 'picking it shows it again');
+        // under All: where the list is (the library of the group at the top)
+        fig.iconLibrary('all'); L.scrollTop = L.scrollHeight; for (let i = 0; i < 20; i++) { await frame(); L.scrollTop = L.scrollHeight; } await sleep(100); palHereSet(); ok(/^in /.test($q('#palHere').textContent), 'scrolled down: it says which library: ' + $q('#palHere').textContent);
+        L.scrollTop = 0; palHereSet(); eq($q('#palHere').textContent, '', 'at the top: nothing');
+        return { note: note.join('; ') };
+      } finally {
+        try { S.value = ''; palLibMenu(false); } catch (e) {}
+        for (const P of shipped) { try { if (!was.get(P.id) && packImported(P.id)) await packRemove(P.id); } catch (e) {} }
+        PACKS.show = JSON.parse(showWas); packShowSave(); palState.lib = 'all'; palState.cat = 'All'; palState.rclosed.clear(); savePal(); try { if (libWas == null) localStorage.removeItem('fig.palLib'); else localStorage.setItem('fig.palLib', libWas); } catch (e) {} buildPalette();
+      }
+    }, 300000);
+    test('icon packs: shared categories: under All libraries the chips are categories of every library shown (no pack chips), every group mapped and no icon lost, one library its own groups, chips reachable at a narrow width, keyboard', async () => {
+      await packInit(); const shipped = PACKS.list.filter(P => P.id !== TP); if (shipped.length < PACK_MANY) throw new Skip('fewer than ' + PACK_MANY + ' icon packs in this copy (icon-expansions/index.json)');
+      const was = new Map(shipped.map(P => [P.id, packImported(P.id)])), showWas = J(PACKS.show), S = $q('#palSearch'), L = $q('#palList'), C = $q('#palCats'), note = [], ls = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+      const libWas = ls('fig.palLib'), catWas = ls('fig.palCat'), openWas = ls('fig.palCatsOpen'), lwWas = D.documentElement.style.getPropertyValue('--lw');
+      const kd = (el, key) => el.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })), chips = () => [...C.querySelectorAll('.pcat:not(.pcmore)')], more = () => C.querySelector('.pcmore'), shown = () => chips().filter(c => !c.hidden);
+      try {
+        for (const P of shipped) if (!packImported(P.id)) await fig.importIconPack(P.id, { accept: true });
+        fig.showIconPacks(Object.fromEntries(['builtin', 'my', ...shipped.map(p => p.id)].map(k => [k, true]))); S.value = ''; fig.iconLibrary('all'); palCatsOpen(false); buildPalette(); await frame();
+        // one place for libraries: no chip names a pack, the chips are the shared categories
+        { const cs = chips(); ok(cs[0].dataset.cat === 'All' && cs.slice(1).every(c => c.dataset.cat.startsWith('cat:')), 'All, then categories: ' + cs.map(c => c.textContent).join(', '));
+          ok(!cs.some(c => shipped.some(P => c.dataset.cat === P.name || c.dataset.cat.startsWith(P.name + ' · ') || c.textContent === P.name)), 'no pack chip in the row'); ok(cs.length >= 11 && cs.length <= 19, 'a set that fits a laptop panel: ' + (cs.length - 1) + ' categories');
+          ok(C.getAttribute('role') === 'toolbar' && /Categories/.test(C.getAttribute('aria-label')), 'a toolbar named for screen readers: ' + C.getAttribute('aria-label')); ok(cs.slice(1).every(c => c.title && c.getAttribute('aria-label')), 'each with its full name'); eq(fig.iconCategory().shared, true, 'fig.iconCategory: shared'); }
+        // every built-in group and every shipped pack group is in the table (none falls to a guess or to Other), and every pack entry of the table names a group that is there
+        const secs = palShown(), packSecs = secs.filter(s => s[2] && s[2].pack), grp = s => s[0].slice(s[2].name.length + 3);
+        { const loose = secs.filter(s => s[2] && s[2].pack ? !PAL_CAT_OF.has(s[2].pack + ':' + grp(s)) && !PAL_CAT_OF.has(s[2].pack + ':*') : s[0] !== 'My icons' && !PAL_CAT_OF.has(s[0])).map(s => s[0]);
+          eq(J(loose), '[]', 'every built-in group and every pack group mapped'); ok(secs.every(s => s[0] === 'My icons' || palSecCat(s[0], s[2]) !== 'other'), 'none in Other');
+          ok(ICON_GROUPS.every(([g]) => PAL_CAT_OF.has(g)), 'every group of ICON_GROUPS: ' + ICON_GROUPS.filter(([g]) => !PAL_CAT_OF.has(g)).map(g => g[0]).join(', '));
+          const have = new Set(packSecs.map(s => s[2].pack + ':' + grp(s))), stale = [...PAL_CAT_OF.keys()].filter(k => { const i = k.indexOf(':'), id = k.slice(0, i); return i > 0 && k.slice(i + 1) !== '*' && shipped.some(P => P.id === id) && !have.has(k); }); eq(J(stale), '[]', 'no entry of the table names a group that is not there');
+          for (const P of shipped) for (const c of (P.chunks || [])) ok(packSecs.some(s => s[2].pack === P.id && grp(s).toLowerCase() === String(c.cat).toLowerCase()) || !c.count, P.id + ': the category of its part ' + c.file + ' is a group: ' + c.cat); }
+        // no icon lost: the items of every group are in exactly one category each (counted per group), and every item of All is in some category
+        { const cs = palCatSecs(), n0 = secs.reduce((n, s) => n + s[1].length, 0), n1 = [...cs.values()].reduce((n, l) => n + l.reduce((m, x) => m + x[1].length, 0), 0); eq(n1, n0, 'the items of every group, once each, across the categories: ' + n0);
+          const k = it => it[1] + JSON.stringify(it[2]), all = new Set(secs.flatMap(s => s[1].map(k))), inCat = new Set([...cs.values()].flatMap(l => l.flatMap(x => x[1].map(k)))); eq(inCat.size, all.size, 'the same ' + all.size + ' distinct items as under All');
+          eq(J(fig.iconCategory().categories.map(c => c.count)), J(PAL_CATS.filter(c => cs.counts.get(c[0])).map(c => cs.counts.get(c[0]))), 'fig.iconCategory lists them with their counts'); }
+        // a category gathers icons of several libraries: built-in first, then My icons, then the packs in the switcher's order; each group with its library's mark, the pack's name for screen readers
+        let t0 = performance.now(); fig.iconCategory('animals'); const msCat = performance.now() - t0; note.push('category Animals: ' + Math.round(msCat) + ' ms');
+        { const hs = [...L.querySelectorAll('h3.palcv')], libs = hs.map(h => h.dataset.lib), order = fig.iconLibrary().libraries.map(l => l.id); ok(new Set(libs).size >= 4 && libs[0] === 'builtin' && libs.includes('phylopic') && libs.includes('scidraw'), 'Animals gathers several libraries: ' + [...new Set(libs)].join(', '));
+          ok(libs.every((l, i) => !i || order.indexOf(libs[i - 1]) <= order.indexOf(l)), 'in the switcher\'s order'); ok(hs.every(h => h.querySelector('.libmk') && h.querySelector('.srOnly')), 'each group with its library\'s mark and name');
+          const ph = hs.find(h => h.dataset.lib === 'phylopic'); ok(ph && !/PhyloPic · /.test(ph.textContent) && /PhyloPic/.test(ph.querySelector('.srOnly').textContent), 'a pack\'s group without the pack\'s name in front: ' + (ph && ph.textContent));
+          ok(msCat < 1500, 'switching to a category: ' + Math.round(msCat) + ' ms'); eq(fig.iconLibrary().group, 'cat:animals', 'fig.iconLibrary: the group is the category'); eq(fig.iconLibrary().shown, 'all', 'the library stays All'); eq(ls('fig.palCat'), 'cat:animals', 'remembered in this browser');
+          ok(chips().find(c => c.dataset.cat === 'cat:animals').classList.contains('on') && chips().find(c => c.dataset.cat === 'cat:animals').getAttribute('aria-pressed') === 'true', 'its chip pressed'); }
+        // the built-in Organisms (animals, plants, microbes) goes item by item
+        { const cs = palCatSecs(), keys = c => (cs.get(c) || []).filter(x => x[0] === 'Organisms').flatMap(x => x[1].map(it => it[2] && it[2].kind)); ok(keys('plants').includes('arabidopsis') && keys('microbes').includes('yeast') && keys('animals').includes('mouse') && !keys('animals').includes('arabidopsis') && keys('people').includes('human'), 'Organisms: arabidopsis under Plants, yeast under Microbes, mouse under Animals, Human under People'); }
+        // groups that mix things go item by item (PAL_CAT_PICK), and a single-celled organism is under Microbes whichever library files it under animals, plants or cells
+        { const at = (name, sec) => { const r = []; PALETTE.forEach(([s, it, px]) => { if (sec && !(s === sec || s.endsWith(' · ' + sec))) return; it.forEach(i => { if (i[0] === name) r.push(palItemCat(s, px, i)); }); }); return r; }, all1 = (name, sec, c) => { const r = at(name, sec); ok(r.length && r.every(x => x === c), name + (sec ? ' (' + sec + ')' : '') + ' → ' + c + ': ' + r.join(', ')); };
+          all1('Bacterium', 'Cells & tissues', 'microbes'); all1('Virus', 'Immunology & infection', 'microbes'); all1('Methanogen', 'Environmental microbiology', 'microbes'); all1('Centrifuge', 'Chemistry', 'lab'); all1('Beaker', 'Chemistry', 'lab'); all1('Tractor', null, 'food'); all1('Dumbbell', null, 'medicine'); all1('Raincloud plot', null, 'charts'); all1('Bristlecone pine', 'Aging & hallmarks', 'plants'); all1('mTORC1', 'Aging & hallmarks', 'molecules');
+          if (packImported('scidraw')) { all1('Rabbit', 'Other', 'animals'); all1('Arabidopsis thaliana', 'Other', 'plants'); all1('Pipette', 'Other', 'lab'); all1('Chlamydomonas reinhardtii', 'Cell', 'microbes'); }
+          if (packImported('arcadia')) { all1("Baker's yeast (Saccharomyces cerevisiae)", 'Fungi', 'microbes'); all1('White button mushroom (Agaricus bisporus)', 'Fungi', 'plants'); all1('Flagellated green alga (Chlamydomonas reinhardtii)', 'Plants and algae', 'microbes'); all1('Seaweed (Porphyra yezoensis)', 'Plants and algae', 'plants'); }
+          if (packImported('healthicons')) { all1('Mammogram', 'Symbols', 'medicine'); all1('Award', 'Symbols', 'charts'); all1('Activity Run', 'Exercise', 'medicine'); all1('Ambulance', 'Vehicles', 'medicine'); }
+          if (packImported('ocha')) { all1('Cash Transfer', 'Data and coordination', 'people'); all1('Chart', 'Data and coordination', 'charts'); }
+          ok([...PAL_CAT_PICKS.keys()].every(g => PAL_CAT_OF.has(g)), 'every group split item by item is in the table too (the rest of it goes there)');
+          eq(palCatGuess('Cell culture'), 'lab', 'a future group: Cell culture → lab, as the shipped ones'); eq(palCatGuess('Blood vessels'), 'anatomy', 'Blood vessels → anatomy'); eq(palCatGuess('Neurons'), 'cells', 'Neurons → cells'); eq(palCatGuess('Neuroscience'), 'anatomy', 'Neuroscience → anatomy'); }
+        // the All chip says what it is; picking a chip says what is listed now
+        { const a = chips()[0]; eq(a.getAttribute('aria-label'), 'All categories', 'the All chip, for screen readers'); ok(PAL_CATS.every(c => c[2].startsWith(c[1])), 'every full name starts with the chip\'s words (label in name)');
+          const b = chips().find(c => c.dataset.cat === 'cat:molecules'); b.click(); await frame(); await new Promise(r => setTimeout(r, 80)); ok(/^Molecules & genetics, [\d,]+ items from \d+ libraries$/.test($q('#srLive').textContent), 'said: ' + $q('#srLive').textContent); fig.iconCategory('animals'); }
+        // a search looks in every library shown whatever the category, the chips go while searching; emptied, the category is back
+        S.value = 'mouse'; buildPalette(); ok(C.hidden && L.querySelector('h3.paltop') && [...L.querySelectorAll('h3.pallib')].length >= 2, 'searching: Most relevant, More results by library, no chips'); S.value = ''; buildPalette(); ok(!C.hidden && fig.iconCategory().shown === 'animals', 'the search emptied: the category again');
+        fig.iconCategory('animals'); S.value = 'heart'; buildPalette(); fig.iconCategory('anatomy'); ok(S.value === '' && !C.hidden && fig.iconCategory().shown === 'anatomy', 'a category picked while searching: the words go, the category shows');
+        // one library picked: its own groups as chips, no category; All again: the categories
+        fig.iconLibrary('phylopic'); { const cs = chips(); ok(cs.slice(1).every(c => c.dataset.cat.startsWith('PhyloPic · ')) && !fig.iconCategory().shared, 'one library: its own groups: ' + cs.slice(0, 5).map(c => c.textContent).join(', ')); eq(cs[0].textContent, 'All groups', 'its All chip: All groups (the switcher\'s All is every library)'); eq(cs[0].getAttribute('aria-label'), 'All groups of PhyloPic', 'and for screen readers'); }
+        fig.iconLibrary('all'); ok(chips().slice(1).every(c => c.dataset.cat.startsWith('cat:')), 'All libraries: the categories again');
+        // one library shown under All (the packs hidden): the built-in groups as before
+        fig.showIconPacks(Object.fromEntries(shipped.map(p => [p.id, false]))); ok(!chips().some(c => c.dataset.cat.startsWith('cat:')) && chips().some(c => c.dataset.cat === 'Organisms'), 'only SiliCoDraw shown: its groups');
+        // with only SiliCoDraw and My icons shown, a shared id throws and changes nothing (not even the library)
+        fig.iconLibrary('builtin'); { let err = ''; try { fig.iconCategory('animals'); } catch (e) { err = e.message; } ok(/need an icon pack/.test(err) && fig.iconLibrary().shown === 'builtin' && ls('fig.palLib') === 'builtin', 'fig.iconCategory refused: the library stays: ' + err); } fig.iconLibrary('all');
+        // one pack shown on its own (SiliCoDraw and My icons hidden): the shared categories of that pack, not the built-in groups of the few basic items that always show
+        { const P1 = shipped.find(p => p.id === 'phylopic') || shipped[0]; fig.showIconPacks(Object.fromEntries(['builtin', 'my', ...shipped.map(p => p.id)].map(k => [k, k === P1.id]))); ok(chips().slice(1).length && chips().slice(1).every(c => c.dataset.cat.startsWith('cat:')) && fig.iconCategory().shared, 'only ' + P1.name + ' shown: shared categories: ' + chips().map(c => c.textContent).join(', ')); }
+        fig.showIconPacks(Object.fromEntries(['builtin', 'my', ...shipped.map(p => p.id)].map(k => [k, true])));
+        // a chip reset because its library was hidden is forgotten too (a reload brought it back)
+        fig.iconLibrary('phylopic'); { const g = chips()[1].dataset.cat; chips()[1].click(); eq(ls('fig.palCat'), g, 'a group of PhyloPic remembered'); fig.showIconPacks({ phylopic: false }); eq(ls('fig.palCat'), 'All', 'PhyloPic hidden: the chip remembered goes back to All'); fig.showIconPacks({ phylopic: true }); fig.iconLibrary('all'); }
+        // a narrow panel: the chips wrap onto at most three lines, then More (n); every chip is reachable and none is cut off
+        D.documentElement.style.setProperty('--lw', '170px'); fig.iconCategory('all'); palCatsOpen(false); buildPalette(); await frame(); await frame();
+        { const r = C.getBoundingClientRect(), vis = shown(), tops = new Set(vis.map(c => Math.round(c.getBoundingClientRect().top))), M = more(); ok(M && !M.hidden && tops.size <= (PHONE() ? 2 : 3), 'narrow: ' + tops.size + ' lines and More: ' + (M && M.textContent));
+          eq(+((M.textContent.match(/\d+/) || [0])[0]), chips().length - vis.length, 'More counts the chips it holds'); ok([...vis, M].every(c => { const b = c.getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1 && b.width > 10; }), 'nothing cut off at the panel\'s edge');
+          M.click(); await frame(); ok(chips().every(c => !c.hidden) && M.getAttribute('aria-expanded') === 'true' && /Fewer/.test(M.textContent), 'More: every chip, and Fewer'); ok(chips().every(c => { const b = c.getBoundingClientRect(); return b.right <= r.right + 1 && b.left >= r.left - 1; }), 'all inside the panel'); eq(ls('fig.palCatsOpen'), '1', 'open: remembered');
+          M.click(); await frame(); ok(chips().some(c => c.hidden), 'Fewer: folded again'); }
+        // the chip pressed is always shown, also when it is one of those under More
+        { const last = PAL_CATS.filter(c => palCatSecs().counts.get(c[0])).pop()[0]; fig.iconCategory(last); await frame(); const on = chips().find(c => c.classList.contains('on')); ok(on && !on.hidden && on.dataset.cat === 'cat:' + last, 'the last category pressed stays in sight: ' + (on && on.textContent));
+          const vis = shown(), run = vis.filter(c => c !== on); ok(run.every((c, i) => c === chips()[i]) && vis[vis.length - 1] === on, 'folded: a run from the start, then the chip pressed (none hidden in the middle): ' + vis.map(c => c.textContent).join(', ')); }
+        // the keyboard: one Tab stop; ←/→ between the chips shown and More; Home/End
+        { const vis = shown(), t = vis.filter(c => c.tabIndex === 0); eq(t.length + (more().tabIndex === 0 ? 1 : 0), 1, 'one Tab stop'); vis[0].focus(); kd(vis[0], 'ArrowRight'); eq(D.activeElement, vis[1], '→: the next chip'); kd(D.activeElement, 'End'); eq(D.activeElement, more(), 'End: More'); kd(D.activeElement, 'ArrowLeft'); eq(D.activeElement, vis[vis.length - 1], '←: the last chip shown'); kd(D.activeElement, 'Home'); eq(D.activeElement, vis[0], 'Home: All');
+          vis[1].focus(); vis[1].click(); await frame(); ok(D.activeElement && D.activeElement.dataset && D.activeElement.dataset.cat === vis[1].dataset.cat, 'a chip picked: the keyboard stays on it'); }
+        // Large text: the chips grow and still fit
+        { const was = fig.prefs().text, f = () => parseFloat(getComputedStyle(chips()[0]).fontSize), a = f(); fig.prefs({ text: 'large' }); for (let i = 0; i < 4; i++) await frame(); const b = f(), r = C.getBoundingClientRect(); ok(PHONE() || b > a, 'Large text: ' + a + ' → ' + b + ' px'); ok([...shown(), more()].filter(c => !c.hidden).every(c => c.getBoundingClientRect().right <= r.right + 1), 'and none is cut off'); ok(new Set(shown().map(c => Math.round(c.getBoundingClientRect().top))).size <= 3, 'laid out again by themselves: still at most three lines'); fig.prefs({ text: was }); }
+        return { note: note.join('; ') };
+      } finally {
+        D.documentElement.style.setProperty('--lw', lwWas); if (!lwWas) D.documentElement.style.removeProperty('--lw');
+        try { S.value = ''; } catch (e) {}
+        for (const P of shipped) { try { if (!was.get(P.id) && packImported(P.id)) await packRemove(P.id); } catch (e) {} }
+        PACKS.show = JSON.parse(showWas); packShowSave(); palState.lib = 'all'; palState.cat = 'All'; try { for (const [k, v] of [['fig.palLib', libWas], ['fig.palCat', catWas], ['fig.palCatsOpen', openWas]]) { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } } catch (e) {} buildPalette();
+      }
+    }, 300000);
+    test('icon packs: Arcadia Science: import, found by name, no credit line, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('arcadia'); if (!P) throw new Skip('no Arcadia Science pack in this copy (icon-expansions/arcadia)');
+      const was = packImported('arcadia'), K = 'arcadia:aedes-aegypti';
+      try {
+        blank(); if (was) await packRemove('arcadia');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'arcadia:danio-rerio' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        const r = await fig.importIconPack('arcadia', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'arcadia' && /^Arcadia Science · /.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 8) => fig.findIcon(w, n, { packs: ['arcadia'] }).map(x => x.kind);
+        for (const [w, k] of [['zebrafish', 'arcadia:danio-rerio'], ['Danio rerio', 'arcadia:danio-rerio'], ['tardigrade', 'arcadia:hypsibius-dujardini'], ['Chlamydomonas', 'arcadia:chlamydomonas-reinhardtii'], ['choanoflagellate', 'arcadia:salpingoeca-rosetta'], ['corn smut', 'arcadia:ustilago-maydis'], ['chimpanzee', 'arcadia:pan-troglodytes'], ['ghostshark', 'arcadia:callorhinchus-milii']]) { const f = find(w); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.join(', ')); }
+        ok(find('zebrafish silhouette').includes('arcadia:danio-rerio-silhouette'), 'and the silhouette');
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 160 }); await fig.iconsReady(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'CC0, no credit asked: no credit line on the page'); ok(!fig.check().some(x => /attribution|credit line/i.test(x.msg)), 'and nothing for fig.check to remind of'); eq(fig.iconCredits(), '', 'the page line\'s text: nothing');
+        const tip = packTipText(K); ok(tip && tip.from === 'Arcadia Science' && /PhyloPic/.test(tip.by) && tip.lic === 'CC0 1.0', 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^Arcadia Science \(https:\/\/arcadia-science\.github\.io\/organism-illustration-library\/\): no credit required/.test(full) && /Yellow fever mosquito \(Aedes aegypti\) by Arcadia Science \(modified from PhyloPic silhouette, uploaded by T\. Michael Keesey\)\. Free organism illustration library, version 1\.2\. https:\/\/doi\.org\/10\.5281\/zenodo\.18395998 \(CC0 1\.0\) \[credit not required\]/.test(full), 'Copy full icon credits: ' + full);
+        const s = await svgString({}); ok(s.toLowerCase().includes('"' + ICONS[K].c[0].toLowerCase() + '"') && !/Arcadia/.test(s), 'SVG: the icon, and no credit line');
+        return { note: P.count + ' icons; ' + full.split('\n')[1].trim() };
+      } finally { blank(); try { if (!was && packImported('arcadia')) await packRemove('arcadia'); else if (was && !packImported('arcadia')) await fig.importIconPack('arcadia', { accept: true }); } catch (e) {} }
+    }, 120000);
+    test('icon packs: Health Icons: import, found by name, no credit line, recolored, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('healthicons'); if (!P) throw new Skip('no Health Icons pack in this copy (icon-expansions/healthicons)');
+      const was = packImported('healthicons'), K = 'healthicons:mosquito';
+      try {
+        blank(); if (was) await packRemove('healthicons');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'healthicons:lungs' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: CC0, no credit, their own words, nothing share-alike, no credit line, loaded at once
+        packDialog('healthicons'); await frame(); { const t = $q('#modal').textContent; ok(/Creative Commons Zero/.test(t) && /no credit needed/.test(t) && /No credit is required/.test(t) && !/Attribution is required/.test(t) && !/Share-alike/.test(t) && !/adds a small credit line/.test(t) && !/fetched as you use them/.test(t) && /I have read these terms/.test(t), 'the pop-up: ' + t.slice(0, 600)); } closeModal(); await frame();
+        const r = await fig.importIconPack('healthicons', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'healthicons' && /^Health Icons · Diagnostics$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['healthicons'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['mosquito', 'healthicons:mosquito'], ['malaria', 'healthicons:malaria-testing'], ['rapid diagnostic test', 'healthicons:rdt-result'], ['esophagus cancer', 'healthicons:oesophagus-cancer'], ['oesophagus', 'healthicons:oesophagus-cancer'], ['N95', 'healthicons:ppe-mask-n95'], ['vaccine', 'healthicons:syringe-vaccine'], ['tuberculosis', 'healthicons:tb'], ['obstetrics', 'healthicons:obstetricsmonia'], ['endocrinology', 'healthicons:diabetes']]) { const f = find(w); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.join(', ')); }
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 160 }); fig.add('icon', { kind: 'healthicons:lungs', x: 600, y: 300, size: 160 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'CC0, no credit asked: no credit line on the page'); ok(!fig.check().some(x => /attribution|credit line|credit/i.test(x.msg)), 'and nothing for fig.check to remind of'); eq(fig.iconCredits(), '', 'the page line\'s text: nothing');
+        const tip = packTipText(K); ok(tip && tip.from === 'Health Icons' && tip.lic === 'CC0 1.0' && !tip.by, 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^Health Icons \(https:\/\/healthicons\.org\): Health Icons \(healthicons\.org\), CC0 1\.0 · License: https:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\/$/.test(full), 'Copy full icon credits: ' + full);
+        // one color: c1 recolors the whole pictogram, and the panel shows it as its color, not as an outline
+        { const e = fig.add('icon', { kind: K, x: 300, y: 550, size: 120, c1: '#0072b2' }); await settle(); ok(D.querySelector('#content [data-id="' + e + '"] [fill="#0072b2"]') && !D.querySelector('#content [data-id="' + e + '"] [fill="#000000"]'), 'c1 recolors the pictogram');
+          fig.select([e]); await settle(); ok($q('#props .grpbox [aria-label^="Color 1:"]') && !$q('#props .grpbox [aria-label^="Outline"]'), 'a one-color pictogram: its one group is its color (Color 1), not an outline'); fig.select([]); }
+        const s = await svgString({}); ok(s.includes('"#0072b2"') && !/Health Icons/.test(s), 'SVG: the icons, and no credit line');
+        return { note: P.count + ' icons; ' + full };
+      } finally { blank(); try { if (!was && packImported('healthicons')) await packRemove('healthicons'); else if (was && !packImported('healthicons')) await fig.importIconPack('healthicons', { accept: true }); } catch (e) {} }
+    }, 120000);
+    test('icon packs: OCHA Humanitarian Icons: import, found by name, no credit line, recolored, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('ocha'); if (!P) throw new Skip('no OCHA Humanitarian Icons pack in this copy (icon-expansions/ocha)');
+      const was = packImported('ocha'), K = 'ocha:cyclone';
+      try {
+        blank(); if (was) await packRemove('ocha');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'ocha:flood' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: public domain (CC0), no credit, OCHA's own words, its disclaimer (no UN endorsement), nothing share-alike, no credit line, loaded at once
+        packDialog('ocha'); await frame(); { const t = $q('#modal').textContent; ok(/Creative Commons Zero/.test(t) && /attribution is not required/.test(t) && /Crediting OCHA where feasible/.test(t) && /No credit is required/.test(t) && /not imply acceptance or endorsement by the United Nations/.test(t) && /not endorsed by OCHA or the United Nations/.test(t) && !/Attribution is required/.test(t) && !/Share-alike/.test(t) && !/adds a small credit line/.test(t) && !/fetched as you use them/.test(t) && /I have read these terms/.test(t), 'the pop-up: ' + t.slice(0, 900)); } closeModal(); await frame();
+        const r = await fig.importIconPack('ocha', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'ocha' && /^OCHA Humanitarian Icons · Natural hazards$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['ocha'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['cyclone', 'ocha:cyclone'], ['hurricane', 'ocha:cyclone'], ['tsunami', 'ocha:tsunami'], ['flash flood', 'ocha:flash-flood'], ['locust', 'ocha:locust-infestation'], ['bacterium', 'ocha:bacteria'], ['handwashing', 'ocha:handwashing'], ['program cycle', 'ocha:humanitarian-programme-cycle'], ['programme', 'ocha:humanitarian-programme-cycle'], ['coordinated assessment', 'ocha:coordinated-assessement'], ['skull', 'ocha:dangerous-area'], ['asclepius', 'ocha:health'], ['humanitarian', 'ocha:cyclone']]) { const f = find(w, 300); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.slice(0, 30).join(', ')); }
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 160 }); fig.add('icon', { kind: 'ocha:road', x: 600, y: 300, size: 160 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'public domain, no credit asked: no credit line on the page'); ok(!fig.check().some(x => /attribution|credit line|credit/i.test(x.msg)), 'and nothing for fig.check to remind of'); eq(fig.iconCredits(), '', 'the page line\'s text: nothing');
+        const tip = packTipText(K); ok(tip && tip.from === 'OCHA Humanitarian Icons' && tip.lic === 'CC0 1.0' && !tip.by, 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^OCHA Humanitarian Icons \(https:\/\/un-ocha\.github\.io\/humanitarian-icons\/\): OCHA Humanitarian Icons \(un-ocha\.github\.io\/humanitarian-icons\), CC0 1\.0 · License: https:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\/$/.test(full), 'Copy full icon credits: ' + full);
+        // one color: c1 recolors the whole pictogram, and the panel shows it as its color, not as an outline
+        { const e = fig.add('icon', { kind: K, x: 300, y: 550, size: 120, c1: '#0072b2' }); await settle(); ok(D.querySelector('#content [data-id="' + e + '"] [fill="#0072b2"]') && !D.querySelector('#content [data-id="' + e + '"] [fill="#000000"]'), 'c1 recolors the pictogram');
+          fig.select([e]); await settle(); ok($q('#props .grpbox [aria-label^="Color 1:"]') && !$q('#props .grpbox [aria-label^="Outline"]'), 'a one-color pictogram: its one group is its color (Color 1), not an outline'); fig.select([]); }
+        const s = await svgString({}); ok(s.includes('"#0072b2"') && !/OCHA Humanitarian/.test(s), 'SVG: the icons, and no credit line');
+        return { note: P.count + ' icons; ' + full };
+      } finally { blank(); try { if (!was && packImported('ocha')) await packRemove('ocha'); else if (was && !packImported('ocha')) await fig.importIconPack('ocha', { accept: true }); } catch (e) {} }
+    }, 120000);
+    test('icon packs: Inkscape Electric Symbols: import, found by name, no credit line, recolored line art, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('electric'); if (!P) throw new Skip('no Inkscape Electric Symbols pack in this copy (icon-expansions/electric)');
+      const was = packImported('electric'), K = 'electric:resistor';
+      try {
+        blank(); if (was) await packRemove('electric');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'electric:diode' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: public domain (CC0), no credit asked (the repository asks for none: no words of theirs to quote), not endorsed, nothing share-alike, no credit line, loaded at once
+        packDialog('electric'); await frame(); { const t = $q('#modal').textContent; ok(/Creative Commons Zero/.test(t) && /No credit is required/.test(t) && /asks for none/.test(t) && /not endorsed by Paderborn University/.test(t) && /github\.com\/upb-lea\/Inkscape_electric_Symbols/.test(t) && !/In their words/.test(t) && !/Attribution is required/.test(t) && !/Share-alike/.test(t) && !/adds a small credit line/.test(t) && !/fetched as you use them/.test(t) && /I have read these terms/.test(t), 'the pop-up: ' + t.slice(0, 900)); } closeModal(); await frame();
+        const r = await fig.importIconPack('electric', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'electric' && /^Inkscape Electric Symbols · Semiconductors$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['electric'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['resistor', 'electric:resistor'], ['zigzag', 'electric:resistor-us'], ['rheostat', 'electric:variable-resistor'], ['igbt', 'electric:igbt'], ['opamp', 'electric:operational-amplifier'], ['park transformation', 'electric:abc-to-dq-transformation'], ['clarke', 'electric:abc-to-alpha-beta-transformation'], ['inverter', 'electric:dc-ac-converter'], ['gnd', 'electric:ground-open-triangle'], ['zener', 'electric:zener-diode'], ['flip-flop', 'electric:jk-flip-flop'], ['gallium nitride', 'electric:gan-hemt-enhancement-type'], ['ladder logic', 'electric:coil'], ['voltmeter', 'electric:voltmeter'], ['toroid', 'electric:toroidal-transformer'], ['oscilloscope', 'electric:oscilloscope'], ['wind turbine', 'electric:wind-turbine'], ['opener', 'electric:break-contact'], ['inkscape electric symbols', 'electric:diode']]) { const f = find(w, 300); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.slice(0, 30).join(', ')); }
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 160 }); fig.add('icon', { kind: 'electric:voltmeter', x: 600, y: 300, size: 160 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'public domain, no credit asked: no credit line on the page'); ok(!fig.check().some(x => /attribution|credit line|credit/i.test(x.msg)), 'and nothing for fig.check to remind of'); eq(fig.iconCredits(), '', 'the page line\'s text: nothing');
+        const tip = packTipText(K); ok(tip && tip.from === 'Inkscape Electric Symbols' && tip.lic === 'CC0 1.0' && !tip.by, 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^Inkscape Electric Symbols \(https:\/\/github\.com\/upb-lea\/Inkscape_electric_Symbols\): Inkscape Electric Symbols, Paderborn University LEA \(github\.com\/upb-lea\/Inkscape_electric_Symbols\), CC0 1\.0 · License: https:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\/$/.test(full), 'Copy full icon credits: ' + full);
+        // line art: c1 recolors every line (and the letters set as outlines), and the panel shows the one color as Color 1, not as an outline
+        { const e = fig.add('icon', { kind: 'electric:voltmeter', x: 300, y: 550, size: 120, c1: '#0072b2' }); await settle(); const el = D.querySelector('#content [data-id="' + e + '"]'); ok(el.querySelector('[stroke="#0072b2"]') && !el.querySelector('[stroke="#000000"],[fill="#000000"]'), 'c1 recolors the lines and the letter');
+          fig.select([e]); await settle(); ok($q('#props .grpbox [aria-label^="Color 1:"]') && !$q('#props .grpbox [aria-label^="Outline"]'), 'one-color line art: its one group is its color (Color 1), not an outline'); fig.select([]); }
+        const s = await svgString({}); ok(s.includes('"#0072b2"') && !/Inkscape Electric/.test(s), 'SVG: the icons, and no credit line');
+        return { note: P.count + ' icons; ' + full };
+      } finally { blank(); try { if (!was && packImported('electric')) await packRemove('electric'); else if (was && !packImported('electric')) await fig.importIconPack('electric', { accept: true }); } catch (e) {} }
+    }, 120000);
+    test('icon packs: WMO WorldWeatherSymbols: import, found by code and name, one credit line for the pack, recolored, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('wmo-weather'); if (!P) throw new Skip('no WMO WorldWeatherSymbols pack in this copy (icon-expansions/wmo-weather)');
+      const was = packImported('wmo-weather'), K = 'wmo-weather:ww-95';
+      try {
+        blank(); if (was) await packRemove('wmo-weather');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'wmo-weather:ww-60' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: CC BY 4.0, attribution required (one line, the repository gives no wording: its LICENSE quoted), not endorsed, nothing share-alike, loaded at once
+        packDialog('wmo-weather'); await frame(); { const t = $q('#modal').textContent; ok(/Creative Commons Attribution 4\.0/.test(t) && /Attribution is required/.test(t) && /no wording of its own/.test(t) && /In their words: “Copyright \(C\) 2013-2021 OGC Meteorology and Oceanography Domain Working Group/.test(t) && /adds a small credit line/.test(t) && /not endorsed by the WMO, ICAO or the OGC/.test(t) && !/Share-alike/.test(t) && !/Copy full icon credits gives every creator/.test(t) && !/fetched as you use them/.test(t) && /I take full responsibility/.test(t), 'the pop-up: ' + t.slice(0, 1200)); } closeModal(); await frame();
+        const r = await fig.importIconPack('wmo-weather', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'wmo-weather' && /^WMO WorldWeatherSymbols · Fronts$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['wmo-weather'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['ww 95', K], ['ww95', K], ['cold front', 'wmo-weather:front-cold-at-surface'], ['warm front', 'wmo-weather:front-warm-at-surface'], ['occluded front', 'wmo-weather:front-occluded-at-surface'], ['cumulonimbus', 'wmo-weather:c-9'], ['wind barb', 'wmo-weather:wind-arrow-nh-05'], ['hurricane', 'wmo-weather:tropical-cyclone-nhge'], ['oktas', 'wmo-weather:n-4'], ['drizzle', 'wmo-weather:ww-50'], ['wawa 10', 'wmo-weather:ww-10'], ['pressure tendency', 'wmo-weather:a-2'], ['turbulence', 'wmo-weather:icao-severe-turbulence'], ['SIGWX', 'wmo-weather:icao-volcanic-eruption'], ['calm wind', 'wmo-weather:n-0'], ['synoptic', K]]) { const f = find(w, 400); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.slice(0, 30).join(', ')); }
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 160 }); fig.add('icon', { kind: 'wmo-weather:front-cold-at-surface', x: 650, y: 300, size: 220 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 1, 'CC BY: a credit line on the page'); eq(fig.iconCredits(), 'WorldWeatherSymbols, OGC MetOcean DWG and WMO (github.com/OGCMetOceanDWG/WorldWeatherSymbols), CC BY 4.0, adapted', 'one line for the pack: the work, its makers, where it is, the license and "adapted"');
+        ok(!fig.check().some(x => /attribution|credit line|names only the repository/i.test(x.msg)), 'nothing for fig.check to remind of');
+        const tip = packTipText(K); ok(tip && tip.from === 'WMO WorldWeatherSymbols' && tip.lic === 'CC BY 4.0' && /^WMO CBS IPET-DR&C/.test(tip.by || ''), 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^WMO WorldWeatherSymbols \(https:\/\/github\.com\/OGCMetOceanDWG\/WorldWeatherSymbols\): WorldWeatherSymbols, OGC MetOcean DWG and WMO \(github\.com\/OGCMetOceanDWG\/WorldWeatherSymbols\), CC BY 4\.0, adapted · License: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/$/.test(full), 'Copy full icon credits: ' + full);
+        // more than three symbols: still the one line (the pack is not credited per icon)
+        for (const [i, k] of ['wmo-weather:ww-71', 'wmo-weather:cl-9', 'wmo-weather:n-4'].entries()) fig.add('icon', { kind: k, x: 300 + i * 150, y: 550, size: 100 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(credLine().length, 1, 'five symbols: one line'); ok(/^WorldWeatherSymbols, OGC MetOcean DWG and WMO/.test(fig.iconCredits()), 'and the same words: ' + fig.iconCredits());
+        // one color: c1 recolors the whole symbol, arrowhead included, and the panel shows it as Color 1
+        { const e = fig.add('icon', { kind: 'wmo-weather:ww-17', x: 900, y: 550, size: 120, c1: '#0072b2' }); await settle(); const el = D.querySelector('#content [data-id="' + e + '"]'); ok(el.querySelector('[fill="#0072b2"],[stroke="#0072b2"]') && !el.querySelector('[stroke="#000000"],[fill="#000000"]'), 'c1 recolors the symbol and its arrowhead');
+          fig.select([e]); await settle(); ok($q('#props .grpbox [aria-label^="Color 1:"]'), 'its one group is Color 1'); fig.select([]); }
+        const s = await svgString({}); ok(s.includes('"#0072b2"') && /WorldWeatherSymbols, OGC MetOcean DWG and WMO/.test(s), 'SVG: the symbols and the credit line');
+        return { note: P.count + ' icons; ' + fig.iconCredits() };
+      } finally { blank(); try { if (!was && packImported('wmo-weather')) await packRemove('wmo-weather'); else if (was && !packImported('wmo-weather')) await fig.importIconPack('wmo-weather', { accept: true }); } catch (e) {} }
+    }, 120000);
+    test('icon packs: SBOL Visual: import, found by name and term, no credit line, recolored glyphs, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('sbol'); if (!P) throw new Skip('no SBOL Visual pack in this copy (icon-expansions/sbol)');
+      const was = packImported('sbol'), K = 'sbol:promoter';
+      try {
+        blank(); if (was) await packRemove('sbol');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'sbol:cds' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: CC0 for the glyphs (the exception of the repository's LICENSE.html, quoted), no credit asked, the website not used, not endorsed, nothing share-alike, no credit line, loaded at once
+        packDialog('sbol'); await frame(); { const t = $q('#modal').textContent; ok(/Creative Commons Zero/.test(t) && /No credit is required \(the SBOL developers ask for none\)/.test(t) && /In their words: “Exception: to the extent possible under law, the SBOL developers have waived all copyright/.test(t) && /sbolstandard\.org website is under another license and was not used/.test(t) && /not endorsed by the SBOL developers/.test(t) && /github\.com\/SynBioDex\/SBOL-visual/.test(t) && !/Attribution is required/.test(t) && !/Share-alike/.test(t) && !/adds a small credit line/.test(t) && !/fetched as you use them/.test(t) && /I have read these terms/.test(t), 'the pop-up: ' + t.slice(0, 1200)); } closeModal(); await frame();
+        const r = await fig.importIconPack('sbol', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'sbol' && /^SBOL Visual · Sequence features$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['sbol'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['promoter', K], ['RBS', 'sbol:ribosome-entry-site'], ['ribosome binding site', 'sbol:ribosome-entry-site'], ['coding sequence', 'sbol:cds'], ['terminator', 'sbol:terminator'], ['origin of replication', 'sbol:origin-of-replication'], ['loxP', 'sbol:specific-recombination-site'], ['polyadenylation', 'sbol:polya'], ['stop codon', 'sbol:translation-end'], ['repression', 'sbol:inhibition'], ['activation', 'sbol:stimulation'], ['inducer', 'sbol:simple-chemical-triangle'], ['double helix', 'sbol:dsna'], ['SBGN', 'sbol:na-sbgn'], ['three prime overhang', 'sbol:three-prime-overhang'], ['replacement glyph', 'sbol:unspecified'], ['SO:0000167', K], ['genetic circuit', K], ['SBOL Visual', 'sbol:cds']]) { const f = find(w, 300); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.slice(0, 30).join(', ')); }
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 160 }); fig.add('icon', { kind: 'sbol:polya', x: 600, y: 300, size: 160 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'CC0, no credit asked: no credit line on the page'); ok(!fig.check().some(x => /attribution|credit line|credit/i.test(x.msg)), 'and nothing for fig.check to remind of'); eq(fig.iconCredits(), '', 'the page line\'s text: nothing');
+        const tip = packTipText(K); ok(tip && tip.from === 'SBOL Visual' && tip.lic === 'CC0 1.0' && !tip.by, 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^SBOL Visual \(https:\/\/github\.com\/SynBioDex\/SBOL-visual\): SBOL Visual glyphs, the SBOL developers \(github\.com\/SynBioDex\/SBOL-visual\), CC0 1\.0 · License: https:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\/$/.test(full), 'Copy full icon credits: ' + full);
+        // line art: c1 recolors every line and the characters set as outlines (the AAA of the polyA site), and the panel shows the one color as Color 1, not as an outline
+        { const e = fig.add('icon', { kind: 'sbol:polya', x: 300, y: 550, size: 120, c1: '#0072b2' }); await settle(); const el = D.querySelector('#content [data-id="' + e + '"]'); ok(el.querySelector('[fill="#0072b2"]') && !el.querySelector('[stroke="#000000"],[fill="#000000"]'), 'c1 recolors the glyph and its letters');
+          fig.select([e]); await settle(); ok($q('#props .grpbox [aria-label^="Color 1:"]') && !$q('#props .grpbox [aria-label^="Outline"]'), 'one-color line art: its one group is its color (Color 1), not an outline'); fig.select([]); }
+        { const e = fig.add('icon', { kind: 'sbol:cds', x: 500, y: 550, size: 120, c1: '#d55e00' }); await settle(); const el = D.querySelector('#content [data-id="' + e + '"]'); ok(el.querySelector('[stroke="#d55e00"]') && !el.querySelector('[stroke="#000000"]'), 'c1 recolors a stroked glyph'); }
+        const s = await svgString({}); ok(s.includes('"#0072b2"') && !/SBOL Visual glyphs/.test(s), 'SVG: the glyphs, and no credit line');
+        return { note: P.count + ' icons; ' + full };
+      } finally { blank(); try { if (!was && packImported('sbol')) await packRemove('sbol'); else if (was && !packImported('sbol')) await fig.importIconPack('sbol', { accept: true }); } catch (e) {} }
+    }, 120000);
+    test('icon packs: Open Crop Icons: import, found by name, no credit line (also beside a credited pack), recolored, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('opencrop'); if (!P) throw new Skip('no Open Crop Icons pack in this copy (icon-expansions/opencrop)');
+      const W = PACKS.by.get('wmo-weather'), was = packImported('opencrop'), wasW = W && packImported('wmo-weather'), K = 'opencrop:carrot';
+      try {
+        blank(); if (was) await packRemove('opencrop');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'opencrop:wheat' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: public domain (CC0), no credit required, their own words (a credit welcomed), not endorsed, nothing share-alike, no credit line, loaded at once
+        packDialog('opencrop'); await frame(); { const t = $q('#modal').textContent; ok(/Creative Commons Zero/.test(t) && /They're public domain works so use them without restriction/.test(t) && /A credit somewhere to help other people find them would be in good spirit, but is not required/.test(t) && /No credit is required/.test(t) && /not endorsed by OpenFarm/.test(t) && !/Attribution is required/.test(t) && !/Share-alike/.test(t) && !/adds a small credit line/.test(t) && !/fetched as you use them/.test(t) && /I have read these terms/.test(t), 'the pop-up: ' + t.slice(0, 900)); } closeModal(); await frame();
+        const r = await fig.importIconPack('opencrop', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'opencrop' && /^Open Crop Icons · Grains & field crops$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['opencrop'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['carrot', K], ['wheat', 'opencrop:wheat'], ['sorghum', 'opencrop:sorghum-millet'], ['soybean', 'opencrop:soy-bean'], ['artichoke', 'opencrop:atrichoke'], ['brussels sprout', 'opencrop:brussel-sprout'], ['yukon gold', 'opencrop:youkon-gold-potato'], ['marjoram', 'opencrop:majoram'], ['chanterelle', 'opencrop:chantrelle'], ['jalapeño', 'opencrop:jalapeno'], ['nectarine', 'opencrop:nectratine'], ['red bell pepper', 'opencrop:red-bell-pepper'], ['purple carrot', K], ['shiitake', 'opencrop:shiitake'], ['oyster mushroom', 'opencrop:blue-oyster'], ['tulsi', 'opencrop:tulsi'], ['crop', K]]) { const f = find(w, 300); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.slice(0, 30).join(', ')); }
+        // another ripeness or species is an icon of its own, the first of the pack for its own name
+        for (const [w, k] of [['red bell pepper', 'opencrop:red-bell-pepper'], ['yellow bell pepper', 'opencrop:yellow-bell-pepper'], ['nectarine', 'opencrop:nectratine'], ['pink oyster mushroom', 'opencrop:pink-oyster'], ['japanese yam', 'opencrop:japanese-yam'], ['salsify', 'opencrop:salsify']]) { const f = find(w, 30).filter(x => /^opencrop:/.test(x)); eq(f[0], k, 'fig.findIcon("' + w + '") finds ' + k + ' first: ' + f.slice(0, 5).join(', ')); }
+        ok(!find('cannabis', 300).some(k => /^opencrop:/.test(k)) && !find('psilocybin', 300).some(k => /^opencrop:/.test(k)), 'cannabis and psilocybin are not in the pack');
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 160 }); fig.add('icon', { kind: 'opencrop:wheat', x: 600, y: 300, size: 160 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'CC0, no credit asked: no credit line on the page'); ok(!fig.check().some(x => /attribution|credit line|credit/i.test(x.msg)), 'and nothing for fig.check to remind of'); eq(fig.iconCredits(), '', 'the page line\'s text: nothing');
+        const tip = packTipText(K); ok(tip && tip.from === 'Open Crop Icons' && tip.lic === 'CC0 1.0' && !tip.by, 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^Open Crop Icons \(https:\/\/github\.com\/openfarmcc\/open-crop-icons\): Open Crop Icons, OpenFarm contributors \(github\.com\/openfarmcc\/open-crop-icons\), CC0 1\.0 · License: https:\/\/creativecommons\.org\/publicdomain\/zero\/1\.0\/$/.test(full), 'Copy full icon credits: ' + full);
+        // beside an icon that asks for credit, the line names only that repository
+        if (W) { if (!wasW) await fig.importIconPack('wmo-weather', { accept: true }); fig.add('icon', { kind: 'wmo-weather:ww-95', x: 800, y: 300, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+          eq(credLine().length, 1, 'a credited icon beside them: one line'); ok(/^WorldWeatherSymbols, OGC MetOcean DWG and WMO/.test(fig.iconCredits()) && !/Open Crop|OpenFarm/.test(fig.iconCredits()), 'and it does not name Open Crop Icons: ' + fig.iconCredits()); }
+        // recolored: c1 takes the main color, and the side panel colors it by groups
+        { const e = fig.add('icon', { kind: 'opencrop:tomato', x: 300, y: 550, size: 120, c1: '#0072b2' }); await settle(); ok(D.querySelector('#content [data-id="' + e + '"] [fill="#0072b2"]'), 'c1 recolors the tomato');
+          const g = fig.iconColors(e); ok(g && g.groups.length >= 2, 'its color groups: ' + J(g && g.groups.map(x => x.main))); }
+        const s = await svgString({}); ok(s.includes('"#0072b2"') && !/Open Crop|OpenFarm/.test(s), 'SVG: the icons, and no credit line for them');
+        return { note: P.count + ' icons; ' + full };
+      } finally { blank(); try { if (!was && packImported('opencrop')) await packRemove('opencrop'); else if (was && !packImported('opencrop')) await fig.importIconPack('opencrop', { accept: true }); if (W && !wasW && packImported('wmo-weather')) await packRemove('wmo-weather'); } catch (e) {} }
+    }, 120000);
+    test('icon packs: Expression Atlas anatomograms: import, found by species and tissue, one credit line citing the article, recolored, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('anatomogram'); if (!P) throw new Skip('no Expression Atlas anatomograms pack in this copy (icon-expansions/anatomogram)');
+      const was = packImported('anatomogram'), K = 'anatomogram:homo-sapiens-female';
+      try {
+        blank(); if (was) await packRemove('anatomogram');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: 'anatomogram:mus-musculus-male' }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: CC BY 4.0, attribution required, EMBL-EBI's own words (cite the article) with the licence page, the CC0 outline, not endorsed, nothing share-alike, loaded at once
+        packDialog('anatomogram'); await frame(); { const t = $q('#modal').textContent; ok(/Creative Commons Attribution 4\.0/.test(t) && /Attribution is required/.test(t) && /In their words: “This means that anyone is free to copy, reuse, display and distribute the images and information on our database, provided you give us credit by citing: Expression Atlas in 2026/.test(t) && /ebi\.ac\.uk\/gxa\/licence\.html/.test(t) && /doi:10\.1093\/nar\/gkaf1238/.test(t) && /public-domain drawing on Wikimedia Commons/.test(t) && /adds a small credit line/.test(t) && /not endorsed by EMBL-EBI/.test(t) && !/Share-alike/.test(t) && !/Copy full icon credits gives every creator/.test(t) && !/fetched as you use them/.test(t) && /I take full responsibility/.test(t), 'the pop-up: ' + t.slice(0, 1400)); } closeModal(); await frame();
+        const r = await fig.importIconPack('anatomogram', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'anatomogram' && /^Expression Atlas anatomograms · Plant parts$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['anatomogram'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['human body', K], ['Homo sapiens', 'anatomogram:homo-sapiens-male'], ['uterus', K], ['prostate', 'anatomogram:homo-sapiens-male'], ['mouse', 'anatomogram:mus-musculus-male'], ['Mus musculus', 'anatomogram:mus-musculus-female'], ['hippocampus', 'anatomogram:homo-sapiens-brain'], ['maize', 'anatomogram:zea-mays-whole-plant'], ['corn', 'anatomogram:zea-mays-flower-parts'], ['Arabidopsis', 'anatomogram:arabidopsis-thaliana'], ['chicken', 'anatomogram:gallus-gallus'], ['zebra', null], ['anatomogram', 'anatomogram:rattus-norvegicus'], ['organ map', 'anatomogram:bos-taurus']]) { const f = find(w, 300); if (k) ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.slice(0, 12).join(', ')); else ok(!f.some(x => /^anatomogram:/.test(x)), 'fig.findIcon("' + w + '") finds nothing of the pack: ' + f.join(', ')); }
+        ok(!find('skin', 300).includes(K), 'a tissue left unfilled (skin) is no search word of the drawing');
+        const id = fig.add('icon', { kind: K, x: 400, y: 300, size: 200 }); fig.add('icon', { kind: 'anatomogram:mus-musculus-male', x: 650, y: 300, size: 200 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        const LINE = 'Anatomograms from Expression Atlas, EMBL-EBI (Expression Atlas in 2026, Nucleic Acids Research, doi:10.1093/nar/gkaf1238), CC BY 4.0, adapted';
+        eq(credLine().length, 1, 'CC BY: a credit line on the page'); eq(fig.iconCredits(), LINE, 'one line for the pack: the work, its maker, the article EMBL-EBI asks to cite, the license and "adapted"');
+        ok(!fig.check().some(x => /attribution|credit line|names only the repository/i.test(x.msg)), 'nothing for fig.check to remind of');
+        { const tip = packTipText(K); ok(tip && tip.from === 'Expression Atlas anatomograms' && tip.lic === 'CC BY 4.0' && !tip.by, 'the tooltip: ' + J(tip)); }
+        { const tip = packTipText('anatomogram:homo-sapiens-male'); ok(tip && /^Vsion, SVG by Sjef, .*Wikimedia Commons, public domain\)/.test(tip.by), 'the male body\'s tooltip names its public-domain outline: ' + J(tip)); }
+        const full = fig.iconCredits({ full: true }); ok(full.startsWith('Expression Atlas anatomograms (https://github.com/ebi-gene-expression-group/anatomogram): ' + LINE) && /License: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/$/.test(full), 'Copy full icon credits: ' + full);
+        // more than three: still the one line (the pack is not credited per icon)
+        for (const [i, k] of ['anatomogram:rattus-norvegicus', 'anatomogram:zea-mays-whole-plant', 'anatomogram:homo-sapiens-male'].entries()) fig.add('icon', { kind: k, x: 300 + i * 200, y: 600, size: 160 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(credLine().length, 1, 'five drawings: one line'); eq(fig.iconCredits(), LINE, 'and the same words');
+        // two colors: the outline gray and the tissue red, each a group of its own; c2 recolors the tissues, the outline stays
+        { const e = fig.add('icon', { kind: 'anatomogram:gallus-gallus', x: 900, y: 600, size: 160 }); await fig.iconsReady(); await settle(); const g = fig.iconColors(e); ok(g && g.groups.length >= 2, 'its color groups: ' + J(g && g.groups.map(x => x.main)));
+          fig.iconColors(e, { '#e0544a': '#0072b2' }); await settle(); const el = D.querySelector('#content [data-id="' + e + '"]'); ok(el.querySelector('[fill="#0072b2"]') && el.querySelector('[fill="#a0a1a2"]') && !el.querySelector('[fill="#e0544a"]'), 'the tissue group recolored, the outline kept'); }
+        // the green anole: its three small tissues are no color key (c2 = the outline gray), but they are a color group of their own, so they can be recolored
+        { const e = fig.add('icon', { kind: 'anatomogram:anolis-carolinensis', x: 1100, y: 600, size: 160 }); await fig.iconsReady(); await settle(); const g = fig.iconColors(e); ok(g && g.groups.some(x => x.main === '#e0544a'), 'the anole\'s tissues are a color group: ' + J(g && g.groups.map(x => x.main)));
+          fig.iconColors(e, { '#e0544a': '#009e73' }); await settle(); const el = D.querySelector('#content [data-id="' + e + '"]'); ok(el.querySelector('[fill="#009e73"]') && !el.querySelector('[fill="#e0544a"]'), 'the anole\'s tissues recolored by their group'); }
+        const s = await svgString({}); ok(s.includes('"#0072b2"') && s.includes('gkaf1238'), 'SVG: the drawings and the credit line');
+        return { note: P.count + ' icons; ' + fig.iconCredits() };
+      } finally { blank(); try { if (!was && packImported('anatomogram')) await packRemove('anatomogram'); else if (was && !packImported('anatomogram')) await fig.importIconPack('anatomogram', { accept: true }); } catch (e) {} }
+    }, 120000);
+    test('icon packs: Reactome: import, found by name, the credit line per icon, recolored by groups', async () => {
+      await packInit(); const P = PACKS.by.get('reactome'); if (!P) throw new Skip('no Reactome pack in this copy (icon-expansions/reactome)');
+      const was = packImported('reactome'), K = 'reactome:neuron-013681';
+      try {
+        blank(); if (was) await packRemove('reactome');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: K }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up says what this license asks: credit, a link to the license, the changes; no share-alike
+        packDialog('reactome'); await frame(); { const t = $q('#modal').textContent; ok(/CC BY 4\.0/.test(t) && /appropriate credit is given, a link to the license is included/.test(t) && /adds a small credit line/.test(t) && !/share-alike/i.test(t), 'the pop-up: ' + t.slice(0, 300)); } closeModal(); await frame();
+        const r = await fig.importIconPack('reactome', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'reactome' && /^Reactome Icon Library · /.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['reactome'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['neuron', K], ['macrophage', 'reactome:macrophage-generic-012969'], ['GPCR', 'reactome:gpcr-generic-012791'], ['mitochondrion', 'reactome:mitochondrion-013020'], ['heart', 'reactome:heart-014671'], ['mRNA', 'reactome:mrna-013027'], ['glucose', 'reactome:allose-012412'], ['SLC2A2', 'reactome:generic-transporter-014831'], ['melanosome', 'reactome:lysosome-012966']]) { const f = find(w); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.join(', ')); }
+        // a drawing whose color or detail tells what it is (a vesicle type, a T cell subtype, a sugar, a receptor) is an icon of its own, the first of the pack for its name
+        for (const [w, k] of [['copii vesicle', 'reactome:copii-vesicle-013572'], ['copi vesicle', 'reactome:copi-vesicle-013575'], ['regulatory t cell', 'reactome:regulatory-t-cell-014297'], ['naive cd8 t cell', 'reactome:naive-cd8-t-cell-014849'], ['lyxose', 'reactome:lyxose-012967'], ['ctla4', 'reactome:ctla4-014006'], ['uridylated mrna', 'reactome:uridylated-mrna-014640']]) { const f = find(w).filter(x => /^reactome:/.test(x)); eq(f[0], k, 'fig.findIcon("' + w + '") finds ' + k + ' first: ' + f.slice(0, 5).join(', ')); }
+        const id = fig.add('icon', { kind: K, x: 300, y: 300, size: 160 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + id + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 1, 'CC BY: a credit line on the page'); eq(fig.iconCredits(), 'Icons: Neuron by Sam Norwitz, reactome.org/icon-lib, CC BY 4.0, adapted', 'the line names the icon, its designer, the library, the license and "adapted"');
+        const tip = packTipText(K); ok(tip && tip.from === 'Reactome Icon Library' && tip.by === 'Sam Norwitz' && tip.lic === 'CC BY 4.0', 'the tooltip: ' + J(tip));
+        const full = fig.iconCredits({ full: true }); ok(/^Reactome Icon Library \(https:\/\/reactome\.org\/icon-lib\): credit each icon \(CC BY 4\.0: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/\)/.test(full) && /Neuron by Sam Norwitz\. Reactome Icon Library, CC BY 4\.0\. github\.com\/reactome\/reactome_illustrations\/blob\/main\/icons\/R-ICO-013681\.svg \(CC BY 4\.0, adapted\)/.test(full), 'Copy full icon credits: ' + full);
+        // more than three: the line names only the library, and the creators still need their credit elsewhere
+        for (const [i, k] of ['reactome:b-cell-012460', 'reactome:heart-014671', 'reactome:gpcr-generic-012791'].entries()) fig.add('icon', { kind: k, x: 600 + i * 150, y: 300, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(fig.iconCredits(), 'Icons: Reactome Icon Library (reactome.org/icon-lib), CC BY 4.0, adapted', 'four icons: the line names only the library');
+        ok(fig.check().some(x => x.level === 'info' && /names only the repository for Reactome Icon Library/.test(x.msg)), 'fig.check says that each creator still needs credit');
+        // a drawing painted with gradients only has no color key (fixed): its color groups recolor it
+        const ly = fig.add('icon', { kind: 'reactome:lysosome-012966', x: 300, y: 600, size: 120 }); await fig.iconsReady(); await settle();
+        ok(ICONS['reactome:lysosome-012966'].fixed || !(ICONS['reactome:lysosome-012966'].k || []).length, 'the lysosome has no color key');
+        const before = node(ly).innerHTML, gc = fig.iconColors(ly); ok(gc && gc.groups.length >= 1, 'its color groups: ' + J(gc && gc.groups.map(g => g.main)));
+        fig.iconColors(ly, { 1: '#cc0000' }); await settle(); ok(node(ly).innerHTML !== before, 'recolored by its first group');
+        const s = await svgString({}); ok(/Reactome Icon Library/.test(s), 'SVG: the credit line is exported');
+        return { note: P.count + ' icons; ' + fig.iconCredits() };
+      } finally { blank(); try { if (!was && packImported('reactome')) await packRemove('reactome'); else if (was && !packImported('reactome')) await fig.importIconPack('reactome', { accept: true }); } catch (e) {} }
+    }, 180000);
+    test('icon packs: Bioicons: import, found by name, a credit line per license, share-alike, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('bioicons'); if (!P) throw new Skip('no Bioicons pack in this copy (icon-expansions/bioicons)');
+      const was = packImported('bioicons'), K = 'bioicons:neutrophil';
+      try {
+        blank(); if (was) await packRemove('bioicons');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: K }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: credit for some icons (those under CC BY, CC BY-SA or MIT), Bioicons' own words, share-alike for some
+        packDialog('bioicons'); await frame(); { const t = $q('#modal').textContent; ok(/Attribution is required for some icons/.test(t) && /about two in five of them/.test(t) && /Please always cite the individual icons/.test(t) && /Share-alike/.test(t) && /CC BY-SA 4\.0/.test(t) && /adds a small credit line/.test(t), 'the pop-up: ' + t.slice(0, 400)); } closeModal(); await frame();
+        const r = await fig.importIconPack('bioicons', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'bioicons' && /^Bioicons · /.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['bioicons'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, k] of [['neutrophil', K], ['clownfish', 'bioicons:amphiprion-ocellaris-adult'], ['Amphiprion', 'bioicons:amphiprion-ocellaris-adult'], ['96-well PCR plate', 'bioicons:96well-pcr-plate-kelly'], ['flammable', 'bioicons:flammable-unece'], ['violin plot', 'bioicons:violin'], ['IgG', 'bioicons:immuneglobuline-igg-blue'], ['organoid', 'bioicons:organoid'], ['Arabidopsis', 'bioicons:arabidopsis-plant'], ['soybean', 'bioicons:soybean-cartoon'], ['DNA double helix', 'bioicons:dna-double-helix']]) { const f = find(w); ok(f.includes(k), 'fig.findIcon("' + w + '") finds ' + k + ': ' + f.join(', ')); }
+        // CC0: no credit line
+        const c0 = fig.add('icon', { kind: 'bioicons:organoid', x: 200, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + c0 + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'a CC0 icon: no credit line'); eq(fig.iconCredits(), '', 'the line\'s text: nothing');
+        // CC BY 4.0: the line names the icon, its creator, Bioicons, the license and "adapted"
+        fig.add('icon', { kind: K, x: 400, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(credLine().length, 1, 'CC BY: a credit line on the page'); eq(fig.iconCredits(), 'Icons: Neutrophil by Helicase 11, bioicons.com, CC BY 4.0, adapted', 'the line names the icon, its creator, the library, the license and "adapted"');
+        const tip = packTipText(K); ok(tip && tip.from === 'Bioicons' && tip.by === 'Helicase 11' && tip.lic === 'CC BY 4.0', 'the tooltip: ' + J(tip));
+        // CC BY-SA 4.0 and MIT join it, each with its license
+        fig.add('icon', { kind: 'bioicons:amphiprion-ocellaris-adult', x: 600, y: 200, size: 120 }); fig.add('icon', { kind: 'bioicons:violin', x: 800, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(fig.iconCredits(), 'Icons: Neutrophil by Helicase 11, Amphiprion ocellaris adult by Stefano Vianello, violin by dbs-sticky, bioicons.com, CC BY 4.0 / CC BY-SA 4.0 / MIT, adapted', 'three icons: each named with its creator, the licenses of all three');
+        const full = fig.iconCredits({ full: true });
+        ok(/^Bioicons \(https:\/\/bioicons\.com\): credit each icon \(CC BY 4\.0 \/ CC BY-SA 4\.0 \/ MIT: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/ \/ https:\/\/creativecommons\.org\/licenses\/by-sa\/4\.0\/ \/ https:\/\/opensource\.org\/license\/mit\)/.test(full) && /Neutrophil by Helicase 11, Bioicons, github\.com\/duerrsimon\/bioicons\/blob\/main\/static\/icons\/cc-by-4\.0\/Blood_Immunology\/Helicase_11\/neutrophil\.svg \(CC BY 4\.0, adapted\)/.test(full) && /violin by dbs-sticky, Bioicons, .*\/mit\/Scientific_graphs\/dbs-sticky\/violin\.svg \(MIT\)/.test(full) && /Organoid by Marcel Tisch, Bioicons, .*\/cc-0\/Cell_culture\/Marcel_Tisch\/organoid\.svg \(CC0 1\.0\) \[credit not required\]/.test(full), 'Copy full icon credits: ' + full);
+        // more than three: the line names only Bioicons, and the creators still need their credit elsewhere
+        fig.add('icon', { kind: 'bioicons:1-5-tube', x: 1000, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(fig.iconCredits(), 'Icons: Bioicons (bioicons.com), CC BY 4.0 / CC BY-SA 4.0 / MIT per icon, adapted', 'four icons: the line names only the library');
+        ok(fig.check().some(x => x.level === 'info' && /names only the repository for Bioicons/.test(x.msg)), 'fig.check says that each creator still needs credit');
+        const s = await svgString({}); ok(/Bioicons \(bioicons\.com\)/.test(s), 'SVG: the credit line is exported');
+        return { note: P.count + ' icons; ' + full.split('\n').slice(0, 2).join(' | ') };
+      } finally { blank(); try { if (!was && packImported('bioicons')) await packRemove('bioicons'); else if (was && !packImported('bioicons')) await fig.importIconPack('bioicons', { accept: true }); } catch (e) {} }
+    }, 180000);
+    test('icon packs: PhyloPic: import, found by name, a credit line per CC BY license, none for public domain, full credits', async () => {
+      await packInit(); const P = PACKS.by.get('phylopic'); if (!P) throw new Skip('no PhyloPic pack in this copy (icon-expansions/phylopic)');
+      const names = await (await fetch(P.dir + 'names.json', { cache: 'no-store' })).json(), E = Object.entries(names), was = packImported('phylopic');
+      const plain = m => !/[*_~^{}\\#|]/.test((m.title || m.n) + (m.by || ''));   // (no rich-text marks: the line's text is compared as typed)
+      const pick = (lic, re) => { const e = E.find(([k, m]) => m.lic === lic && plain(m) && (!re || re.test(k))); if (!e) throw new Error('no ' + lic + ' icon'); return e; };
+      const [K0] = pick('CC0 1.0'), [KP, MP] = pick('Public Domain Mark 1.0'), [K4, M4] = pick('CC BY 4.0', /^phylopic:[a-c]/), [K3, M3] = pick('CC BY 3.0'), [K4b] = E.find(([k, m]) => m.lic === 'CC BY 4.0' && k !== K4 && plain(m)), one = m => (m.title || m.n) + ' by ' + m.by;
+      try {
+        blank(); if (was) await packRemove('phylopic');
+        ok(/not imported/.test((() => { try { fig.add('icon', { kind: K4 }); } catch (e) { return e.message; } return ''; })()), 'not imported: fig.add refuses its icons');
+        // the import pop-up: credit for the CC BY icons only, PhyloPic's own words, no share-alike, its parts fetched as they are used
+        packDialog('phylopic'); await frame(); { const t = $q('#modal').textContent; ok(/Attribution is required for some icons/.test(t) && /CC BY 3\.0 or CC BY 4\.0/.test(t) && /must be credited to the creator/.test(t) && /never required/.test(t) && !/Share-alike/.test(t) && /adds a small credit line/.test(t) && /fetched as you use them/.test(t), 'the pop-up: ' + t.slice(0, 500)); } closeModal(); await frame();
+        const r = await fig.importIconPack('phylopic', { accept: true }); eq(r.count, P.count, 'all its icons are in the library');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'phylopic' && /^PhyloPic · Mammals$/.test(s[0])), 'its groups are groups of the Add panel');
+        const find = (w, n = 30) => fig.findIcon(w, n, { packs: ['phylopic'] }).map(x => x.kind);   // (built-in icons come first)
+        for (const [w, re] of [['house mouse', /^phylopic:mus-musculus-/], ['Mus musculus', /^phylopic:mus-musculus-/], ['Danio rerio', /^phylopic:danio-rerio-/], ['yeast', /^phylopic:saccharomyces-cerevisiae-/], ['Tyrannosaurus', /^phylopic:tyrannosaurus-rex-/], ['Arabidopsis', /^phylopic:arabidopsis-thaliana-/]]) { const f = find(w); ok(f.some(k => re.test(k)), 'fig.findIcon("' + w + '") finds ' + re + ': ' + f.join(', ')); }
+        // public domain and CC0: no credit line
+        const c0 = fig.add('icon', { kind: K0, x: 200, y: 200, size: 120 }); fig.add('icon', { kind: KP, x: 350, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        ok(!D.querySelector('#content [data-id="' + c0 + '"] circle[stroke-dasharray]'), 'drawn (not the dashed circle of a part still coming)');
+        eq(credLine().length, 0, 'public domain and CC0 icons: no credit line'); eq(fig.iconCredits(), '', 'the line\'s text: nothing');
+        { const tip = packTipText(KP); ok(tip && tip.from === 'PhyloPic' && tip.lic === 'Public Domain Mark 1.0', 'the tooltip of a public-domain icon: ' + J(tip)); }
+        // CC BY 4.0: the line names the taxon, its creator as PhyloPic gives it, PhyloPic, the license and "adapted"
+        fig.add('icon', { kind: K4, x: 500, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(credLine().length, 1, 'CC BY: a credit line on the page'); eq(fig.iconCredits(), 'Icons: ' + one(M4) + ', phylopic.org, CC BY 4.0, adapted', 'the line names the taxon, its creator, the library, the license and "adapted"');
+        { const tip = packTipText(K4); ok(tip && tip.by === M4.by && tip.lic === 'CC BY 4.0', 'the tooltip: ' + J(tip)); }
+        // CC BY 3.0 joins it with its own license
+        fig.add('icon', { kind: K3, x: 650, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(fig.iconCredits(), 'Icons: ' + one(M4) + ', ' + one(M3) + ', phylopic.org, CC BY 4.0 / CC BY 3.0, adapted', 'two icons: each named with its creator, both licenses');
+        const full = fig.iconCredits({ full: true }), esc = s => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        ok(/^PhyloPic \(https:\/\/www\.phylopic\.org\): credit each icon \(CC BY 4\.0 \/ CC BY 3\.0: https:\/\/creativecommons\.org\/licenses\/by\/4\.0\/ \/ https:\/\/creativecommons\.org\/licenses\/by\/3\.0\/\)/.test(full) && new RegExp('Silhouette of ' + esc(M4.title || M4.n) + ' by ' + esc(M4.by) + ', PhyloPic, www\\.phylopic\\.org/images/[0-9a-f-]{36} \\(CC BY 4\\.0, adapted\\)').test(full) && new RegExp(esc(MP.title || MP.n) + '.*\\(Public Domain Mark 1\\.0\\) \\[credit not required\\]').test(full), 'Copy full icon credits: ' + full);
+        // more than three: the line names only PhyloPic, and the creators still need their credit elsewhere
+        fig.add('icon', { kind: K4b, x: 800, y: 200, size: 120 }); fig.add('icon', { kind: E.find(([k, m]) => m.lic === 'CC BY 3.0' && k !== K3)[0], x: 950, y: 200, size: 120 }); await fig.iconsReady(); await settle(); commit(); await settle();
+        eq(fig.iconCredits(), 'Icons: PhyloPic (phylopic.org), CC BY 3.0 / CC BY 4.0 per icon, adapted', 'four icons: the line names only the library');
+        ok(fig.check().some(x => x.level === 'info' && /names only the repository for PhyloPic/.test(x.msg)), 'fig.check says that each creator still needs credit');
+        // a silhouette recolored as a whole: its one color
+        { const e = fig.add('icon', { kind: K0, x: 300, y: 500, size: 120, c1: '#0072b2' }); await settle(); ok(D.querySelector('#content [data-id="' + e + '"] [fill="#0072b2"]'), 'c1 recolors a silhouette');
+          fig.select([e]); await settle(); ok($q('#props .grpbox [aria-label^="Color 1:"]') && !$q('#props .grpbox [aria-label^="Outline"]'), 'a black silhouette: its one group is its color (Color 1), not an outline'); fig.select([]); }
+        const s = await svgString({}); ok(/PhyloPic \(phylopic\.org\)/.test(s), 'SVG: the credit line is exported');
+        return { note: P.count + ' icons; ' + full.split('\n').slice(0, 2).join(' | ') };
+      } finally { blank(); try { if (!was && packImported('phylopic')) await packRemove('phylopic'); else if (was && !packImported('phylopic')) await fig.importIconPack('phylopic', { accept: true }); } catch (e) {} }
+    }, 240000);
+
+    test('icon packs: Servier Medical Art: import, place, recolor with its shades, credit line, exports', async () => {
+      await packInit(); const P = PACKS.by.get('servier'); if (!P) throw new Skip('no Servier Medical Art pack in this copy (icon-expansions/servier)');
+      const was = packImported('servier'); let grpNote = '';
+      try {
+        blank(); if (was) await packRemove('servier');
+        const t0 = performance.now(), r = await fig.importIconPack('servier', { accept: true }), ms = performance.now() - t0; eq(r.count, P.count, 'all its icons are in the library');
+        const keys = PACKS.names.get('servier') || []; eq(keys.length, P.count, 'names of every icon');
+        if (P.bytes > PACK_EAGER) ok(keys.some(k => ICONS[k] && ICONS[k].stub), 'a big pack: the parts not shown yet were not fetched');
+        ok(PALETTE.some(s => s[2] && s[2].pack === 'servier' && /^Servier Medical Art · /.test(s[0])), 'its kits are groups of the Add panel');
+        const k = keys.find(x => ICONS[x] && !ICONS[x].stub && ICONS[x].def && Array.isArray(ICONS[x].def.kt) && ICONS[x].def.kt[0] && ICONS[x].def.kt[0].length >= 2); ok(k, 'an icon drawn in shades of its main color');
+        const def = ICONS[k].def, id = fig.add('icon', { kind: k, x: 400, y: 300, size: 180 }); await fig.iconsReady(); await settle();
+        const L = credLine(); eq(L.length, 1, 'a credit line'); ok(/Servier Medical Art/.test(L[0].text) && /CC BY 4\.0/.test(L[0].text) && /adapted/.test(L[0].text), 'it names Servier Medical Art, the license and that the image was adapted: ' + L[0].text);
+        const html = () => D.querySelector('#content [data-id="' + id + '"]').innerHTML.toLowerCase();
+        ok(def.kt[0].every(c => html().includes('"' + c + '"')), 'drawn in its own shades');
+        fig.update(id, { c1: '#cc2244' }); ok(html().includes('"#cc2244"') && !def.kt[0].some(c => html().includes('"' + c + '"')), 'a new main color recolors its shades too');
+        fig.update(id, { c1: def.c[0] }); ok(def.kt[0].every(c => html().includes('"' + c + '"')), 'its own color draws it as it was');
+        fig.update(id, { c1: '#c24' }); ok(html().includes('"#cc2244"') && !def.kt[0].some(c => html().includes('"' + c + '"')), 'a short hex color tones its shades too'); fig.update(id, { c1: 'red' }); ok(html().includes('"#ff0000"') && !def.kt[0].some(c => html().includes('"' + c + '"')), 'so does a color name'); fig.update(id, { c1: def.c[0] });
+        { const rowOf = t => [...D.querySelectorAll('#props .row')].find(r => (r.querySelector('span') || {}).textContent === t), resetBtn = () => [...D.querySelectorAll('#props .grphead button')].find(b => b.textContent === 'Reset colors');
+          const k1 = keys.find(x => ICONS[x] && !ICONS[x].stub && ICONS[x].def && ICONS[x].def.k.length === 1); ok(k1, 'an icon with one color key');
+          if (k1) { const id1 = fig.add('icon', { kind: k1, x: 600, y: 500, size: 120 }); fig.select([id1]); await settle(); ok(D.querySelector('#props .grpbox') && !rowOf('main color') && !rowOf('accent color'), 'a pack icon: Colors in this icon instead of the main / accent color fields'); ok(resetBtn(), 'with Reset colors');
+            fig.update(id1, { c1: '#22aa44' }); fig.select([id1]); await settle(); resetBtn().click(); eq(fig.get().objects.find(o => o.id === id1).c1, ICONS[k1].c[0], 'Reset colors brings its own color back');
+            const ks = rowOf('kind').querySelector('select'); ks.value = 'cell'; ks.dispatchEvent(new Event('input', { bubbles: true })); ks.dispatchEvent(new Event('change', { bubbles: true })); await settle(); ok(rowOf('accent color') && !D.querySelector('#props .grpbox'), 'switched to a built-in kind: the main and accent color fields come back'); fig.remove(id1); } }
+        // color groups: a shaded drawing grouped fast, recolored by group with its shades, the panel quick with every pack imported
+        { GRP_MEMO.delete(k); const t1 = performance.now(), G = grpOf(k), gms = performance.now() - t1; ok(G && G.groups.length >= 2, 'its color groups: ' + J(G && G.groups.map(g => [g.main, g.kind, g.members.length])));
+          ok(gms < 60, 'grouping one Servier icon took ' + gms.toFixed(1) + ' ms (aim: under 30 ms)'); const big = keys.filter(x => ICONS[x] && !ICONS[x].stub && ICONS[x].def).sort((a, b) => ICONS[b].def.svg.length - ICONS[a].def.svg.length)[0]; GRP_MEMO.delete(big); const t2 = performance.now(); grpOf(big); const bms = performance.now() - t2;
+          const i3 = G.groups.findIndex((g, i) => i >= 2 && g.kind === 'color'); if (i3 > 0) { fig.iconColors(id, { [i3 + 1]: '#2255cc' }); const m = G.groups[i3].members; ok(m.every(c => !html().includes('"' + c + '"') || G.groups.some((g, j) => j !== i3 && g.members.includes(c))), 'a third group recolored with all its shades'); ok(html().includes('"#2255cc"'), 'its main color is the new one'); fig.iconColors(id, null); ok(def.kt[0].every(c => html().includes('"' + c + '"')), 'Reset colors: as made'); }
+          fig.select([]); await settle(); const t3 = performance.now(); fig.select([id]); buildPanel(); const pms = performance.now() - t3; ok(D.querySelector('#props .grpbox'), 'the row'); ok(pms < 400, 'the panel of a Servier icon took ' + pms.toFixed(0) + ' ms');
+          grpNote = `groups ${gms.toFixed(1)} ms (largest drawing ${(ICONS[big].def.svg.length / 1e3).toFixed(0)} kB: ${bms.toFixed(1)} ms), panel ${pms.toFixed(0)} ms`; }
+        { const big = keys.find(x => ICONS[x] && !ICONS[x].stub && ICONS[x].def && ICONS[x].def.svg.length > THUMB_RASTER * 1.5); ok(big, 'a drawing big enough for a picture thumbnail'); if (big) { const ck = 'icon' + JSON.stringify({ kind: big }); thumbCache.delete(ck); thumbOf('icon', { kind: big }); for (let i = 0; i < 50 && !/data:image\/png/.test(thumbCache.get(ck) || ''); i++) await sleep(50); ok(/^<svg viewBox="0 0 96 96"[^>]*><image href="data:image\/png/.test(thumbCache.get(ck) || '') && thumbCache.get(ck).length < 30000, 'a big drawing: its Add-panel thumbnail is a small picture (' + (thumbCache.get(ck) || '').length + ' bytes, the drawing ' + ICONS[big].def.svg.length + ')'); } }
+        const k2 = keys.find(x => ICONS[x] && ICONS[x].stub); if (k2) { const id2 = fig.add('icon', { kind: k2, x: 800, y: 300 }); await fig.iconsReady(); ok(!ICONS[k2].stub && !D.querySelector('#content [data-id="' + id2 + '"] circle[stroke-dasharray]'), 'an icon of a part not fetched yet: the part comes when it is placed'); eq(credLine().length, 1, 'still one line'); }
+        const s = await svgString({}); ok(s.includes('Servier Medical Art') && s.toLowerCase().includes('"' + def.c[0] + '"'), 'SVG: the icon and its credit');
+        let p = null; try { p = await exportPptx(); } catch (e) { if (opts.strict || !OFFLINE.test(e.message)) throw e; }
+        if (p) { const z = await JSZip.loadAsync(p.blob), x = await z.file('ppt/slides/slide1.xml').async('string'); ok(x.includes('Servier Medical Art'), 'PowerPoint: the credit line'); ok(Object.keys(z.files).some(f => /^ppt\/media\//.test(f)), 'PowerPoint: the icon as a picture'); }
+        return { note: P.count + ' icons, import ' + Math.round(ms) + ' ms; ' + grpNote };
+      } finally { blank(); try { if (!was && packImported('servier')) await packRemove('servier'); else if (was && !packImported('servier')) await fig.importIconPack('servier', { accept: true }); } catch (e) {} }
+    }, 240000);
 
     // ---------- crop ----------
     {

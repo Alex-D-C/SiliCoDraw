@@ -43,6 +43,9 @@ them apart.
 SiliCoDraw runs on your own computer and opens in your web browser. It is free, and it does not need
 an account.
 
+**Official downloads come only from [github.com/Alex-D-C/SiliCoDraw](https://github.com/Alex-D-C/SiliCoDraw). We never send
+executables by email or chat; do not run one that claims to be SiliCoDraw.** See [SECURITY.md](SECURITY.md).
+
 ### Mac
 
 **The easy way: one line in Terminal (about one minute).**
@@ -56,8 +59,9 @@ an account.
 
 3. SiliCoDraw is downloaded into a folder called **SiliCoDraw** in your home folder, and the editor
    opens in your browser. That folder is also where your figures are saved.
-4. Leave the Terminal window open while you work (you can minimize it). To quit SiliCoDraw, close it
-   (if macOS asks whether to terminate the running process, click **Terminate**).
+4. Leave the Terminal window open while you work (you can minimize it). To quit SiliCoDraw, choose
+   **File ▾ → Quit SiliCoDraw** in the editor, or close the Terminal window (if macOS asks whether to
+   terminate the running process, click **Terminate**).
 
 **Next time**, start it like any app: press **⌘ Command + Space**, type `SiliCoDraw` and press
 **Return**. You can also double-click **Start SiliCoDraw.command** in the SiliCoDraw folder.
@@ -99,19 +103,27 @@ that block for this folder. If you already double-clicked and saw such a message
    and double-click **Start SiliCoDraw.bat**.
 4. If Windows shows *"Windows protected your PC"*, click **More info**, then **Run anyway**. Windows
    shows this once for files downloaded from the internet.
-5. The editor opens in your browser. Leave the black window open while you work (you can minimize it).
-   To quit SiliCoDraw, close it.
+5. The editor opens as a tab in your browser as soon as SiliCoDraw is ready. Its server runs in a minimized
+   window, **SiliCoDraw server** in the taskbar; leave it running while you work. To quit SiliCoDraw, choose
+   **File ▾ → Quit SiliCoDraw** in the editor (it saves first), or close that window.
 
 Python is not needed on Windows: the start file uses Python if it is installed and Windows' own
 PowerShell otherwise.
 
-A desktop shortcut with the SiliCoDraw icon: right-click **Start SiliCoDraw.bat** → **Send to** → **Desktop (create shortcut)**,
-then right-click the shortcut → **Properties** → **Change Icon…** → **Browse…** and pick `brand\icon.ico` in the SiliCoDraw folder.
+**A Start-menu shortcut with the SiliCoDraw icon:** double-click **Add SiliCoDraw to the Start menu.bat** in the
+SiliCoDraw folder (only for you, no administrator rights needed). It asks once whether you also want one on the
+Desktop. After that, press the Windows key, type `SiliCoDraw` and press Enter. Double-click the same file again to
+update the shortcut or to remove it. If you move the SiliCoDraw folder, start it once from its new place with
+**Start SiliCoDraw.bat**: the shortcut then follows it.
+
+If your workplace PC does not let SiliCoDraw start (IT policy), the start file says so: use
+[silicodraw.com](https://silicodraw.com) in the browser instead.
 
 ### Linux
 
 The Mac line works on Linux too, or download the folder and run `sh start.sh`. It needs Python 3.7 or
-newer (`sudo apt install python3` on Ubuntu).
+newer (`sudo apt install python3` on Ubuntu). On a desktop, `start.sh` also adds **SiliCoDraw** with its icon
+to your applications menu (`~/.local/share/applications/SiliCoDraw.desktop`). File ▾ → Quit SiliCoDraw stops it.
 
 ### Good to know
 
@@ -141,7 +153,9 @@ force it for one visit).
 
 | What you see | What to do |
 |---|---|
-| The page says **Server offline** | The Terminal window (Mac) or black window (Windows) was closed. Start SiliCoDraw again; your work was saved. |
+| The page says **Server offline** | The Terminal window (Mac) or the **SiliCoDraw server** window (Windows) was closed. Start SiliCoDraw again; your work was saved. |
+| The page says **SiliCoDraw has stopped** | Someone chose File ▾ → Quit SiliCoDraw (in this tab or another one). Close the tab. Starting SiliCoDraw again opens the editor in a new tab. |
+| Windows: *"Your IT policy blocks the local SiliCoDraw server"* | The PC only runs approved programs and scripts. Use [silicodraw.com](https://silicodraw.com) instead (in Chrome or Edge it can keep your figures in a folder). |
 | Mac: *"Apple could not verify…"*, *"cannot be opened"* or *"could not be executed because you do not have appropriate access privileges"* | Click **Done** or **OK**, then use Plan B above (steps 2 to 4). |
 | Mac: *"Operation not permitted"* | Click **Allow** when macOS asks about folder access, or move the SiliCoDraw folder into your home folder and start it again. |
 | Mac: Command + Space does not find SiliCoDraw | Start it once with the Terminal line or Plan B; that creates the app. Spotlight can take a minute to find a new app. |
@@ -293,11 +307,15 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   named like an icon the library gets later keeps its drawing (it moves to `lake2` beside the built-in `lake`).
 - **More icons from open repositories**: *Import more icons* at the top of the Add panel lists icon packs converted
   from [SciDraw](https://scidraw.io) (367 icons, CC BY 4.0 or CC0 per drawing), [BioDraws](https://biodraws.com)
-  (162, CC BY-SA 4.0) and [NIH BioArt Source](https://bioart.niaid.nih.gov) (559, public domain). A pack opens with
+  (160, CC BY-SA 4.0), [Servier Medical Art](https://smart.servier.com) (3,193 shaded medical
+  drawings from its PowerPoint kits, CC BY 4.0) and [NIH BioArt Source](https://bioart.niaid.nih.gov) (752, public domain). A pack opens with
   its license and how its makers ask to be credited; you tick a box and import it. Its icons get their own groups, a
   small mark and a tooltip with source, creator and license, are recolorable by **Colors in this icon** (one swatch
-  per group of similar colors, largest first; a new color keeps the shading, *One color* tints the whole drawing), and *Show icons
-  from* picks which sources the Add panel lists. Where a license asks for attribution, SiliCoDraw adds a small
+  per group of similar colors, largest first; a new color keeps the shading, *One color* tints the whole drawing; a drawing its library had in several colors is one icon whose other colors are **colorways**, one click each), and *Show icons
+  from* picks which sources the Add panel lists. With many packs the list has a search (name, subject, license) and
+  chips by field (biology, medicine, ecology, earth and weather, engineering, imported), *Show icons from* folds into
+  one line with *All* and *None*, the Add panel draws its groups as you scroll to them, and a built-in icon that matches
+  as well as a pack's comes first in search (a closer name still wins). Where a license asks for attribution, SiliCoDraw adds a small
   **credit line** to the page when you place such an icon and keeps it up to date (move, edit or delete it; the
   Export dialog reminds you if it is gone, on any slide). With more than three icons that are credited one by one the
   line names only the repository: Page → *Copy full icon credits* gives every creator, DOI and license link as text
@@ -544,7 +562,9 @@ figure.json, *.json  your figures (one file each)
 examples/            example figures: signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow, environmental-microbiology
 docs/                the pictures in this README
 brand/               the app icon: SVG, PNG sizes, icon.ico (Windows), SiliCoDraw.icns (macOS), lockup, social preview
-lib/mathjax/         the formula typesetter (MathJax), so formulas work offline
+lib/                 MathJax (formulas), qrcode-generator (QR codes), PptxGenJS (PowerPoint), so they work offline
+Add SiliCoDraw to the Start menu.bat, shortcut.ps1   Windows: the Start-menu (and Desktop) shortcut
+SECURITY.md          how to report a security problem, and where official downloads come from
 icon-expansions/     icon packs from open repositories, each under its own license (LICENSE.txt and ATTRIBUTION.md per pack)
 tests/               automatic tests (server, installer, and the editor in a headless browser; see tests/README.md)
 history/             automatic snapshots      exports/   PNG, PDF, TIFF, SVG, PPTX      assets/   inserted images + my-icons.json (your own icons) + icon-packs.json (the packs you imported)
@@ -554,9 +574,11 @@ history/             automatic snapshots      exports/   PNG, PDF, TIFF, SVG, PP
 
 The server listens on `localhost` only. `python3 serve.py --host 0.0.0.0` makes it reachable from
 other devices on your network (e.g. a tablet) — there is no password, so do that only on a network
-you trust. Writes (saving figures, exports, file operations) are accepted only from the editor itself and
-from tools on your computer; a web page on another site cannot make your browser write into the figure
-folder, because the server refuses cross-site requests.
+you trust. Writes (saving figures, exports, file operations, Quit) are accepted only from the editor itself
+(the exact address `http://localhost:8770`, this port) and from tools on your computer that send no browser
+origin (scripts, curl, AI assistants); a web page on another site, or on another port of your computer (a dev
+server, another app's local page), cannot make your browser write into the figure folder, because the server
+refuses those requests.
 
 **Look up** in Add citation… is the one place where the editor asks a web service about your content, and only when
 you press it: the DOI, PMID or arXiv id you typed, and nothing else, goes to Crossref, DataCite, PubMed or arXiv.
@@ -574,14 +596,15 @@ they also run on GitHub for every push, in Chrome, Edge, Firefox and Safari.
 ## Acknowledgements
 
 All code, the built-in icons and the example figures in this repository were written for it. Two folders
-hold other people's work: `icon-expansions/` (see "Third-party icon packs" below) and `lib/mathjax/`,
-an unchanged copy of [MathJax](https://www.mathjax.org/) 3.2.2 (Apache 2.0, license in that folder),
-which typesets formulas, so they work without internet (without the folder the editor fetches the
-same version from a CDN). Two more permissively licensed libraries are fetched from a CDN only at the
-moment you use the feature, and are not bundled here:
-[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (MIT, Kazuhiko Arase) for QR
-codes and [PptxGenJS](https://github.com/gitbrent/PptxGenJS) (MIT, Brent Ely) for the PowerPoint
-export. A typeset formula is stored as paths in your figure, so it renders anywhere afterwards.
+hold other people's work: `icon-expansions/` (see "Third-party icon packs" below) and `lib/`, unchanged
+copies of three libraries, each with its license in its folder, so these features work without internet:
+[MathJax](https://www.mathjax.org/) 3.2.2 (Apache 2.0) in `lib/mathjax/`, which typesets formulas,
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) 1.4.4 (MIT, Kazuhiko Arase) in
+`lib/qrcode-generator/` for QR codes, and [PptxGenJS](https://github.com/gitbrent/PptxGenJS) 3.12.0
+(MIT, Brent Ely; it includes JSZip, used under its MIT option, and pako, MIT) in `lib/pptxgenjs/` for the
+PowerPoint export. Without the folder the editor fetches the same versions from a CDN, pinned by their
+hashes (`integrity`), so a changed file there is refused. A typeset formula is stored as paths in your
+figure, so it renders anywhere afterwards.
 
 ## Third-party icon packs
 
@@ -593,11 +616,23 @@ and uses none of them until you import a pack in the Add panel:
 |---|---|---|---|
 | `scidraw/` | [SciDraw](https://scidraw.io), drawings by the authors named per icon | CC BY 4.0 or CC0 1.0, per drawing | authors and DOI per CC BY drawing, SciDraw, the license and "adapted" |
 | `biodraws/` | [BioDraws](https://biodraws.com) | CC BY-SA 4.0 (share-alike) | "Images are obtained from BioDraws.com", with the license and "adapted" |
-| `nih-bioart/` | [NIH BioArt Source](https://bioart.niaid.nih.gov) (NIAID, U.S. National Institutes of Health), the entries it labels "Public Domain" | public domain, under the site's terms | not required; appreciated |
+| `nih-bioart/` | [NIH BioArt Source](https://bioart.niaid.nih.gov) (NIAID, U.S. National Institutes of Health), one icon per drawing of the entries it labels "Public Domain" | public domain, under the site's terms | not required; appreciated |
+| `arcadia/` | [Arcadia Science](https://arcadia-science.github.io/organism-illustration-library/), Free organism illustration library: model and non-model organisms, each as a three-color drawing and as a silhouette | CC0 1.0 | not required; a citation of the library is appreciated |
+| `reactome/` | [Reactome Icon Library](https://reactome.org/icon-lib) (Reactome), drawings by the designers named per icon: cell elements, cell types, human tissues, receptors, transporters | CC BY 4.0 | name and designer per icon, the Reactome Icon Library, the license and "adapted" |
+| `bioicons/` | [Bioicons](https://bioicons.com), a community library, icons by the creators named per icon: lab apparatus, cells, plants, animals, molecular biology, safety pictograms, charts | CC0 1.0, CC BY 4.0, CC BY-SA 4.0 (share-alike) or MIT, per icon | name, creator and license per icon (all but CC0), Bioicons and "adapted" |
+| `phylopic/` | [PhyloPic](https://www.phylopic.org), organism silhouettes across the tree of life (fossils included) by the creators named per image, one per taxon and genus | Public Domain Mark, CC0 1.0, CC BY 3.0 or CC BY 4.0, per icon | taxon, creator and license per CC BY icon, PhyloPic and "adapted"; public domain and CC0 need none |
+| `healthicons/` | [Health Icons](https://healthicons.org) (Resolve to Save Lives and volunteer contributors), flat one-color pictograms for public and global health: body, conditions, devices, diagnostics, people, PPE, specialties, zoonoses | CC0 1.0 | not required |
+| `ocha/` | [OCHA Humanitarian Icons](https://un-ocha.github.io/humanitarian-icons/) (UN Office for the Coordination of Humanitarian Affairs), flat one-color pictograms: natural hazards, health, water and sanitation, food and agriculture, people, shelter, infrastructure, data | public domain (CC0 1.0) | not required; OCHA appreciates a credit where feasible |
+| `electric/` | [Inkscape Electric Symbols](https://github.com/upb-lea/Inkscape_electric_Symbols) (Power Electronics and Electrical Drives group, LEA, Paderborn University), line drawings: IEC and US circuit symbols, semiconductors, sources and meters, converter and control blocks, logic, instruments, energy | public domain (CC0 1.0) | not required |
+| `wmo-weather/` | [WMO WorldWeatherSymbols](https://github.com/OGCMetOceanDWG/WorldWeatherSymbols) (OGC Meteorology and Oceanography Domain Working Group, after the WMO's symbol tables), weather symbols for synoptic charts: present and past weather, clouds and cloud cover, fronts, pressure, wind arrows and swell, state of the ground, aviation significant weather | CC BY 4.0 | one line for the pack: "WorldWeatherSymbols, OGC MetOcean DWG and WMO (github.com/OGCMetOceanDWG/WorldWeatherSymbols), CC BY 4.0, adapted" |
+| `sbol/` | [SBOL Visual](https://github.com/SynBioDex/SBOL-visual) (the SBOL developers), the glyphs of the Synthetic Biology Open Language's visual standard for genetic designs: sequence features (promoter, CDS, RBS, terminator, origins, sites), molecular species and interactions; from its GitHub repository, not from sbolstandard.org | CC0 1.0 (the glyphs; the rest of that repository is CC BY 4.0) | not required |
+| `opencrop/` | [Open Crop Icons](https://github.com/openfarmcc/open-crop-icons) (OpenFarm contributors), flat drawings of cultivated plants, one per crop: grains and field crops, vegetables, peppers and chilies, fruits and nuts, herbs and medicinal plants, mushrooms | public domain (CC0 1.0) | not required; a credit is welcome |
+| `anatomogram/` | [Expression Atlas anatomograms](https://github.com/ebi-gene-expression-group/anatomogram) (EMBL-EBI), body, organ and plant maps whose tissues are separate shapes: human and mouse bodies and brains, the rat, farm and model animals, Arabidopsis, cereal and tomato plants and their flower parts; the tissues filled in one color under the outline | CC BY 4.0 (the outline of the male body: public domain, from Wikimedia Commons) | one line for the pack, citing the article EMBL-EBI asks for: "Anatomograms from Expression Atlas, EMBL-EBI (Expression Atlas in 2026, Nucleic Acids Research, doi:10.1093/nar/gkaf1238), CC BY 4.0, adapted" |
+| `servier/` | [Servier Medical Art](https://smart.servier.com), converted from its PowerPoint kits | CC BY 4.0 | "Images adapted from Servier Medical Art (https://smart.servier.com/), licensed under CC BY 4.0", with the license link |
 
 Each folder has the full license text or terms as retrieved (`LICENSE.txt`) and how its makers ask to be credited, in
 their own words (`ATTRIBUTION.md`, with creator, DOI and page per icon where the repository names them). SiliCoDraw is
-not affiliated with or endorsed by these repositories or by NIH. The repositories' own logos and drawings of
+not affiliated with or endorsed by these repositories or by NIH, Arcadia Science, Servier, Reactome, Resolve to Save Lives, OCHA or the United Nations, Paderborn University, the WMO, ICAO or the OGC, the SBOL developers, OpenFarm, EMBL-EBI, or the creators of Bioicons, PhyloPic, Health Icons and Open Crop Icons. The repositories' own logos and drawings of
 identifiable real people are not in the packs. If you pass SiliCoDraw on, keep these files with the packs. The converter that made them is kept with the project's development files.
 
 ## License

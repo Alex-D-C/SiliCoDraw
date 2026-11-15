@@ -1,0 +1,59 @@
+{
+    "count":  144,
+    "bytes":  2353489,
+    "names":  "names.json",
+    "fields":  ["life", "ecology"],
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-animals.json",
+                       "cat":  "Animals",
+                       "count":  60,
+                       "bytes":  1004716
+                   },
+                   {
+                       "file":  "icons-bacteria-and-viruses.json",
+                       "cat":  "Bacteria and viruses",
+                       "count":  8,
+                       "bytes":  403439
+                   },
+                   {
+                       "file":  "icons-fungi.json",
+                       "cat":  "Fungi",
+                       "count":  18,
+                       "bytes":  496214
+                   },
+                   {
+                       "file":  "icons-plants-and-algae.json",
+                       "cat":  "Plants and algae",
+                       "count":  30,
+                       "bytes":  260166
+                   },
+                   {
+                       "file":  "icons-protists.json",
+                       "cat":  "Protists",
+                       "count":  28,
+                       "bytes":  188954
+                   }
+               ],
+    "id":  "arcadia",
+    "name":  "Arcadia Science",
+    "by":  "Arcadia Science, Free organism illustration library (contributors Audrey Bell, Megan Hochstrasser, Robert Roth and Greg Wright)",
+    "url":  "https://arcadia-science.github.io/organism-illustration-library/",
+    "site":  "arcadia-science.github.io/organism-illustration-library",
+    "mark":  "ARC",
+    "license":  "CC0 1.0",
+    "licenseUrl":  "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attribution":  "none",
+    "shareAlike":  false,
+    "perIcon":  true,
+    "credit":  "Arcadia Science, Free organism illustration library (doi:10.5281/zenodo.18395998), CC0",
+    "plain":  "Creative Commons Zero 1.0 (CC0): Arcadia Science gave up its copyright in these illustrations, so you may use, change and share them for any purpose, also commercially, without asking and without giving credit. Ten of the drawings were adapted by Arcadia Science from PhyloPic silhouettes that are public domain or CC0 there; their tooltips and credits name the PhyloPic uploader, as the library does.",
+    "ask":  "All images are released under CC0, which has no usage restrictions. That said, feel free to cite the associated pub, \"A free, open-access library of high-quality organism illustrations for science communication,\" to help others find this resource.",
+    "askFrom":  "https://zenodo.org/records/18395998",
+    "how":  "No credit is required. A citation is appreciated: Bell A, Hochstrasser ML, Roth R, Wright G (2025). A free, open-access library of high-quality organism illustrations for science communication. The Stacks. doi:10.57844/arcadia-4gbv-pzkv. SiliCoDraw adds no credit line for these icons by itself; Page → Copy full icon credits lists each icon with the library\u0027s DOI.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format: each organism as its three-color drawing and as its silhouette (the library\u0027s PNG pictures and animations are not included), fitted into a 100 × 100 box, style sheets written out as attributes, a small soft shadow drawn with an embedded picture removed from the mouse (it barely shows), coordinates rounded, and the two main colors made recolorable. Each icon was drawn and compared with the original on a white and on a dark page.",
+    "each":  "{n} by {by}. Free organism illustration library, version 1.2. https://doi.org/{doi}",
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14"
+}

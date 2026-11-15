@@ -239,7 +239,9 @@ try {
   foreach ($r in $new) { Write-Host "  new      $r" }
   if ($changed.Count) { Write-Host "The previous versions are kept in updates\$bname\" }
   Write-Host 'Your figures, history, exports and assets were not touched.'
-  Write-Host 'If SiliCoDraw is open: close the server window, start it again and reload the browser page.'
+  Write-Host 'If SiliCoDraw is open: choose File > Quit SiliCoDraw in the editor (or close the server window), start it again and reload the browser page.'
+  # a Start-menu / Desktop shortcut made by "Add SiliCoDraw to the Start menu.bat": pointed at this folder again when the one it named is gone, current icon; none is made here
+  $scp = Join-Path $root 'shortcut.ps1'; if (Test-Path -LiteralPath $scp) { try { & powershell -NoProfile -ExecutionPolicy Bypass -File $scp -Update } catch {} }
   if ($skipped) { Write-Host "($skipped file(s) in the download were skipped because they would overwrite your data.)" }
   try {   # keep the newest software backups (by date written, not by name); never the one just made
     Get-ChildItem -LiteralPath $upd -Directory -Filter 'backup-*' | Where-Object { $_.Name -ne $bname } | Sort-Object LastWriteTime -Descending |

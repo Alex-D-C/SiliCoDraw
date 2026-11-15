@@ -1,0 +1,93 @@
+{
+    "count":  645,
+    "bytes":  9729666,
+    "names":  "names.json",
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-cell-elements.json",
+                       "cat":  "Cell elements",
+                       "count":  146,
+                       "bytes":  2633229
+                   },
+                   {
+                       "file":  "icons-cell-elements-2.json",
+                       "cat":  "Cell elements",
+                       "count":  13,
+                       "bytes":  79389
+                   },
+                   {
+                       "file":  "icons-cell-types.json",
+                       "cat":  "Cell types",
+                       "count":  91,
+                       "bytes":  2568357
+                   },
+                   {
+                       "file":  "icons-cell-types-2.json",
+                       "cat":  "Cell types",
+                       "count":  11,
+                       "bytes":  185753
+                   },
+                   {
+                       "file":  "icons-compounds.json",
+                       "cat":  "Compounds",
+                       "count":  30,
+                       "bytes":  52119
+                   },
+                   {
+                       "file":  "icons-human-tissues.json",
+                       "cat":  "Human tissues",
+                       "count":  65,
+                       "bytes":  2422795
+                   },
+                   {
+                       "file":  "icons-proteins.json",
+                       "cat":  "Proteins",
+                       "count":  137,
+                       "bytes":  979863
+                   },
+                   {
+                       "file":  "icons-receptors.json",
+                       "cat":  "Receptors",
+                       "count":  135,
+                       "bytes":  698825
+                   },
+                   {
+                       "file":  "icons-transporters.json",
+                       "cat":  "Transporters",
+                       "count":  17,
+                       "bytes":  109336
+                   }
+               ],
+    "id":  "reactome",
+    "name":  "Reactome Icon Library",
+    "by":  "Reactome, the open-source, curated pathway knowledgebase; every icon names its designer and the Reactome curator who checked it",
+    "url":  "https://reactome.org/icon-lib",
+    "site":  "reactome.org/icon-lib",
+    "mark":  "RCT",
+    "license":  "CC BY 4.0",
+    "fields":  [
+                   "life"
+               ],
+    "licenseUrl":  "https://creativecommons.org/licenses/by/4.0/",
+    "attribution":  "required",
+    "shareAlike":  false,
+    "perIcon":  true,
+    "credit":  "Reactome Icon Library (reactome.org/icon-lib), CC BY 4.0, adapted",
+    "plain":  "Creative Commons Attribution 4.0 (CC BY 4.0): you may use, change and share these icons, also commercially, as long as you give appropriate credit, link to the license and say that you changed them. Reactome\u0027s license agreement puts its Icon Library under this license; the GitHub repository the icons were taken from also carries an Apache License 2.0 file. This pack is not endorsed by Reactome.",
+    "ask":  "User may copy, modify, and distribute these materials, provided that appropriate credit is given, a link to the license is included, and any modifications made by User are clearly indicated.",
+    "askFrom":  "https://reactome.org/license",
+    "how":  "Credit every icon you use with its name and designer, name the Reactome Icon Library and the license with its link, and say that it was adapted, for example: Neuron by Sam Norwitz, reactome.org/icon-lib, CC BY 4.0, adapted. SiliCoDraw writes this line on the page for you and keeps it up to date. With more than three such icons the line names only the Reactome Icon Library: then paste Copy full icon credits into the figure legend or the acknowledgments.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format: fitted into a 100 × 100 box, ids renamed, coordinates rounded, and the two main colors made recolorable where the drawing has flat colors (every icon can be recolored by its color groups). Left out: the library\u0027s arrows and pathway background pictures, its label badges (proteins, compounds and drugs drawn as a pill, hexagon or tag with the name written in as outlines: SiliCoDraw makes such labels as real text), and drawings that are only other colors of one another (sugar symbols drawn alike, genes drawn as one DNA strand with a colored band, the members of a transporter or receptor family drawn alike, plain shaded spheres); the names of those still find the drawing kept. A drawing whose color or detail tells what it is (a sugar such as lyxose or fructose, a nucleotide, a damaged base, a T cell subtype, a vesicle type) is an icon of its own. Each icon was drawn and compared with the original on a white and on a dark page.",
+    "each":  "{n} by {by}. Reactome Icon Library, CC BY 4.0. {page}",
+    "exclude":  [
+                    "clr-012574",
+                    "lat-013585",
+                    "5mc-dna-014521",
+                    "shr-013354",
+                    "panx1-heptamer-014619",
+                    "scavenger-receptor-class-g-013342"
+                ],
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14"
+}

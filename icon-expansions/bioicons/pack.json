@@ -1,0 +1,271 @@
+{
+    "count":  454,
+    "bytes":  13006216,
+    "names":  "names.json",
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-animals.json",
+                       "cat":  "Animals",
+                       "count":  25,
+                       "bytes":  329309
+                   },
+                   {
+                       "file":  "icons-blood-and-immunology.json",
+                       "cat":  "Blood and immunology",
+                       "count":  13,
+                       "bytes":  137461
+                   },
+                   {
+                       "file":  "icons-cell-culture.json",
+                       "cat":  "Cell culture",
+                       "count":  26,
+                       "bytes":  379255
+                   },
+                   {
+                       "file":  "icons-cell-membrane.json",
+                       "cat":  "Cell membrane",
+                       "count":  9,
+                       "bytes":  1015591
+                   },
+                   {
+                       "file":  "icons-cell-types.json",
+                       "cat":  "Cell types",
+                       "count":  24,
+                       "bytes":  589563
+                   },
+                   {
+                       "file":  "icons-chemistry.json",
+                       "cat":  "Chemistry",
+                       "count":  10,
+                       "bytes":  63148
+                   },
+                   {
+                       "file":  "icons-chemo-and-bioinformatics.json",
+                       "cat":  "Chemo- and bioinformatics",
+                       "count":  1,
+                       "bytes":  5582
+                   },
+                   {
+                       "file":  "icons-computer-hardware.json",
+                       "cat":  "Computer hardware",
+                       "count":  5,
+                       "bytes":  128647
+                   },
+                   {
+                       "file":  "icons-epigenetics.json",
+                       "cat":  "Epigenetics",
+                       "count":  2,
+                       "bytes":  17587
+                   },
+                   {
+                       "file":  "icons-extracellular-matrix.json",
+                       "cat":  "Extracellular matrix",
+                       "count":  2,
+                       "bytes":  26212
+                   },
+                   {
+                       "file":  "icons-general-items.json",
+                       "cat":  "General items",
+                       "count":  11,
+                       "bytes":  122785
+                   },
+                   {
+                       "file":  "icons-genetics.json",
+                       "cat":  "Genetics",
+                       "count":  20,
+                       "bytes":  238963
+                   },
+                   {
+                       "file":  "icons-genomics.json",
+                       "cat":  "Genomics",
+                       "count":  4,
+                       "bytes":  52716
+                   },
+                   {
+                       "file":  "icons-human-physiology.json",
+                       "cat":  "Human physiology",
+                       "count":  18,
+                       "bytes":  789750
+                   },
+                   {
+                       "file":  "icons-imaging.json",
+                       "cat":  "Imaging",
+                       "count":  9,
+                       "bytes":  17945
+                   },
+                   {
+                       "file":  "icons-intracellular-components.json",
+                       "cat":  "Intracellular components",
+                       "count":  19,
+                       "bytes":  253232
+                   },
+                   {
+                       "file":  "icons-lab-apparatus.json",
+                       "cat":  "Lab apparatus",
+                       "count":  49,
+                       "bytes":  1258987
+                   },
+                   {
+                       "file":  "icons-machine-learning.json",
+                       "cat":  "Machine Learning",
+                       "count":  16,
+                       "bytes":  176004
+                   },
+                   {
+                       "file":  "icons-microbiology.json",
+                       "cat":  "Microbiology",
+                       "count":  22,
+                       "bytes":  597470
+                   },
+                   {
+                       "file":  "icons-molecular-biology.json",
+                       "cat":  "Molecular Biology",
+                       "count":  1,
+                       "bytes":  3018
+                   },
+                   {
+                       "file":  "icons-molecular-modeling.json",
+                       "cat":  "Molecular modeling",
+                       "count":  9,
+                       "bytes":  97592
+                   },
+                   {
+                       "file":  "icons-nanotechnology.json",
+                       "cat":  "Nanotechnology",
+                       "count":  1,
+                       "bytes":  4710
+                   },
+                   {
+                       "file":  "icons-neuroscience.json",
+                       "cat":  "Neuroscience",
+                       "count":  1,
+                       "bytes":  11783
+                   },
+                   {
+                       "file":  "icons-nucleic-acids.json",
+                       "cat":  "Nucleic acids",
+                       "count":  26,
+                       "bytes":  332165
+                   },
+                   {
+                       "file":  "icons-oncology.json",
+                       "cat":  "Oncology",
+                       "count":  5,
+                       "bytes":  51576
+                   },
+                   {
+                       "file":  "icons-parasites.json",
+                       "cat":  "Parasites",
+                       "count":  2,
+                       "bytes":  30711
+                   },
+                   {
+                       "file":  "icons-people-other.json",
+                       "cat":  "People-Other",
+                       "count":  1,
+                       "bytes":  25868
+                   },
+                   {
+                       "file":  "icons-plants-and-algae.json",
+                       "cat":  "Plants and algae",
+                       "count":  39,
+                       "bytes":  2135132
+                   },
+                   {
+                       "file":  "icons-receptors-and-channels.json",
+                       "cat":  "Receptors and channels",
+                       "count":  8,
+                       "bytes":  56527
+                   },
+                   {
+                       "file":  "icons-safety-symbols.json",
+                       "cat":  "Safety symbols",
+                       "count":  23,
+                       "bytes":  126033
+                   },
+                   {
+                       "file":  "icons-scientific-graphs.json",
+                       "cat":  "Scientific graphs",
+                       "count":  30,
+                       "bytes":  2570866
+                   },
+                   {
+                       "file":  "icons-scientific-graphs-2.json",
+                       "cat":  "Scientific graphs",
+                       "count":  15,
+                       "bytes":  909237
+                   },
+                   {
+                       "file":  "icons-tissues.json",
+                       "cat":  "Tissues",
+                       "count":  3,
+                       "bytes":  30019
+                   },
+                   {
+                       "file":  "icons-viruses.json",
+                       "cat":  "Viruses",
+                       "count":  5,
+                       "bytes":  420772
+                   }
+               ],
+    "id":  "bioicons",
+    "name":  "Bioicons",
+    "by":  "Bioicons, a free community library of scientific icons curated by Simon Dürr; every icon names its creator and its license",
+    "url":  "https://bioicons.com",
+    "site":  "bioicons.com",
+    "mark":  "BI",
+    "license":  "CC0 / CC BY 4.0 / CC BY-SA 4.0 / MIT, per icon",
+    "fields":  [
+                   "life",
+                   "medicine"
+               ],
+    "licenseUrl":  "https://github.com/duerrsimon/bioicons/tree/main/static/icons",
+    "attribution":  "mixed",
+    "mixedShare":  "about two in five of them: those under CC BY 4.0, CC BY-SA 4.0 or MIT",
+    "shareAlike":  true,
+    "perIcon":  true,
+    "credit":  "Bioicons (bioicons.com), CC BY 4.0 / CC BY-SA 4.0 / MIT per icon, adapted",
+    "plain":  "Each icon is under the license its creator chose, as the folder Bioicons files it in says: CC0 (public domain: no credit needed), Creative Commons Attribution 4.0 (CC BY 4.0: you may use, change and share it, also commercially, as long as you credit the creator, link to the license and say that you changed it), Attribution-ShareAlike 4.0 (CC BY-SA 4.0: the same, and what you make from the icon must be shared under the same license) or MIT (use it freely, keeping the creator\u0027s copyright and license notice). An icon\u0027s tooltip names its creator and license. This pack is not endorsed by Bioicons or by the creators.",
+    "ask":  "Please always cite the individual icons and their respective license. Credit to the platform itself is appreciated but not necessary.",
+    "askFrom":  "https://github.com/duerrsimon/bioicons/blob/main/README.md",
+    "how":  "Credit every icon under CC BY 4.0, CC BY-SA 4.0 or MIT with its name, its creator and its license, and say that it was adapted, for example: Neutrophil by Helicase 11, bioicons.com, CC BY 4.0, adapted. SiliCoDraw writes this line on the page for you and keeps it up to date. With more than three such icons the line names only Bioicons: then paste Copy full icon credits into the figure legend or the acknowledgments. Icons under CC0 need no credit.",
+    "shareAlikeText":  "Some icons of this pack (26 of them; their tooltip says CC BY-SA 4.0) are share-alike. Their license says that when you share adapted material you produce, “The Adapter\u0027s License You apply must be a Creative Commons license with the same License Elements, this version or later, or a BY-SA Compatible License” (section 3(b)). A changed icon must therefore stay under CC BY-SA, and this can extend to a figure you build with it. Many journals publish under other licenses: check your journal\u0027s terms before you use these icons in a paper. The other icons of this pack are not share-alike.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format: fitted into a 100 × 100 box, style sheets written out as attributes, small text labels, metadata and editor data removed, embedded pictures that barely show removed, the white page of drawings traced from a picture removed, coordinates rounded, and the two main colors made recolorable (every icon can be recolored by its color groups). Each icon was drawn and compared with the original on a white and on a dark page. Icons that are only another color of a kept one are left out; their names still find it.",
+    "each":  "{n} by {by}, Bioicons, {page}",
+    "exclude":  [
+                    "nvidia-gpu",
+                    "camera",
+                    "cytoflex",
+                    "agilent-hplc",
+                    "aekta-pure",
+                    "tecan-plate-reader",
+                    "pacbiosequencer",
+                    "nmr-spectrometer-2",
+                    "mosquito-gender",
+                    "image",
+                    "blosum62",
+                    "smith-waterman-matrix",
+                    "onehotencoding",
+                    "human-heart",
+                    "mhc2",
+                    "coulomb",
+                    "autoencoder",
+                    "tomato-auxin-developing",
+                    "dinosaur-text",
+                    "5-formylcytosine",
+                    "5-methylcytosine",
+                    "cytosine",
+                    "thymine",
+                    "uracil",
+                    "alpaca",
+                    "beakers",
+                    "u-tube",
+                    "plant-intercellular-communication",
+                    "gut-bacteria-fang-fangyang",
+                    "12-wp-plaque",
+                    "shark"
+                ],
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14"
+}

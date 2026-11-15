@@ -1,80 +1,80 @@
 {
-    "bytes":  1985855,
+    "bytes":  1957224,
     "chunks":  [
                    {
-                       "bytes":  342475,
+                       "file":  "icons-cell-culture.json",
                        "cat":  "Cell culture",
-                       "count":  19,
-                       "file":  "icons-cell-culture.json"
+                       "count":  18,
+                       "bytes":  316318
                    },
                    {
-                       "bytes":  94479,
+                       "file":  "icons-cells.json",
                        "cat":  "Cells",
                        "count":  14,
-                       "file":  "icons-cells.json"
+                       "bytes":  94479
                    },
                    {
-                       "bytes":  215766,
+                       "file":  "icons-dna.json",
                        "cat":  "DNA",
                        "count":  14,
-                       "file":  "icons-dna.json"
+                       "bytes":  215839
                    },
                    {
-                       "bytes":  71056,
+                       "file":  "icons-embryology.json",
                        "cat":  "Embryology",
                        "count":  11,
-                       "file":  "icons-embryology.json"
+                       "bytes":  71056
                    },
                    {
-                       "bytes":  11162,
+                       "file":  "icons-enzyme.json",
                        "cat":  "Enzyme",
                        "count":  4,
-                       "file":  "icons-enzyme.json"
+                       "bytes":  11162
                    },
                    {
-                       "bytes":  208822,
+                       "file":  "icons-eye.json",
                        "cat":  "Eye",
                        "count":  13,
-                       "file":  "icons-eye.json"
+                       "bytes":  208822
                    },
                    {
-                       "bytes":  144098,
+                       "file":  "icons-immunology.json",
                        "cat":  "Immunology",
                        "count":  22,
-                       "file":  "icons-immunology.json"
+                       "bytes":  144098
                    },
                    {
-                       "bytes":  115182,
+                       "file":  "icons-membrane-protein.json",
                        "cat":  "Membrane protein",
                        "count":  10,
-                       "file":  "icons-membrane-protein.json"
+                       "bytes":  115182
                    },
                    {
-                       "bytes":  514627,
+                       "file":  "icons-nervous-system.json",
                        "cat":  "Nervous system",
                        "count":  29,
-                       "file":  "icons-nervous-system.json"
+                       "bytes":  514627
                    },
                    {
-                       "bytes":  29057,
+                       "file":  "icons-other.json",
                        "cat":  "Other",
-                       "count":  5,
-                       "file":  "icons-other.json"
+                       "count":  4,
+                       "bytes":  26510
                    },
                    {
-                       "bytes":  193027,
+                       "file":  "icons-protein-structure.json",
                        "cat":  "Protein Structure",
                        "count":  12,
-                       "file":  "icons-protein-structure.json"
+                       "bytes":  193027
                    },
                    {
-                       "bytes":  46104,
+                       "file":  "icons-transporter.json",
                        "cat":  "Transporter",
                        "count":  9,
-                       "file":  "icons-transporter.json"
+                       "bytes":  46104
                    }
                ],
-    "count":  162,
+    "count":  160,
     "names":  "names.json",
     "preview":  "preview.json",
     "id":  "biodraws",
@@ -84,6 +84,10 @@
     "site":  "biodraws.com",
     "mark":  "BD",
     "license":  "CC BY-SA 4.0",
+    "fields":  [
+                   "life",
+                   "medicine"
+               ],
     "licenseUrl":  "https://creativecommons.org/licenses/by-sa/4.0/",
     "attribution":  "required",
     "shareAlike":  true,

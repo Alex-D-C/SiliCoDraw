@@ -1,0 +1,160 @@
+{
+    "count":  3178,
+    "bytes":  23777521,
+    "names":  "names.json",
+    "fields":  ["life", "ecology"],
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-amphibians.json",
+                       "cat":  "Amphibians",
+                       "count":  100,
+                       "bytes":  701910
+                   },
+                   {
+                       "file":  "icons-arachnids.json",
+                       "cat":  "Arachnids",
+                       "count":  94,
+                       "bytes":  1170391
+                   },
+                   {
+                       "file":  "icons-bacteria.json",
+                       "cat":  "Bacteria",
+                       "count":  77,
+                       "bytes":  457687
+                   },
+                   {
+                       "file":  "icons-birds.json",
+                       "cat":  "Birds",
+                       "count":  297,
+                       "bytes":  1401149
+                   },
+                   {
+                       "file":  "icons-dinosaurs-and-pterosaurs.json",
+                       "cat":  "Dinosaurs and pterosaurs",
+                       "count":  196,
+                       "bytes":  1389666
+                   },
+                   {
+                       "file":  "icons-fishes.json",
+                       "cat":  "Fishes",
+                       "count":  349,
+                       "bytes":  1273034
+                   },
+                   {
+                       "file":  "icons-fungi.json",
+                       "cat":  "Fungi",
+                       "count":  85,
+                       "bytes":  1018739
+                   },
+                   {
+                       "file":  "icons-insects.json",
+                       "cat":  "Insects",
+                       "count":  251,
+                       "bytes":  2522467
+                   },
+                   {
+                       "file":  "icons-insects-2.json",
+                       "cat":  "Insects",
+                       "count":  85,
+                       "bytes":  906050
+                   },
+                   {
+                       "file":  "icons-mammals.json",
+                       "cat":  "Mammals",
+                       "count":  413,
+                       "bytes":  2547180
+                   },
+                   {
+                       "file":  "icons-mammals-2.json",
+                       "cat":  "Mammals",
+                       "count":  33,
+                       "bytes":  164555
+                   },
+                   {
+                       "file":  "icons-mollusks.json",
+                       "cat":  "Mollusks",
+                       "count":  147,
+                       "bytes":  677365
+                   },
+                   {
+                       "file":  "icons-other-animals.json",
+                       "cat":  "Other animals",
+                       "count":  235,
+                       "bytes":  1891678
+                   },
+                   {
+                       "file":  "icons-other-arthropods.json",
+                       "cat":  "Other arthropods",
+                       "count":  116,
+                       "bytes":  1273518
+                   },
+                   {
+                       "file":  "icons-other-organisms.json",
+                       "cat":  "Other organisms",
+                       "count":  46,
+                       "bytes":  231923
+                   },
+                   {
+                       "file":  "icons-other-tetrapods.json",
+                       "cat":  "Other tetrapods",
+                       "count":  49,
+                       "bytes":  274983
+                   },
+                   {
+                       "file":  "icons-plants-and-algae.json",
+                       "cat":  "Plants and algae",
+                       "count":  200,
+                       "bytes":  2510705
+                   },
+                   {
+                       "file":  "icons-plants-and-algae-2.json",
+                       "cat":  "Plants and algae",
+                       "count":  36,
+                       "bytes":  580647
+                   },
+                   {
+                       "file":  "icons-protists.json",
+                       "cat":  "Protists",
+                       "count":  132,
+                       "bytes":  1121722
+                   },
+                   {
+                       "file":  "icons-reptiles.json",
+                       "cat":  "Reptiles",
+                       "count":  219,
+                       "bytes":  1448237
+                   },
+                   {
+                       "file":  "icons-viruses.json",
+                       "cat":  "Viruses",
+                       "count":  18,
+                       "bytes":  213915
+                   }
+               ],
+    "id":  "phylopic",
+    "name":  "PhyloPic",
+    "by":  "PhyloPic, a free database of organism silhouettes created by T. Michael Keesey, with images uploaded by many contributors; every silhouette names its creator and its license",
+    "url":  "https://www.phylopic.org",
+    "site":  "phylopic.org",
+    "mark":  "PP",
+    "license":  "Public domain / CC0 / CC BY 3.0 / CC BY 4.0, per icon",
+    "licenseUrl":  "https://www.phylopic.org/articles/image-usage",
+    "attribution":  "mixed",
+    "mixedShare":  "about one in five of them: those under CC BY 3.0 or CC BY 4.0",
+    "shareAlike":  false,
+    "perIcon":  true,
+    "credit":  "PhyloPic (phylopic.org), CC BY 3.0 / CC BY 4.0 per icon, adapted",
+    "plain":  "Each silhouette is under the license its uploader chose on PhyloPic, as the image\u0027s own record states: the Public Domain Mark or CC0 (public domain: use it anywhere, in any way, without credit) or Creative Commons Attribution 3.0 or 4.0 (CC BY: you may use, change and share it, also commercially, as long as you credit its creator, link to the license and say that you changed it). Silhouettes under NonCommercial or ShareAlike licenses are not in this pack. An icon\u0027s tooltip names its creator and license. This pack is not endorsed by PhyloPic or by the creators.",
+    "ask":  "Images under a Creative Commons Attribution Deed (CC-BY 3.0 or CC-BY 4.0) must be credited to the creator(s). The attribution text can be found on Image Pages. You must also provide a link to the license. And, if you have made any significant changes to the images, you must indicate what they are. Attributing images to PhyloPic is never required. (But mentioning the site is always appreciated!)",
+    "askFrom":  "https://www.phylopic.org/articles/image-usage",
+    "how":  "Credit every silhouette under CC BY 3.0 or CC BY 4.0 with its taxon, its creator as PhyloPic names it and its license, and say that it was adapted, for example: Colinus virginianus by Edwin Price, phylopic.org, CC BY 4.0, adapted. SiliCoDraw writes this line on the page for you and keeps it up to date. With more than three such icons the line names only PhyloPic: then paste Copy full icon credits (each creator, image page and license with its link) into the figure legend or the acknowledgments. Silhouettes in the public domain or under CC0 need no credit; mentioning PhyloPic is appreciated.",
+    "changes":  "Converted from PhyloPic\u0027s vector files (vector.svg: PhyloPic\u0027s own vector version of each silhouette, pure black) to SiliCoDraw\u0027s icon format: fitted into a 100 × 100 box, metadata removed, coordinates rounded, and the color made recolorable. Each icon was drawn and compared with the original on a white and on a dark page. A selection: one silhouette per taxon and one per genus, spread over the tree of life (model organisms first), without human figures. Each icon is named by its taxon as PhyloPic names it, which the credits print; the common names PhyloPic lists for the taxon (in many languages) are search words.",
+    "each":  "Silhouette of {n} by {by}, PhyloPic, {page}",
+    "exclude":  [
+                    "amurosaurus-riabinini-77875bce",
+                    "bactrosaurus-johnsoni-770003e8"
+                ],
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14"
+}

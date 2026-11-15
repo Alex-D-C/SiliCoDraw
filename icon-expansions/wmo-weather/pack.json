@@ -1,0 +1,93 @@
+{
+    "count":  355,
+    "bytes":  454914,
+    "names":  "names.json",
+    "fields":  ["earth"],
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-aviation-significant-weather.json",
+                       "cat":  "Aviation significant weather",
+                       "count":  14,
+                       "bytes":  15199
+                   },
+                   {
+                       "file":  "icons-clouds.json",
+                       "cat":  "Clouds",
+                       "count":  50,
+                       "bytes":  57627
+                   },
+                   {
+                       "file":  "icons-fronts.json",
+                       "cat":  "Fronts",
+                       "count":  17,
+                       "bytes":  29136
+                   },
+                   {
+                       "file":  "icons-past-weather.json",
+                       "cat":  "Past weather",
+                       "count":  5,
+                       "bytes":  5738
+                   },
+                   {
+                       "file":  "icons-present-weather.json",
+                       "cat":  "Present weather",
+                       "count":  111,
+                       "bytes":  137881
+                   },
+                   {
+                       "file":  "icons-present-weather-additional.json",
+                       "cat":  "Present weather, additional",
+                       "count":  40,
+                       "bytes":  54070
+                   },
+                   {
+                       "file":  "icons-present-weather-automatic-station.json",
+                       "cat":  "Present weather, automatic station",
+                       "count":  31,
+                       "bytes":  42744
+                   },
+                   {
+                       "file":  "icons-pressure.json",
+                       "cat":  "Pressure",
+                       "count":  12,
+                       "bytes":  14797
+                   },
+                   {
+                       "file":  "icons-state-of-the-ground.json",
+                       "cat":  "State of the ground",
+                       "count":  19,
+                       "bytes":  27331
+                   },
+                   {
+                       "file":  "icons-wind-and-swell.json",
+                       "cat":  "Wind and swell",
+                       "count":  56,
+                       "bytes":  70391
+                   }
+               ],
+    "id":  "wmo-weather",
+    "name":  "WMO WorldWeatherSymbols",
+    "by":  "the OGC Meteorology and Oceanography Domain Working Group (OGC MetOcean DWG), whose WorldWeatherSymbols draw the international weather symbols of the World Meteorological Organization (WMO) with full metadata",
+    "url":  "https://github.com/OGCMetOceanDWG/WorldWeatherSymbols",
+    "site":  "github.com/OGCMetOceanDWG/WorldWeatherSymbols",
+    "mark":  "WWS",
+    "license":  "CC BY 4.0",
+    "licenseUrl":  "https://creativecommons.org/licenses/by/4.0/",
+    "attribution":  "required",
+    "shareAlike":  false,
+    "perIcon":  false,
+    "credit":  "WorldWeatherSymbols, OGC MetOcean DWG and WMO (github.com/OGCMetOceanDWG/WorldWeatherSymbols), CC BY 4.0, adapted",
+    "plain":  "Creative Commons Attribution 4.0 (CC BY 4.0): you may use, change and share these symbols, also commercially, as long as you give credit, link to the license and say that you changed them. The repository\u0027s LICENSE.md releases it under CC BY 4.0, and every symbol\u0027s own metadata links CC BY 4.0 as its license (its rights field still names CC BY 3.0, from before the maintainers moved every file to 4.0 in 2022; both are attribution licenses). The symbols follow WMO-No. 485 and, for aviation, WMO-No. 49; this pack is not endorsed by the WMO, ICAO or the OGC.",
+    "ask":  "Copyright (C) 2013-2021 OGC Meteorology and Oceanography Domain Working Group. This website is released under the Creative Commons Attribution 4.0 International (CC BY 4.0) license.",
+    "askFrom":  "https://github.com/OGCMetOceanDWG/WorldWeatherSymbols/blob/master/LICENSE.md",
+    "how":  "The repository gives no wording of its own. Put this line in the figure legend or on the figure: WorldWeatherSymbols, OGC MetOcean DWG and WMO (github.com/OGCMetOceanDWG/WorldWeatherSymbols), CC BY 4.0, adapted. SiliCoDraw writes this line on the page for you.",
+    "changes":  "Converted from SVG to SiliCoDraw\u0027s icon format: each symbol fitted into a 100 × 100 box by what it draws (so the symbols no longer share one scale), repeated parts and arrowheads written out as shapes, styles written out as attributes, metadata removed, coordinates rounded, and the color made recolorable. Each symbol was drawn and compared with the original on a white and on a dark page. A symbol drawn the same in several code tables (or as good as the same: a plain circle, the same glyph drawn a second time with a hair of difference) is in the pack once, under its first code (the other codes are search words). Stray dots left by the drawing program were taken out, and a symbol that runs off its own page (the automatic station triangle, the tropical cyclones) is shown whole. Names are the WMO code and its description, shortened, footnotes taken off and a few typos corrected; the ICAO symbols, which have no description, are named from their file names. Left out: the Southern Hemisphere wind arrows and tropical cyclones (mirror images of the Northern ones: flip the icon), the symbols whose meaning is a digit written as text, plain lines, and two files that draw nothing as published.",
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14",
+    "exclude":  [
+                    "e-9",
+                    "tropical-cyclone-shge",
+                    "tropical-cyclone-shlt"
+                ]
+}

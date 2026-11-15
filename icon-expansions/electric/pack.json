@@ -1,0 +1,92 @@
+{
+    "count":  204,
+    "bytes":  477593,
+    "names":  "names.json",
+    "fields":  ["engineering"],
+    "preview":  "preview.json",
+    "chunks":  [
+                   {
+                       "file":  "icons-connectors-and-ground.json",
+                       "cat":  "Connectors and ground",
+                       "count":  17,
+                       "bytes":  20639
+                   },
+                   {
+                       "file":  "icons-control-blocks.json",
+                       "cat":  "Control blocks",
+                       "count":  30,
+                       "bytes":  74291
+                   },
+                   {
+                       "file":  "icons-devices-and-instruments.json",
+                       "cat":  "Devices and instruments",
+                       "count":  26,
+                       "bytes":  97721
+                   },
+                   {
+                       "file":  "icons-energy-and-buildings.json",
+                       "cat":  "Energy and buildings",
+                       "count":  10,
+                       "bytes":  32052
+                   },
+                   {
+                       "file":  "icons-logic.json",
+                       "cat":  "Logic",
+                       "count":  19,
+                       "bytes":  45971
+                   },
+                   {
+                       "file":  "icons-passive-components.json",
+                       "cat":  "Passive components",
+                       "count":  16,
+                       "bytes":  27377
+                   },
+                   {
+                       "file":  "icons-power-conversion-and-machines.json",
+                       "cat":  "Power conversion and machines",
+                       "count":  25,
+                       "bytes":  61414
+                   },
+                   {
+                       "file":  "icons-semiconductors.json",
+                       "cat":  "Semiconductors",
+                       "count":  33,
+                       "bytes":  62502
+                   },
+                   {
+                       "file":  "icons-signals-and-magnetics.json",
+                       "cat":  "Signals and magnetics",
+                       "count":  11,
+                       "bytes":  32746
+                   },
+                   {
+                       "file":  "icons-sources-and-meters.json",
+                       "cat":  "Sources and meters",
+                       "count":  11,
+                       "bytes":  13943
+                   },
+                   {
+                       "file":  "icons-switches-and-protection.json",
+                       "cat":  "Switches and protection",
+                       "count":  6,
+                       "bytes":  8937
+                   }
+               ],
+    "id":  "electric",
+    "name":  "Inkscape Electric Symbols",
+    "by":  "the Power Electronics and Electrical Drives group (LEA) of Paderborn University, which publishes them as its Inkscape Electric Symbols library",
+    "url":  "https://github.com/upb-lea/Inkscape_electric_Symbols",
+    "site":  "github.com/upb-lea/Inkscape_electric_Symbols",
+    "mark":  "LEA",
+    "license":  "CC0 1.0",
+    "licenseUrl":  "https://creativecommons.org/publicdomain/zero/1.0/",
+    "attribution":  "none",
+    "shareAlike":  false,
+    "perIcon":  false,
+    "credit":  "Inkscape Electric Symbols, Paderborn University LEA (github.com/upb-lea/Inkscape_electric_Symbols), CC0 1.0",
+    "plain":  "Public domain, dedicated under Creative Commons Zero 1.0 (CC0): you may copy, change and share these symbols for any purpose, also commercially, without asking and without giving credit. The repository\u0027s LICENSE is the CC0 1.0 legal code, and the symbol sheet\u0027s own metadata names CC0 1.0. This pack is not endorsed by Paderborn University or its LEA group.",
+    "how":  "No credit is required, and SiliCoDraw adds no credit line for these symbols. The repository asks for none; if you want to mention the library, Page → Copy full icon credits gives a line for it.",
+    "changes":  "Taken out of the repository\u0027s one SVG sheet (Inkscape_Symbols_All.svg) one drawing at a time and converted to SiliCoDraw\u0027s icon format: arrowheads (SVG markers) drawn as shapes of their own, the letters and signs inside a symbol (V, A, M, G, +, −, \u0026, ≥1, abc/dq, LUT, MUX and the like) set as outlines in MathJax\u0027s sans-serif face instead of the sheet\u0027s live text, the placeholder ratio of the transformers (n:1) left out, fitted into a 100 × 100 box, coordinates rounded and the colors made recolorable (the line color is Color 1). Each icon was drawn and compared with what it was converted from on a white and on a dark page. Names and groups are SiliCoDraw\u0027s, based on the titles the sheet gives its symbols. Left out: symbols the sheet has again in another size, turned or drawn a second time, plain symbols framed as blocks, a USB plug that carries the USB trident logo, and the sheet\u0027s example circuits, labels and instructions.",
+    "retrieved":  "2026-11-14",
+    "version":  "2026-11-14"
+}

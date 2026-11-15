@@ -15,12 +15,15 @@ What it does:
   * api/files, api/history?file=..., api/rename, api/move, api/delete   for the editor's File menu
   * api/storage: the figures folder (figures, archive/, trash/, history/, assets/, exports/), this folder by default, or any other
     folder such as one synced by Dropbox, OneDrive, Google Drive, iCloud Drive or Box; the program itself stays here
+  * api/quit (POST): stops the server (File -> Quit SiliCoDraw in the editor)
+  * writes (every POST) are accepted only from the editor's own page (Origin = this server's exact address and port) or from
+    a tool that sends no Origin (curl, scripts, the tests); never from another site or another port of this computer
 No dependencies beyond the Python 3 standard library.
 """
 import sys
 if sys.version_info < (3, 7):
     sys.exit('SiliCoDraw needs Python 3.7 or newer (this is %d.%d). Get it from https://www.python.org/downloads/' % sys.version_info[:2])
-import argparse, glob, hashlib, json, os, re, shutil, subprocess, threading, time, urllib.parse, urllib.request, webbrowser
+import argparse, glob, hashlib, json, os, re, shutil, socket, subprocess, threading, time, urllib.parse, urllib.request, webbrowser
 from datetime import datetime
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
@@ -36,6 +39,7 @@ TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript', '.css': 
          '.ico': 'image/x-icon', '.icns': 'image/icns'}   # the app icons in brand/
 SNAPSHOT_EVERY = 300   # seconds
 ANY_HOST = False       # True when started with --host other than 127.0.0.1 (reachable from the network on purpose)
+PORT = 8770            # this server's port: a write's Origin must name it (see Handler._origin_ok)
 KEEP_SNAPSHOTS = 60
 SAVE_LOCK = threading.Lock()   # a version check and the write after it are one step (requests run in threads)
 CONFIG = os.path.join(ROOT, '.silicodraw-folder')   # the figures folder chosen in the editor (one line); never replaced by the updater
@@ -69,6 +73,52 @@ def icloud_away(full):
 def locate(path):
     """Where a path of the address lives: a figure and its data in the figures folder, everything else with the program."""
     return DATA if NAME_RE.match(path) or path.split('/', 1)[0] in DATA_DIRS else ROOT
+
+
+# Files of the figures folder (figures, archive/, trash/, history/, assets/, exports/) are the user's data, not the program: a picture
+# that came in with a .zip or through a sync folder may be an SVG or HTML with a script, and opened as a page it would run as the
+# editor's own origin (and pass the write rule). They are served sandboxed (no scripts, a unique origin), never sniffed; a PDF is
+# left out of the sandbox (browsers refuse to show a PDF in one) and runs no page script anyway. <img> / <image> use is unaffected.
+# The same headers as serve.ps1 ($userCsp).
+USER_CSP = "sandbox; default-src 'none'; img-src data: 'self'; style-src 'unsafe-inline'; font-src data:"
+
+
+def host_name_ok(name):
+    """With --host: the names a page on the network may address this server by. An IP address (v4, or v6 in brackets),
+    localhost, or this computer's own name (also with .local or its full domain name); any other name is a site that pointed
+    its own domain name at this computer (DNS rebinding) and is refused, so it can neither read nor write figures."""
+    n = name.lower().rstrip('.') if name else ''
+    if not n:
+        return False
+    if re.match(r'^\d{1,3}(\.\d{1,3}){3}$', n) or re.match(r'^\[[0-9a-f:.]+(%[\w.\-]+)?\]$', n):
+        return True
+    if n == 'localhost' or n.endswith('.localhost'):
+        return True
+    if not OWN_NAMES:   # worked out once (getfqdn may ask the DNS)
+        own = set()
+        try:
+            own.add(socket.gethostname().lower())
+            own.add(socket.getfqdn().lower())
+        except OSError:
+            pass
+        own |= {o.split('.')[0] for o in own if o}
+        own |= {o + '.local' for o in list(own) if o and '.' not in o}
+        OWN_NAMES.update(o for o in own if o)
+        OWN_NAMES.add('')
+    return n in OWN_NAMES
+
+
+OWN_NAMES = set()   # (host_name_ok)
+
+
+def user_file_headers(path, full):
+    """The headers of a file served from the figures folder (see USER_CSP); {} for the program's own files."""
+    if not (NAME_RE.match(path) or path.split('/', 1)[0] in DATA_DIRS):
+        return {}
+    h = {'X-Content-Type-Options': 'nosniff'}
+    if os.path.splitext(full)[1].lower() != '.pdf':
+        h['Content-Security-Policy'] = USER_CSP
+    return h
 
 
 def cloud_folders():
@@ -262,13 +312,36 @@ class Handler(BaseHTTPRequestHandler):
     def _body(self):
         return self.rfile.read(int(self.headers.get('Content-Length') or 0))
 
+    def _refuse(self):   # PUT, DELETE, OPTIONS...: nothing is changed in any other way (as serve.ps1)
+        self._send(405, b'method not allowed')
+
+    do_PUT = do_DELETE = do_PATCH = do_OPTIONS = _refuse
+
+    def _origin_ok(self):
+        """Writes are accepted from the editor's own page and from local tools, never from another web page (the same rule as
+        serve.ps1): a browser names the page that sends a request in Origin, and it must be this server's exact address: http,
+        this computer's name (with --host: an IP address or its own name, host_name_ok) and this port (a page on another port of this computer, such as a dev server
+        or another app, is another site's page, though the browser calls it "same-site"); Sec-Fetch-Site, when sent, must say
+        same-origin. A request with neither header comes from a tool (curl, a script, an agent, the tests): accepted as before."""
+        origin, site = self.headers.get('Origin') or '', (self.headers.get('Sec-Fetch-Site') or '').lower()   # (without regard to case, as serve.ps1's -notcontains)
+        host = (self.headers.get('Host') or '').strip()
+        if site and site not in ('same-origin', 'none'):
+            return False
+        if not origin:
+            return True
+        name = host.split(']')[0] + ']' if host.startswith('[') else host.rsplit(':', 1)[0]
+        port = host[len(name) + 1:] if host[len(name):len(name) + 1] == ':' else ('80' if host else '')
+        own = (host_name_ok(name) if ANY_HOST else name.lower() in ('localhost', '127.0.0.1', '[::1]')) and port == str(PORT)
+        return own and origin.lower() == 'http://' + host.lower()
+
     def _host_ok(self):
         """Only requests addressed to this computer by name: a page on another site that points its own domain name at
-        127.0.0.1 (DNS rebinding) sends its own name in Host and is refused, so it can neither read nor write figures."""
-        if ANY_HOST:
-            return True
+        127.0.0.1 (DNS rebinding) sends its own name in Host and is refused, so it can neither read nor write figures.
+        With --host (reachable from the network): an IP address, localhost or this computer's own name (see host_name_ok)."""
         h = (self.headers.get('Host') or '').strip().lower()
         name = h.split(']')[0] + ']' if h.startswith('[') else h.rsplit(':', 1)[0]
+        if ANY_HOST:
+            return name == '' or host_name_ok(name)
         return name in ('', 'localhost', '127.0.0.1', '[::1]')
 
     # --- GET: editor, figure files, api ---
@@ -301,14 +374,15 @@ class Handler(BaseHTTPRequestHandler):
                 with open(full, 'rb') as f:
                     data = f.read()
             ctype = TYPES.get(os.path.splitext(full)[1].lower(), 'application/octet-stream')
+            hdrs = user_file_headers(path, full)
             if NAME_RE.match(path):   # a figure: its version (see etag)
                 tag = etag(data)
+                hdrs['ETag'] = tag
                 # the editor's poll sends the version it has (If-None-Match): unchanged = 304 without the file (as serve.ps1)
                 seen = [re.sub(r'^W/', '', t.strip()) for t in (self.headers.get('If-None-Match') or '').split(',') if t.strip()]
                 if tag in seen or '*' in seen:
-                    return self._send(304, b'', ctype, {'ETag': tag})
-                return self._send(200, data, ctype, {'ETag': tag})
-            return self._send(200, data, ctype)
+                    return self._send(304, b'', ctype, hdrs)
+            return self._send(200, data, ctype, hdrs)
         if NAME_RE.match(path) and icloud_away(full):
             return self._send(503, 'iCloud Drive is bringing this figure to this Mac.'.encode('utf-8'))
         # a figure not in a chosen folder: the editor does not put this browser's copy there by itself
@@ -320,12 +394,13 @@ class Handler(BaseHTTPRequestHandler):
         if not self._host_ok():
             return self._send(403, b'forbidden: unknown host name')
         path, q = self._parts()
-        # writes are accepted from the editor (same origin) and from local tools, never from a web page on another
-        # site: a browser marks such a request with Sec-Fetch-Site: cross-site and an Origin that is not this server
-        origin, site, host = self.headers.get('Origin') or '', self.headers.get('Sec-Fetch-Site') or '', self.headers.get('Host') or ''
-        local = re.match(r'^https?://(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$', origin) or origin == 'http://' + host
-        if site == 'cross-site' or (origin and not local):
-            return self._send(403, b'forbidden: writes from another site are not accepted')
+        if not self._origin_ok():   # (see _origin_ok)
+            return self._send(403, b'forbidden: writes from another page are not accepted')
+        if path == 'api/quit':   # File > Quit SiliCoDraw: the editor saved first; answered, then the server stops (never on its own: no idle timeout)
+            self._send(204)
+            self.wfile.flush()
+            threading.Thread(target=self.server.shutdown, daemon=True).start()   # shutdown() waits for serve_forever, so not from this request's own thread
+            return
         if data_gone() and is_data_request(path, q):
             return self._send(503, 'The figures folder cannot be reached.'.encode('utf-8'))
         if path == 'api/move':   # between active (root), archive/ and trash/
@@ -362,6 +437,8 @@ class Handler(BaseHTTPRequestHandler):
             if ANY_HOST or DATA_FIXED:
                 return self._send(403, b'not changed from here')
             # only the editor's own page: another page on this computer (any localhost port) could send every figure to a folder of its choice
+            # (checked above for every write by _origin_ok: the exact origin; kept here word for word as in serve.ps1)
+            origin, site, host = self.headers.get('Origin') or '', (self.headers.get('Sec-Fetch-Site') or '').lower(), self.headers.get('Host') or ''
             if (origin and origin != 'http://' + host) or site not in ('', 'same-origin', 'none'):
                 return self._send(403, b'forbidden: only the editor can do this')
             want = q.get('dir', [''])[0].strip().strip('"')
@@ -429,8 +506,9 @@ def main():
     ap.add_argument('--no-browser', action='store_true', help='do not open the editor in a browser')
     ap.add_argument('--data', default='', help='keep the figures in this folder for this run (default: the one chosen in the editor, else this folder)')
     a = ap.parse_args()
-    global ANY_HOST, DATA, DATA_FIXED
+    global ANY_HOST, DATA, DATA_FIXED, PORT
     ANY_HOST = a.host not in ('127.0.0.1', 'localhost', '::1')
+    PORT = a.port
     if a.data:
         os.makedirs(a.data, exist_ok=True)
         DATA, DATA_FIXED = os.path.realpath(a.data), True
@@ -460,11 +538,13 @@ def main():
               f'\n  python3 serve.py --port {a.port + 1}')
         sys.exit(1)
     print(f'SiliCoDraw is running at {url}\n'
-          'Leave this window open while you work (you can minimize it). To quit SiliCoDraw, close this window.', flush=True)
+          'Leave this window open while you work (you can minimize it). To quit SiliCoDraw: File > Quit SiliCoDraw in the editor, or close this window.', flush=True)
     if not a.no_browser:
         threading.Timer(0.8, lambda: webbrowser.open(url)).start()
     try:
-        srv.serve_forever()
+        srv.serve_forever()   # until File > Quit SiliCoDraw (api/quit) or Ctrl+C
+        srv.server_close()
+        print('SiliCoDraw has stopped (File > Quit SiliCoDraw).', flush=True)
     except KeyboardInterrupt:
         pass
 
