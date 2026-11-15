@@ -42,7 +42,7 @@ NOTICE = """
     2. Copy your figures (the .json files in this folder, and the assets folder)
        to a separate place, such as another folder or a USB stick.
   The updater also puts a copy of your figures in the "updates" folder first.
-  Afterwards, please tell us whether it worked:
+  Afterwards, please tell me whether it worked:
     %s
 """ % ISSUES
 
@@ -442,7 +442,7 @@ def main():
     asked = False
     if st.get('result') not in ('cancelled', 'checked', 'not started', 'already up to date', None):
         url = report_url(st)
-        say('\nPlease tell us how the update went, even if it worked (needs a free GitHub account):')
+        say('\nPlease tell me how the update went, even if it worked (needs a free GitHub account):')
         say('  ' + url)
         if interactive():
             asked = True

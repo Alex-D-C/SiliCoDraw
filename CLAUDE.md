@@ -71,7 +71,7 @@ figure directly, without Home: use it** (tests and assistants do; `?home=0` on t
 | `exports/` | PNG / PDF / TIFF / SVG / PPTX exports written by the editor |
 | `assets/` | images the user inserted (referenced as `assets/<file>` from the figure), the user's own icons (`my-icons.json`) and which icon packs were imported (`icon-packs.json`) |
 | `icon-expansions/` | icon packs converted from open repositories (`scidraw/`, `biodraws/`, `nih-bioart/`, `arcadia/`, `reactome/`, `bioicons/`, `phylopic/`, `healthicons/`, `ocha/`, `electric/`, `wmo-weather/`, `sbol/`, `opencrop/`, `anatomogram/`, `servier/`), each under its own license, with `index.json`; see "Icon expansions" |
-| `examples/` | example figures to copy from (signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow, environmental-microbiology); they appear in File ▾ → New figure; `api/files?scope=examples` lists them |
+| `examples/` | example figures to copy from (signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow, environmental-microbiology, one-health: built only from icons of eight imported packs, which it embeds with their credits, so it opens without importing them); they appear in File ▾ → New figure; `api/files?scope=examples` lists them |
 | `notices/` | the notice board on Home: `notices.json` (tips and what is new) and the small pictures it names; software, replaced by updates (see "Home") |
 | `lib/` | unchanged third-party libraries, each with its license in its folder, loaded first so these features work without internet: `lib/mathjax/` MathJax 3.2.2 (Apache 2.0, formulas), `lib/qrcode-generator/` qrcode-generator 1.4.4 (MIT, QR codes), `lib/pptxgenjs/` PptxGenJS 3.12.0 (MIT; bundles JSZip, MIT option, and pako, MIT; PowerPoint export). Without a copy the editor loads the same version from its CDN pinned by `integrity` (SHA-384 of the same bytes: `LIB_QR`, `LIB_PPTX`, `MJ_SRI`; `libLoad()`); a new version means a new copy here and new hashes there (see each folder's `README.txt`) |
 | `Add SiliCoDraw to the Start menu.bat` / `shortcut.ps1` | Windows: the per-user Start-menu (and Desktop) shortcut, see "Start it" |
@@ -831,7 +831,7 @@ column of sections and a main area. It opens with the house button or the logo a
   `iconBody`). `picture` = a path inside `notices/` or `brand/` (svg, png, jpg, webp, gif) or an inline `<svg>` that
   `svgScrub` leaves unchanged and that refers to nothing; it is drawn as an `<img>` (a picture that does not load shows
   the glyph). `action` = one name of `NB_ACTS`: `cite`, `anims` (the animation sidebar), `iconPacks` (Import more icons),
-  `envmicro` (that icon group in the Add panel), `newFigure`, `newPresentation`, `import`, `templates`, `prefs`
+  `envmicro` (that icon group in the Add panel), `addPanel` (the Add panel), `newFigure`, `newPresentation`, `import`, `templates`, `prefs`
   (Appearance), `whatsnew`, `help:home` / `help:present` / `help:anim` / `help:crop` / `help:cite` / `help:colors` (Help scrolled to that
   row, `helpRow`); a feature of the editor closes Home first. Anything else in the file (unknown fields, actions, code,
   addresses, pictures from elsewhere) is dropped (`nbClean`); a news item without an action opens What's new at it. To

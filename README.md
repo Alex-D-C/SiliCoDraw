@@ -7,7 +7,11 @@ diagrams, workflow figures, timelines, teaching material. One HTML file plus a t
 figures are plain JSON files in this folder, so an AI coding assistant can draw and revise them with
 you, and you can drag things around by hand. Nothing leaves your computer.
 
-![SiliCoDraw: icon library on the left, the figure in the middle, properties on the right](docs/editor.jpg)
+About 1,600 icons are built in, and about 10,700 more come from 15 open libraries (Servier Medical Art,
+PhyloPic, NIH BioArt Source, Reactome, Health Icons, Bioicons, SciDraw and others) that you import with
+one click; for those that ask to be credited, SiliCoDraw writes the credit line on the page.
+
+![SiliCoDraw: the Add panel on the left with the library switcher and the Cells category of all imported libraries, the signaling example in the middle with its membrane selected, the membrane's properties on the right](docs/editor.jpg)
 
 ## What you can make
 
@@ -29,11 +33,12 @@ you, and you can drag things around by hand. Nothing leaves your computer.
 <td><img src="docs/example-workflow.png" alt="A three-step workflow figure with numbered panels and arrows"><br><sub><b>Workflow figures</b>: numbered panels, library icons and arrows, made from the built-in parts in a few minutes (`examples/workflow.json`).</sub></td>
 </tr>
 <tr>
-<td colspan="2" align="center"><img src="docs/example-environmental-microbiology.png" width="50%" alt="A four-panel graphical abstract on methane in a peat bog: sampling, community, process, finding"><br><sub><b>Graphical abstracts for environmental microbiology</b>: habitats, microbes, element cycles and field methods from the icon library, with a chart from typed values (`examples/environmental-microbiology.json`).</sub></td>
+<td><img src="docs/example-environmental-microbiology.png" alt="A four-panel graphical abstract on methane in a peat bog: sampling, community, process, finding"><br><sub><b>Graphical abstracts for environmental microbiology</b>: habitats, microbes, element cycles and field methods from the icon library, with a chart from typed values (`examples/environmental-microbiology.json`).</sub></td>
+<td><img src="docs/example-one-health.png" alt="A four-panel One Health figure on Nipah virus: fruit bat reservoir, spillover through date palm sap and pigs, disease in brain and lungs, surveillance and care"><br><sub><b>Icons from eight open libraries in one figure</b>: PhyloPic, NIH BioArt, Arcadia, Servier Medical Art, Reactome, Health Icons, Bioicons and OCHA, with the credit line SiliCoDraw wrote at the bottom (`examples/one-health.json`).</sub></td>
 </tr>
 </table>
 
-![72 of the ~1600 icons](docs/example-icons.png)
+![72 of the ~1,600 built-in icons](docs/example-icons.png)
 
 All of these are in `examples/` and open from **File ▾ → New figure → Example: …**, so you can take
 them apart.
@@ -43,7 +48,7 @@ them apart.
 SiliCoDraw runs on your own computer and opens in your web browser. It is free, and it does not need
 an account.
 
-**Official downloads come only from [github.com/Alex-D-C/SiliCoDraw](https://github.com/Alex-D-C/SiliCoDraw). We never send
+**Official downloads come only from [github.com/Alex-D-C/SiliCoDraw](https://github.com/Alex-D-C/SiliCoDraw). I never send
 executables by email or chat; do not run one that claims to be SiliCoDraw.** See [SECURITY.md](SECURITY.md).
 
 ### Mac
@@ -117,7 +122,7 @@ update the shortcut or to remove it. If you move the SiliCoDraw folder, start it
 **Start SiliCoDraw.bat**: the shortcut then follows it.
 
 If your workplace PC does not let SiliCoDraw start (IT policy), the start file says so: use
-[silicodraw.com](https://silicodraw.com) in the browser instead.
+[silicodraw.com](https://silicodraw.com) in the browser instead (once opened there, the editor also works offline).
 
 ### Linux
 
@@ -228,7 +233,7 @@ format, every element type and the review loop.
 
 ## Features
 
-**A library that covers most fields.** About 1600 flat, recolorable icons in 25 groups: cells &
+**A library that covers most fields.** About 1,600 flat, recolorable built-in icons in 25 groups (and many more to import, below): cells &
 tissues (organelles, cell types, bacteria, viruses, cell processes such as phagocytosis, endocytosis,
 differentiation, migration, angiogenesis and metastasis, the cell cycle and spindle), molecules &
 genetics (receptors, kinases, DNA replication, repair and transcription factors, CRISPR, RNAi,
@@ -249,7 +254,7 @@ agriculture, environmental microbiology (microbes and their communities, habitat
 hot spring, the nitrogen, sulfur, phosphorus and iron cycles, wastewater treatment, corers, filters,
 microcosms, 16S amplicons and metagenomes), society & economics (scientist, doctor, family, poster, peer review, open access…),
 food, sport & nutrition, history & humanities, symbols. Every icon has a main and an accent color you
-can change. Search all ~1700 items by name or keyword (British or American spelling, plurals, common
+can change. Search all items (about 1,700 built in, over 12,000 with every library imported) by name or keyword (British or American spelling, plurals, common
 synonyms and abbreviations such as *cardiac* or *ab*, and small typos all find it), jump to a group with the
 chips, collapse groups, star favorites, and the things you used recently stay at the top. Missing something? Ask your assistant to draw it;
 an icon is ten lines of SVG and `AGENTS.md` explains the format.
@@ -305,17 +310,25 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   panel) and choose *Save as icon…*; the elements stay in the figure as they are. Your icons are kept in
   `assets/my-icons.json`, which updates never touch, and are embedded in the figures that use them. An own icon
   named like an icon the library gets later keeps its drawing (it moves to `lake2` beside the built-in `lake`).
-- **More icons from open repositories**: *Import more icons* at the top of the Add panel lists icon packs converted
-  from [SciDraw](https://scidraw.io) (367 icons, CC BY 4.0 or CC0 per drawing), [BioDraws](https://biodraws.com)
-  (160, CC BY-SA 4.0), [Servier Medical Art](https://smart.servier.com) (3,193 shaded medical
-  drawings from its PowerPoint kits, CC BY 4.0) and [NIH BioArt Source](https://bioart.niaid.nih.gov) (752, public domain). A pack opens with
-  its license and how its makers ask to be credited; you tick a box and import it. Its icons get their own groups, a
-  small mark and a tooltip with source, creator and license, are recolorable by **Colors in this icon** (one swatch
-  per group of similar colors, largest first; a new color keeps the shading, *One color* tints the whole drawing; a drawing its library had in several colors is one icon whose other colors are **colorways**, one click each), and *Show icons
-  from* picks which sources the Add panel lists. With many packs the list has a search (name, subject, license) and
-  chips by field (biology, medicine, ecology, earth and weather, engineering, imported), *Show icons from* folds into
-  one line with *All* and *None*, the Add panel draws its groups as you scroll to them, and a built-in icon that matches
-  as well as a pack's comes first in search (a closer name still wins). Where a license asks for attribution, SiliCoDraw adds a small
+- **More icons from open libraries**: *Import more icons* at the top of the Add panel lists 15 icon packs, about
+  10,700 icons converted from open repositories: Servier Medical Art (3,193 shaded medical drawings), PhyloPic (3,178
+  organism silhouettes), NIH BioArt Source (752), Reactome (645), Health Icons (640), Bioicons (454), SciDraw (367),
+  WMO weather symbols (355), OCHA humanitarian icons (283), Open Crop Icons (221), electric circuit symbols (204),
+  BioDraws (160), Arcadia Science's organisms (144), SBOL Visual glyphs for genetic designs (63) and Expression Atlas
+  anatomograms (28). Their licenses and how each wants to be credited are in
+  [Third-party icon packs](#third-party-icon-packs). The list has a search (name, subject, license) and chips by field
+  (biology, medicine, ecology, earth, engineering, imported). A pack opens with its license and how its makers ask to be
+  credited; you tick a box and import it. A **library switcher** under the search then shows every library at once or
+  one of them (SiliCoDraw's own icons, My icons, or a pack). With all libraries shown, the chips are shared categories
+  (Cells, Molecules, Anatomy, Medicine, Lab, Microbes, Animals, Plants, Immunology…) that gather the matching groups
+  of every library, so a yeast is under Microbes whichever library drew it; inside one library they are its own groups.
+  Search ranks the icons of every library together, with the ten best in a *Most relevant* block (a built-in icon that
+  matches as well as a pack's comes first; a closer name still wins), and *Show icons from* hides the libraries you do
+  not want listed. Pack icons carry a small mark and a tooltip with source, creator and license, and are recolorable by
+  **Colors in this icon** (one swatch per group of similar colors, largest first; a new color keeps the shading, *One
+  color* tints the whole drawing; a drawing its library had in several colors is one icon whose other colors are
+  **colorways**, one click each). A figure carries the drawings it uses, so it opens anywhere, also where the pack
+  was never imported. Where a license asks for attribution, SiliCoDraw adds a small
   **credit line** to the page when you place such an icon and keeps it up to date (move, edit or delete it; the
   Export dialog reminds you if it is gone, on any slide). With more than three icons that are credited one by one the
   line names only the repository: Page → *Copy full icon credits* gives every creator, DOI and license link as text
@@ -389,8 +402,8 @@ with a slide per figure.
 
 ## Working in the editor
 
-- **Add** panel: type to search all items, or pick a group with the chips at the top; click a group
-  title to collapse it; items you used recently and favorites (☆ on an item, or F) stay at the top. Click
+- **Add** panel: type to search all items, or pick a group with the chips at the top (with icon packs imported:
+  a library with the switcher under the search, and a category with the chips); click a group title to collapse it; items you used recently and favorites (☆ on an item, or F) stay at the top. Click
   or drag items onto the page, or press ↓ in the search field, walk the results with the arrow keys and
   press Enter (Shift+Enter also moves to the new element's fields).
   Drop or paste image files to insert them. A picture is never stretched: width and height set a frame
@@ -559,13 +572,13 @@ install.sh           the one-line installer for macOS and Linux
 Start SiliCoDraw.bat / .command, start.sh, Update SiliCoDraw.bat / .command, update.sh   launchers
 updates/             figure backups and previous software versions made by the updater
 figure.json, *.json  your figures (one file each)
-examples/            example figures: signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow, environmental-microbiology
+examples/            example figures: signalling, immunology, chemistry, pathway, gantt, maths, data, icons, icon-library, workflow, environmental-microbiology, one-health
 docs/                the pictures in this README
 brand/               the app icon: SVG, PNG sizes, icon.ico (Windows), SiliCoDraw.icns (macOS), lockup, social preview
 lib/                 MathJax (formulas), qrcode-generator (QR codes), PptxGenJS (PowerPoint), so they work offline
 Add SiliCoDraw to the Start menu.bat, shortcut.ps1   Windows: the Start-menu (and Desktop) shortcut
 SECURITY.md          how to report a security problem, and where official downloads come from
-icon-expansions/     icon packs from open repositories, each under its own license (LICENSE.txt and ATTRIBUTION.md per pack)
+icon-expansions/     15 icon packs from open repositories (about 10,700 icons: servier, phylopic, nih-bioart, reactome, healthicons, bioicons, scidraw, wmo-weather, ocha, opencrop, electric, biodraws, arcadia, sbol, anatomogram), each under its own license (LICENSE.txt and ATTRIBUTION.md per pack)
 tests/               automatic tests (server, installer, and the editor in a headless browser; see tests/README.md)
 history/             automatic snapshots      exports/   PNG, PDF, TIFF, SVG, PPTX      assets/   inserted images + my-icons.json (your own icons) + icon-packs.json (the packs you imported)
 ```

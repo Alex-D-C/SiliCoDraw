@@ -39,7 +39,7 @@ $notice = @"
     2. Copy your figures (the .json files in this folder, and the assets folder)
        to a separate place, such as another folder or a USB stick.
   The updater also puts a copy of your figures in the "updates" folder first.
-  Afterwards, please tell us whether it worked:
+  Afterwards, please tell me whether it worked:
     $issues
 "@
 Add-Type -AssemblyName System.IO.Compression
@@ -268,7 +268,7 @@ try {
 $asked = $false
 if (@('cancelled', 'checked', 'not started', 'already up to date') -notcontains $st.result -and $st.result) {
   $report = Get-ReportUrl $st
-  Write-Host "`nPlease tell us how the update went, even if it worked (needs a free GitHub account):"
+  Write-Host "`nPlease tell me how the update went, even if it worked (needs a free GitHub account):"
   Write-Host "  $report"
   if (Test-Interactive) {
     $asked = $true

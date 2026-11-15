@@ -6,9 +6,9 @@ SiliCoDraw is published **only** at [github.com/Alex-D-C/SiliCoDraw](https://git
 (the source, the ZIP behind the green **Code** button, the one-line installer `install.sh` and the updater
 `update.ps1` / `update.py`, which fetch from there) and runs as a website at [silicodraw.com](https://silicodraw.com).
 
-**We never send executables (.exe, .msi, .dmg, .app, installers or ZIPs of them) by email or chat**, and there
+**I never send executables (.exe, .msi, .dmg, .app, installers or ZIPs of them) by email or chat**, and there
 is no SiliCoDraw desktop app to download. If someone sends you a program that claims to be SiliCoDraw, or a
-"desktop version" of it, do not open it; please tell us (see below). SiliCoDraw itself is plain text you can
+"desktop version" of it, do not open it; please tell me (see below). SiliCoDraw itself is plain text you can
 read: an HTML file, two small servers (`serve.py`, `serve.ps1`), start scripts, and libraries in `lib/` with
 their licenses.
 
@@ -18,13 +18,13 @@ If you find a security problem (for example a way for a web page or a crafted fi
 or a problem in the updater or installer), please report it privately, not in a public issue:
 
 - Preferred: GitHub's private vulnerability reporting, the **Report a vulnerability** button under the repository's
-  [Security tab](https://github.com/Alex-D-C/SiliCoDraw/security). Only the maintainer sees the report.
+  [Security tab](https://github.com/Alex-D-C/SiliCoDraw/security). Only I see the report.
 - If that button is not there: open an issue that says only "security report, please contact me" (no details), and
-  the maintainer will reply with a private way to send them.
+  I will reply with a private way to send them.
 
 Please include what you did, what happened, and the version (the date in `updates/installed.txt`, or the commit).
-You will get an answer as soon as the maintainer can; this is a one-person project, so please allow a few days.
-Please give us a reasonable time to fix the problem before you publish it.
+You will get an answer as soon as I can; this is a one-person project, so please allow a few days.
+Please give me a reasonable time to fix the problem before you publish it.
 
 ## What SiliCoDraw does to stay safe
 
