@@ -235,6 +235,174 @@
       ok((fut.raw || []).slice(-1).every(v => v && typeof v === 'object'), 'redo steps are packed too');
       for (let i = 1; i < st.length; i++) { redo(); await settle(); eq(J(scene), st[i], 'redo to step ' + i); }
     });
+    test('performance II: undo steps keep embedded icons once, the color list, undo on another slide, file edits counted, checks of every slide', async () => {
+      // a step packs the embedded icon definitions one by one and shares a header the same as the step before (each step held the whole of scene.icons: 723 KB for one-health.json)
+      const H0 = hist.length, big =n => '<path d="' + Array.from({ length: 4000 },(_, i) => 'M' + (i % 80 - 40) + ' ' + n + 'h1').join('') + '" fill="#123456"/>';
+      const ic = { 'zz:a': { n: 'A', t: '', svg: big(1), k: [], c: ['#123456', '#123456'] }, 'zz:b': { n: 'B "quoted" \\', t: '', svg: big(2), k: [], c: ['#123456', '#123456'] } };
+      const fig1 = { version: 4, w: 800, h: 600, bg: '#ffffff', icons: ic, objects: [{ id: 'a1', type: 'text', x: 10, y: 20, text: 'one' }, { id: 'a2', type: 'shape', kind: 'rect', x: 100, y: 100, w: 40, h: 40 }] };
+      const s1 = J(fig1), s2 = J({ ...fig1, objects: [{ ...fig1.objects[0], x: 11 }, fig1.objects[1]] }), s3 = J({ ...fig1, icons: { ...ic, 'zz:c': { n: 'C', t: '', svg: '<rect/>', k: [], c: [] } } });
+      const d1 = J({ version: 4, w: 800, h: 600, icons: ic, slides: [{ id: 's1', objects: fig1.objects }, { id: 's2', name: 'Two', objects: [{ id: 'a1', type: 'text', x: 5, y: 5, text: 'x' }] }] }), d2 = d1.replace('"x":5,', '"x":6,');
+      ok(J(ic).length > 5e4, 'the icons are big enough to matter: ' + J(ic).length);
+      const P1 = hPack(s1), P2 = hPack(s2), P3 = hPack(s3), D1 = hPack(d1), D2 = hPack(d2);
+      for (const [P, s, w] of [[P1, s1, 'first'], [P2, s2, 'second'], [P3, s3, 'an icon added'], [D1, d1, 'slides'], [D2, d2, 'slides, second']]) { ok(P && typeof P === 'object' && Array.isArray(P.i), w + ': packed with its icons apart'); eq(hUnpack(P), s, w + ': the same text back'); }
+      ok(P2.n < 1000 && P2.h === P1.h, 'the second step costs what changed: ' + P2.n); ok(P3.n < 1000, 'an icon added costs that icon: ' + P3.n); ok(D2.n < 1000, 'slides: ' + D2.n);
+      // the colors the figure uses (the Page panel's palette note): the same list as the regular expression over every string gave
+      const old = () => { const cnt = {}; const walk = v => { if (typeof v === 'string') { (v.match(/#[0-9a-f]{6}/gi) || []).forEach(c => { c = c.toLowerCase(); cnt[c] = (cnt[c] || 0) + 1; }); } else if (v && typeof v === 'object') Object.values(v).forEach(walk); }; objsAll(scene).filter(o => o.type !== 'comment').forEach(o => { walk(o); if (o.type === 'icon' && ICONS[o.kind]) ['c1', 'c2'].forEach((k, i) => { if (o[k] == null) walk(String(ICONS[o.kind].c[i] || '')); }); }); return Object.entries(cnt).sort((a, b) => b[1] - a[1]).map(e => e[0]); };
+      blank(); fig.add('icon', { kind: 'mito', x: 200, y: 200 }); fig.add('icon', { kind: 'cell', x: 300, y: 200, c1: '#AABBCC' }); fig.add('text', { x: 100, y: 400, text: 'a {#d55e00|red} word and #0072b2 #0072B2', color: '#111111' }); fig.add('plot', { kind: 'bar', data: 'A: 1 #009e73\nB: 2', x: 500, y: 300 }); fig.add('comment', { x: 50, y: 50, text: '#ff00ff' }); await settle();
+      eq(usedColours(), old(), 'the colors used'); ok(usedColours().includes('#aabbcc') && !usedColours().includes('#ff00ff'), 'colors in fields, not in comments: ' + usedColours().join(' '));
+      // a file with slides: an undo of a change on another slide shows that slide; drawing a slide for the first time (a fill-in) is no change of its own
+      fig.set({ version: 4, w: 800, h: 600, bg: '#ffffff', slides: [{ id: 'p1', objects: [{ id: 'q1', type: 'text', x: 100, y: 100, text: 'one' }] }, { id: 'p2', objects: [{ id: 'q1', type: 'box', x: 300, y: 300 }, { id: 'q2', type: 'arrow', x1: 10, y1: 10, x2: 90, y2: 90 }] }, { id: 'p3', objects: [] }] }); await settle();
+      fig.slide(2); fig.update('q1', { x: 320 }); await settle(); fig.slide(3); await settle(); const h0 = hist.length; undo(); await settle(); eq([fig.slides().find(s => s.current).n, get('q1').x], [2, 300], 'the undo showed the slide it changed'); redo(); await settle(); eq(fig.slides().find(s => s.current).n, 2, 'and the redo');
+      fig.slide(1); await settle(); sel = new Set(['q1']); render(); const ov = () => D.querySelectorAll('#overlay rect').length;
+      const ck = fig.check({ slides: true }); ok(Array.isArray(ck), 'fig.check for every slide'); eq(fig.slides().find(s => s.current).n, 1, 'back on the slide shown'); ok(isClean(), 'drawing every slide changed nothing'); ok(ov() > 0, 'the overlay of the slide shown: the selection');
+      exportCheckAll(); ok(isClean() && ov() > 0, 'the export check of every slide too'); eq(hist.length, h0, 'no step of its own'); eq(ovQuiet, 0, 'the overlay is drawn again');
+      // a file edit taken in: the elements whose text is the same are not counted as changed
+      { const was = lastSaved, S = JSON.parse(lastSaved); S.slides[0].objects[0].text = 'one!'; S.slides[0].objects.push({ id: 'q9', type: 'text', x: 50, y: 50, text: 'new' }); hist.push(lastSaved); loadText(J(S)); chgSay('file', was);
+        eq([chgSay.last.added, chgSay.last.changed, chgSay.last.removed], [['q9'], ['q1'], 0], 'one added, one changed'); undo(); await settle(); }
+      { const was = lastSaved, S = JSON.parse(lastSaved); S.slides[0].objects = []; hist.push(lastSaved); loadText(J(S)); chgSay('file', was); eq([chgSay.last.added, chgSay.last.changed, chgSay.last.removed], [[], [], 1], 'one removed'); undo(); await settle(); }
+      sel = new Set(); for (let g = 0; g < 9 && isDeck(scene) && scene.slides.length > 1; g++) fig.removeSlide(scene.slides.length); blank(); await settle(); ok(!isDeck(scene), 'a plain figure again');   // (fig.set of a plain figure only replaces the slide shown)
+      while (hist.length > H0) hist.pop(); fut.length = 0;   // the steps it added go (the history holds 300: later tests count new ones)
+    });
+    test('comments, sketch and versions round 17: a merge that took nothing in promises no undo, Details in the panel\'s words with the slide, replies named, other slides\' comments listed, pins come back for a picked comment, the sketch request names its slide, placing ends Sketch mode, version history pictures, dates and a restore of the same version', async () => {
+      const H0 = hist.length, F = W.fetch, PF = W.pushFile, T = () => D.querySelector('#toast').textContent, wait = async (f, ms = 6000) => { const t0 = Date.now(); while (!f()) { if (Date.now() - t0 > ms) return false; await sleep(40); } return true; };
+      try {
+        // every change of the other version was also changed here: nothing comes in, no undo step, and the toast no longer says Ctrl+Z undoes the merge (it took back the user's own change)
+        blank(); const a = fig.add('shape', { x: 100, y: 100 }); await settle(); ok(await wait(() => baseState === lastSaved && !pushBusy), 'saved'); W.pushFile = () => {};
+        get(a).x = 150; commit(); const Th = JSON.parse(baseState); Th.objects.find(o => o.id === a).x = 200; const h1 = hist.length; mgIn(J(Th), 'v-r17', 'file');
+        eq([hist.length - h1, get(a).x], [0, 150], 'no step, mine kept'); ok(/1 conflict, yours kept/.test(T()) && !/undoes the merge/.test(T()), 'the toast: ' + T());
+        D.querySelector('#toast .tact').click(); ok(/nothing of the other version came in/.test(D.querySelector('#modalBox').textContent) && /position/.test(D.querySelector('#modalBox').textContent), 'Details: ' + D.querySelector('#modalBox').textContent); closeModal();
+        W.pushFile = PF; pushFile(); await settle();
+        eq([mgLabel({ type: 'comment' }, 'reply'), mgLabel({ type: 'icon' }, 'labelSize'), mgLabel({ type: 'text' }, 'x'), mgLabel({ type: 'legend' }, 'items'), mgLabel('page', 'palette')], ['assistant reply', 'label size', 'position', 'items', 'palette'], 'fields in the panel\'s words');
+        { const B = { version: 4, w: 800, h: 600, slides: [{ id: 's1', objects: [] }, { id: 's2', name: 'Two', objects: [{ id: 'e', type: 'text', x: 1, y: 1, text: 'b' }] }] }, M = JSON.parse(J(B)), Tt = JSON.parse(J(B)); M.slides[1].objects[0].text = 'm'; Tt.slides[1].objects[0].text = 't';
+          const m = mgMerge(B, M, Tt); eq(m.conflicts.length, 1, 'one conflict'); eq(m.conflicts[0][2], 'Slide “Two”', 'its slide named'); }
+        // a slide's comments, the other slides' open ones, a reply taken in from the file
+        fig.set({ version: 4, w: 800, h: 600, bg: '#ffffff', slides: [{ id: 's1', name: 'One', objects: [{ id: 'b1', type: 'shape', x: 200, y: 200 }, { id: 'c1', type: 'comment', x: 200, y: 200, text: 'red' }] }, { id: 's2', name: 'Two', objects: [{ id: 'b2', type: 'shape', x: 300, y: 300 }, { id: 'c2', type: 'comment', x: 300, y: 300, text: 'bigger' }, { id: 'c3', type: 'comment', x: 400, y: 100, text: 'done', resolved: true }] }] }); await settle();
+        fig.slide(1); sel = new Set(); render(); buildPanel(); const go = [...D.querySelectorAll('#props button')].find(b => /^Slide 2 · Two \(1\)/.test(b.textContent)); ok(go, 'a button to the open comment on slide 2: ' + D.querySelector('#props').textContent.slice(0, 300));
+        go.click(); await settle(); eq([fig.slides().find(s => s.current).n, [...sel]], [2, ['c2']], 'slide 2 shown, its open comment picked');
+        let er = ''; fig.slide(1); try { fig.reply('c2', 'x'); } catch (e) { er = e.message; } ok(/on slide 2: fig\.slide\(2\)/.test(er), 'fig.reply on another slide: ' + er);
+        { const was = lastSaved, S = JSON.parse(lastSaved); S.slides[0].objects.find(o => o.id === 'c1').reply = 'Made it red'; S.slides[0].objects.find(o => o.id === 'b1').fill = '#ff0000'; S.bg = '#fafafa'; S.refs = [{ id: 'r1', type: 'article', title: 'T', year: 2020, authors: [{ family: 'Doe' }] }]; hist.push(lastSaved); loadText(J(S)); chgSay('file', was);
+          ok(/1 changed, 1 comment answered, background, references/.test(T()), 'the reply and the page named: ' + T()); undo(); await settle(); }
+        showComments = false; sel = new Set(); render(); pinsFor(['c1']); ok(showComments, 'a comment picked with the pins off turns them on'); D.querySelector('#bNotes').classList.add('on');
+        // the request for the assistant names the slide of the sketch (nothing is written: the snapshot's POST is answered here)
+        W.fetch = (u, o) => String(u).startsWith('exports/') ? Promise.resolve(new Response(null, { status: 204 })) : F(u, o);
+        fig.slide(2); setSketch(true); sk.cur = { c: '#000', w: 5, p: [[100, 100], [200, 150]] }; endStroke(); addObjAt('text', { text: 'say "hi"', size: 22, anchor: 'start', name: 'sketch note' }, 150, 120); await settle();
+        setPlacing(true); ok(!sk.on && placing, 'placing a comment ends Sketch mode'); setSketch(true); ok(sk.on && !placing, 'Sketch mode ends placing'); setSketch(false);
+        await buildPrompt(); const pr = D.querySelector('#bpTa').value; closeModal(); W.fetch = F;
+        ok(/slide 2 of 2 \(“Two”\), slide id "s2"/.test(pr), 'the slide named: ' + pr); ok(pr.includes('- "say \\"hi\\"" at (150, 120)'), 'a note with quotation marks: ' + pr);
+        // version history: a picture and a date with its time per version; a restore of the version shown is no step
+        sel = new Set(); for (let g = 0; g < 9 && isDeck(scene) && scene.slides.length > 1; g++) fig.removeSlide(scene.slides.length); blank(); fig.add('box', { x: 300, y: 200 }); await settle();
+        const same = lastSaved, other = J({ version: 4, w: 800, h: 600, bg: '#ffffff', objects: [{ id: 'q', type: 'shape', x: 400, y: 300, w: 300, h: 200, fill: '#e69f00' }] });
+        const L = [{ name: '2026-01-02_10-00-00.json', size: same.length, modified: '2025-03-04 14:05' }, { name: '2026-01-01_09-00-00.json', size: other.length, modified: '2025-03-04 09:30' }];
+        W.fetch = (u, o) => { const s = String(u); if (s.startsWith('api/history')) return Promise.resolve(new Response(J(L), { status: 200 })); if (s.startsWith('history/')) return Promise.resolve(new Response(s.includes('2026-01-02') ? same : other, { status: 200 })); return F(u, o); };
+        await menuActs.history(); const rows = [...D.querySelectorAll('#modalBox .hrow')]; eq(rows.map(r => r.querySelector('b').textContent), [hvDate('2025-03-04 14:05'), hvDate('2025-03-04 09:30')], 'dates'); ok(/, 14:05$/.test(hvDate('2025-03-04 14:05')) && /^Today \d\d:\d\d$/.test(hvDate(new Date().toISOString().slice(0, 10) + ' 08:15')), 'older days keep their time: ' + hvDate('2025-03-04 14:05'));
+        ok(await wait(() => rows.every(r => r.querySelector('.hvth').dataset.done === '1')), 'a picture of each version'); ok(rows[1].querySelector('.hvth').shadowRoot.innerHTML.includes('#e69f00'), 'the picture is that version');
+        const h2 = hist.length; rows[0].querySelector('[data-n]').click(); ok(await wait(() => /same as the figure now/.test(T())), 'the same version: ' + T()); eq(hist.length, h2, 'no step');
+        await menuActs.history(); D.querySelectorAll('#modalBox [data-n]')[1].click(); ok(await wait(() => /^Restored the version of/.test(T())), 'restored: ' + T()); ok(T().includes(MODK + '+Z undoes it'), 'the shortcut of this computer'); eq(hist.length, h2 + 1, 'one step'); eq(scene.objects.map(o => o.id), ['q'], 'that version');
+        undo(); await settle(); eq(lastSaved, same, 'undone');
+      } finally { W.fetch = F; W.pushFile = PF; if (!D.querySelector('#modal').hidden) closeModal(); if (sk.on) setSketch(false); if (placing) setPlacing(false); showComments = true; D.querySelector('#bNotes').classList.add('on');
+        sel = new Set(); for (let g = 0; g < 9 && isDeck(scene) && scene.slides.length > 1; g++) fig.removeSlide(scene.slides.length); blank(); await settle(); while (hist.length > H0) hist.pop(); fut.length = 0; }
+    });
+    test('appearance round 18: accent swatches show the accent of the theme, Large text with compact spacing keeps its sizes, Large text reaches the animation sidebar, citation cards, notes and messages, the page size fits in Soft with Large text, the animation sidebar is a card in Soft, list chevrons, Layers types whole, the motion-path blue in dark mode', async () => {
+      if (PHONE()) throw new Skip('this window has the phone layout');
+      const p0 = fig.prefs(), H0 = hist.length, px = el => parseFloat(getComputedStyle(el).fontSize), tok = n => getComputedStyle(D.documentElement).getPropertyValue(n).trim();
+      const rgb = c => { const i = D.createElement('i'); i.style.color = c; D.body.appendChild(i); const v = getComputedStyle(i).color; i.remove(); return v; };
+      const L = s => { const c = s.match(/\d+(\.\d+)?/g).slice(0, 3).map(v => +v / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }, cr = (a, b) => { const x = L(a), y = L(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+      const wait = async (f, ms = 4000) => { const t0 = Date.now(); while (!f()) { if (Date.now() - t0 > ms) return false; await sleep(40); } return true; };
+      try {
+        unslide(); blank(); sel = new Set(); buildPanel(); fig.prefs({ style: 'classic', text: 'normal', density: 'comfortable', layout: 'std' }); await frame();
+        // each accent swatch shows the accent as the interface will use it: in dark mode the lighter one (Graphite's #374151 was a dark dot on the dark sheet)
+        for (const theme of ['light', 'dark']) { fig.prefs({ theme }); appearanceDialog(); await frame();
+          for (const b of D.querySelectorAll('#modal .accsw [data-v]')) { fig.prefs({ accent: b.dataset.v }); eq(getComputedStyle(b).backgroundColor, rgb(tok('--accent')), theme + ' ' + b.dataset.v + ': the swatch'); ok(cr(getComputedStyle(b).backgroundColor, rgb(tok('--elev'))) >= 3, theme + ' ' + b.dataset.v + ': the swatch reads on the sheet'); }
+          closeModal(); }
+        fig.prefs({ theme: 'light', accent: 'blue' }); const t = fig.add('text', { x: 300, y: 300, text: 'Hi' }); fig.select([t]); await frame();
+        // Large text with compact spacing: the compact rules came later and took back the label column (80 px for 104) and made the status line and the Add panel's names smaller than Normal
+        { const m = () => [parseFloat(getComputedStyle(D.querySelector('#props .row')).gridTemplateColumns), px(D.querySelector('footer')), px(D.querySelector('#palList .pitem'))];
+          const n0 = m(); fig.prefs({ text: 'large', density: 'compact' }); await frame(); const lc = m(); ok(lc.every((v, i) => v >= n0[i]), 'Large text with compact spacing is never smaller than Normal: ' + J([n0, lc])); }
+        // Large text also enlarges what kept its own pixel sizes: messages, the animation sidebar, Add citation's style cards, the Appearance notes, the panels' notes
+        { const probe = async () => { const r = {}; toast('x'); r.toast = px(D.querySelector('#toast')); fig.select([t]); fig.animPane(true); await frame();
+            const h = D.querySelector('#abBody h3'), fx = D.querySelector('#abBody .abgal:not(.k-path) .abfx'); ok(h && fx, 'the animation sidebar'); r.sidebar = px(h); r.effect = px(fx); fig.animPane(false);
+            citeDialog(); await frame(); r.card = px(D.querySelector('#modal .ctsn')); r.preview = px(D.querySelector('#modal .ctpv')); closeModal();
+            appearanceDialog(); await frame(); r.note = px(D.querySelector('#modal .prefrow p.muted')); closeModal();
+            const n = D.createElement('p'); n.style.cssText = 'font-size:var(--fs-note)'; D.querySelector('#props').appendChild(n); r.panelNote = px(n); n.remove(); return r; };
+          fig.prefs({ text: 'normal', density: 'comfortable' }); await frame(); const a = await probe(); fig.prefs({ text: 'large' }); await frame(); const b = await probe();
+          for (const k in a) ok(b[k] > a[k], 'Large text makes the ' + k + ' larger: ' + a[k] + ' → ' + b[k]); }
+        // the page size with Large text in the Soft style (its panel is 16 px narrower): 1600 showed as "160"
+        fig.prefs({ style: 'soft', text: 'large' }); sel = new Set(); buildPanel(); await frame();
+        for (const i of [D.querySelector('#cw'), D.querySelector('#ch')]) ok(i.scrollWidth <= i.clientWidth + 1, 'the page size field shows ' + i.value + ' whole: ' + i.scrollWidth + ' > ' + i.clientWidth);
+        // the Soft style: the animation sidebar floats as a card like the panels (it was the one flat panel)
+        fig.animPane(true); await frame(); eq(getComputedStyle(D.querySelector('#animbar')).borderTopWidth, getComputedStyle(D.querySelector('#props')).borderTopWidth, 'the sidebar\'s band in Soft'); fig.animPane(false);
+        fig.prefs({ style: 'classic', text: 'normal' }); await frame();
+        // Home's sort list and the sketch pen width have the panels' chevron (the system one was black and bold, also in dark mode)
+        fig.home(true); ok(await wait(() => D.querySelector('#hmMain .hmsort')), 'Home'); eq(getComputedStyle(D.querySelector('#hmMain .hmsort')).appearance, 'none', 'the sort list'); fig.home(false);
+        eq(getComputedStyle(D.querySelector('#sketchBar select')).appearance, 'none', 'the pen width');
+        // Layers shows the longest type name whole ("membra…")
+        { const mb = fig.add('membrane', { x: 600, y: 300 }); D.querySelector('#tabLayers').click(); await frame(); const ty = [...D.querySelectorAll('#layers .layer .ty')].find(e => e.textContent === 'membrane');
+          ok(ty, 'the membrane row'); if (ty.offsetWidth) for (const text of ['normal', 'large']) { fig.prefs({ text }); await frame(); ok(ty.scrollWidth <= ty.clientWidth, text + ': ' + ty.scrollWidth + ' > ' + ty.clientWidth); }
+          D.querySelector('#tabAdd').click(); fig.remove(mb); }
+        // dark mode: the motion-path blue of the animation sidebar (2.8 : 1 on its buttons) is lighter
+        fig.prefs({ theme: 'dark', text: 'normal' }); fig.select([t]); fig.animPane(true); await frame();
+        { const k = D.querySelector('#abBody .apk.k-path'); ok(k, 'the Motion path tab'); ok(cr(getComputedStyle(k).backgroundColor, rgb(tok('--btn'))) >= 3, 'the motion-path dot: ' + getComputedStyle(k).backgroundColor); }
+        fig.animPane(false);
+      } finally { fig.prefs({ theme: p0.theme, style: p0.style, accent: p0.accent, text: p0.text, density: p0.density, layout: p0.layout }); if (!D.querySelector('#modal').hidden) closeModal(); fig.home(false); fig.animPane(false); D.querySelector('#tabAdd').click();
+        sel = new Set(); unslide(); blank(); buildPanel(); while (hist.length > H0) hist.pop(); fut.length = 0; }
+    });
+    test('messages round 19: Help names Layers, comments, slides and version history; the empty canvas, an empty Layers list and a search without results say what to do; tooltips of Arrange and Where figures are kept', async () => {
+      const H0 = hist.length, toastT = () => D.querySelector('#toast').textContent;
+      try {
+        unslide(); blank(); sel = new Set(); buildPanel(); await frame();
+        // Help: the dialog is named for what it holds, and has rows for features it left out (Layers with hide / lock, comments, slides, version history; the folder on the desktop)
+        helpDialog(); await frame();
+        { const rows = [...D.querySelectorAll('#modalBox tr')].map(r => r.textContent); eq(D.querySelector('#modalBox h2').textContent, PHONE() ? 'Help' : 'Help and shortcuts', 'the heading');
+          for (const re of [/Version history/, /Layers.*eye.*lock/, /Comment.*Resolve/, /Add a slide.*speaker notes/, /Reverse direction/, /wheel down/, /Undo/]) ok(rows.some(t => re.test(t)), 'Help has no row for ' + re);
+          eq(rows.some(t => /Where figures are kept/.test(t)), !WEB, 'the row for Where figures are kept (desktop only; the website has its own)'); closeModal(); }
+        ok(/^Help/.test(D.querySelector('#bHelp').title), 'the Help button: ' + D.querySelector('#bHelp').title); ok(/PDF/.test(D.querySelector('#bExport').title) && /TIFF/.test(D.querySelector('#bExport').title), 'the Export button names every format: ' + D.querySelector('#bExport').title);
+        // the empty page says that a click on an item adds it (it only spoke of dragging)
+        if (!PHONE()) { render(); ok([...D.querySelectorAll('#ov text, svg text')].some(t => /Click an item in the Add panel/.test(t.textContent)), 'the empty-page hint'); }
+        // an empty Layers list says why it is empty; with an element the note goes
+        D.querySelector('#tabLayers').click(); await frame(); ok(/Nothing on this page yet/.test(D.querySelector('#layers').textContent), 'the empty Layers list: ' + D.querySelector('#layers').textContent);
+        { const t = fig.add('text', { x: 300, y: 300, text: 'Hi' }); buildPanel(); await frame(); ok(!D.querySelector('#layers .lyempty'), 'the note stays with an element'); fig.remove(t); }
+        D.querySelector('#tabAdd').click(); await frame();
+        // a search that finds nothing points to the icon packs not imported yet (and the website, without an assistant, never to one)
+        { const s = D.querySelector('#palSearch'); s.value = 'zzqqxj'; s.dispatchEvent(new Event('input', { bubbles: true })); await sleep(250); await frame();
+          const more = PACKS.list.some(P => !packImported(P.id)), b = D.querySelector('#palPacks'), txt = D.querySelector('#palList').textContent;
+          ok(/Nothing matches/.test(txt), 'the message: ' + txt); eq(!!b, more, 'the Import more icons button (' + (more ? 'a pack is not imported' : 'every pack is imported') + ')');
+          if (WEB) ok(!/AI assistant/.test(txt), 'the website points to an AI assistant: ' + txt);
+          if (b) { b.click(); await frame(); ok(!D.querySelector('#packMenu').hidden, 'the pack list stays open after the click'); packMenu(false); }
+          s.value = ''; s.dispatchEvent(new Event('input', { bubbles: true })); await sleep(150); }
+        // Arrange buttons name their keys; Hide says how to bring it back
+        { const t = fig.add('text', { x: 300, y: 300, text: 'Hi' }); fig.select([t]); await frame(); const B = [...D.querySelectorAll('#props button')], tt = w => (B.find(b => b.textContent.trim() === w) || {}).title || '';
+          ok(tt('Duplicate').includes(MODK + '+D'), 'Duplicate: ' + tt('Duplicate')); ok(tt('Front').includes(MODK + '+]'), 'Front: ' + tt('Front')); ok(tt('Back').includes(MODK + '+['), 'Back: ' + tt('Back')); ok(/Del/.test(tt('Delete')), 'Delete: ' + tt('Delete')); ok(/Layers/.test(tt('Hide')), 'Hide: ' + tt('Hide'));
+          // copying says what it copied
+          copySel(); ok(/^Copied 1 element\b/.test(toastT()), 'copy: ' + toastT()); sel = new Set(); fig.remove(t); }
+        // Where figures are kept: the desktop offers no cloud service directly
+        { const m = D.querySelector('#fileMenu [data-act=storage]'); if (!m.hidden) { if (WEB) ok(/^This browser/.test(m.title), 'website: ' + m.title); else ok(!/cloud service/.test(m.title) && /folder on this computer/.test(m.title), 'desktop: ' + m.title); } }
+      } finally { if (!D.querySelector('#modal').hidden) closeModal(); try { packMenu(false); } catch (e) {} D.querySelector('#tabAdd').click(); sel = new Set(); unslide(); blank(); buildPanel(); while (hist.length > H0) hist.pop(); fut.length = 0; }
+    });
+    test('final sweep round 20: a bare DOI above a formatted reference is a reference of its own; a file edit counts only what changed; a locked element over another offers Unlock; Esc before New figure\'s dialog cancels it; fresh charts and labels pass the color check', async () => {
+      const H0 = hist.length;
+      try {
+        // Add citation: a DOI on a line of its own above a formatted reference (it became that reference's DOI), and one below a reference without a DOI (APA's link) stays with it
+        { const p = refParse('10.1038/nature12373\nKenyon C, Chang J, Gensch E, Rudner A, Tabtiang R. A C. elegans mutant that lives twice as long as wild type. Nature. 1993;366(6454):461-4.');
+          eq(p.refs.length, 2, 'references'); eq(p.refs[0].doi, '10.1038/nature12373', 'the bare DOI'); eq(p.ids[0] && p.ids[0].kind, 'doi', 'the DOI waits for Look up'); ok(!p.refs[1].doi && p.refs[1].container === 'Nature' && p.ids[1] === null, 'the formatted reference keeps its own fields: ' + JSON.stringify(p.refs[1]));
+          const q = refParse('Kenyon, C. (1993). A mutant of the worm here. Nature, 366(6454), 461–464.\nhttps://doi.org/10.1038/366461a0\nSmith, J. (2020). Another paper here and more. Cell, 5(2), 1–9.\n10.1016/j.cell.2020.01.001\n10.1000/xyz123');
+          eq(q.refs.map(r => r.doi).join(' '), '10.1038/366461a0 10.1016/j.cell.2020.01.001 10.1000/xyz123', 'DOIs below their references, the last on its own'); eq(q.ids.map(x => x ? x.id : '-').join(' '), '- - 10.1000/xyz123', 'only the lone DOI is looked up');
+          eq(refParse('10.1038/a1\n10.1038/b2').format, 'id', 'a list of DOIs stays a list of identifiers'); }
+        // a file edit of one element: the file's arrows without the fields the editor fills in (labelBg, gap…) counted as changed (8 changed for 1)
+        { const t0 = JSON.stringify({ version: 4, w: 1600, h: 900, bg: '#ffffff', objects: [{ id: 'a1', type: 'arrow', x1: 100, y1: 100, x2: 300, y2: 100 }, { id: 'a2', type: 'arrow', x1: 100, y1: 200, x2: 300, y2: 200 }, { id: 't1', type: 'text', x: 100, y: 300, text: 'Hi' }] });
+          fig.set(JSON.parse(t0)); await settle(); const was = t0; const o = get('a2'); o.y2 = 260; chgSay('file', was); eq(chgSay.last.changed.join(','), 'a2', 'changed'); }
+        // a locked element drawn over an unlocked one: the right-click menu (the lower element's) starts with its Unlock
+        { blank(); const a = fig.add('box', { x: 800, y: 450, w: 400, h: 300 }), b = fig.add('shape', { kind: 'circle', x: 800, y: 450, w: 120, h: 120, locked: true, name: 'Top disc' }); render(); await frame();
+          const r = D.querySelector(`#content [data-id="${b}"]`).getBoundingClientRect(); ctxMenuAt({ clientX: r.left + r.width / 2, clientY: r.top + r.height / 2 }); await frame();
+          const first = D.querySelector('#ctxMenu button'); ok(first && /^Unlock Top disc/.test(first.textContent), 'the first item: ' + (first && first.textContent)); first.click(); await frame(); ok(!get(b).locked, 'unlocked'); eq([...sel].join(), b, 'it is selected');
+          D.querySelector('#ctxMenu').classList.remove('open'); }
+        // Esc between New figure on Home and its dialog (the lists are read first) closed Home and the dialog came over the editor
+        { fig.home(true); await frame(); const p = menuActs.new(); fig.home(false); await p; await frame(); ok(!D.querySelector('#nfName'), 'no New figure dialog after Home closed'); if (!D.querySelector('#modal').hidden) closeModal(); }
+        // fresh unit circle, gradient bar, vector, number line, chip, funnel and network pass the color check, on a white page and on a dark one
+        for (const bg of ['#ffffff', '#111827']) { fig.set({ version: 4, w: 1600, h: 900, bg, palette: [], objects: [] }); let x = 150;
+          for (const t of ['ucircle', 'gradbar', 'vec', 'numline', 'chip', 'funnel', 'netmed']) { fig.add(t, { x, y: t === 'funnel' || t === 'netmed' ? 600 : 250 }); x += t === 'netmed' ? 0 : 220; }
+          await settle(); const bad = fig.check().filter(r => /contrast/.test(r.msg)).map(r => get(r.id).type + ': ' + r.msg); eq(bad.join(' | '), '', bg + ' page'); }
+      } finally { if (!D.querySelector('#modal').hidden) closeModal(); fig.home(false); D.querySelector('#ctxMenu').classList.remove('open'); sel = new Set(); unslide(); blank(); buildPanel(); while (hist.length > H0) hist.pop(); fut.length = 0; }
+    });
     test('undo/redo: fig.set is one step', async () => {
       blank(); fig.add('box', { x: 200, y: 200 }); await settle(); const s1 = J(scene);
       fig.set({ version: 4, w: 800, h: 600, bg: '#eeeeee', palette: [], objects: [{ id: 'q1', type: 'text', x: 100, y: 100, text: 'replaced' }] }); await settle();
@@ -513,7 +681,7 @@
         answer = { status: 200, json: { dir: 'C:\\Users\\a\\Dropbox\\SiliCoDraw', isDefault: false, copied: 3, differ: ['a.json'] } }; opts[0].click(); ok(await waitFor(() => gone === 1), 'the page was not reloaded after the switch');
         ok(/dir=C%3A%5CUsers%5Ca%5CDropbox%5CSiliCoDraw&copy=1/.test(posts[posts.length - 1]), 'the request: ' + posts[posts.length - 1]); const msg = sessionStorage.getItem('fig.storeMsg'); ok(/in Dropbox/.test(msg) && /3 files copied/.test(msg) && /a\.json/.test(msg), 'the message: ' + msg);
         info = { ...info, canChange: false, options: [] }; await storageDialog(); ok(!box().querySelector('#stPath') && /fixed folder/.test(box().textContent), 'a fixed folder offers a change'); closeModal();
-      } finally { W.fetch = F; storeReload.fn = null; try { sessionStorage.removeItem('fig.storeMsg'); } catch (e) {} if (!D.querySelector('#modal').hidden) closeModal(); }
+      } finally { W.fetch = F; storeReload.fn = null; try { sessionStorage.removeItem('fig.storeMsg'); sessionStorage.removeItem('fig.switchHold'); } catch (e) {} if (!D.querySelector('#modal').hidden) closeModal(); }   // (switchHold: the next page started in this tab, the phone test's frame shares this session storage, took itself for a page after a switch)
     });
     // ---------- File ▾ → Quit SiliCoDraw (the desktop version only) ----------
     test('quit: File ▾ → Quit SiliCoDraw saves first, asks the server to stop and leaves a page that says so; never on the website', async () => {
@@ -845,6 +1013,84 @@
         const out = sent.filter(u => /zz-|\.json/.test(u) && !/examples|exports\//.test(u)); eq(out, [], 'figure requests that reached the network');
       } finally { Storage.prototype.setItem = set; po.disconnect(); try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {} }
     });
+    // round 14: what the website says about where figures are kept, the storage dialog while it copies, the history list, the deflated backup
+    test('website storage round 14: no "only in this browser" for a folder or service, the dialog counts while it copies, the version list, offline words, a deflated backup', async () => {
+      // a deflated backup (both builds): smaller, the same bytes back, pictures stored as they are, and the CRC read by unzip
+      const txt = JSON.stringify({ version: 4, objects: Array.from({ length: 80 }, (_, i) => ({ id: 'o' + i, type: 'text', x: i, y: i, s: 1, r: 0, text: 'words ' + i })) }), pic = new Uint8Array(600).fill(9);
+      const files = [{ name: 'fig.json', data: txt }, { name: 'archive/old.json', data: txt }, { name: 'assets/p.png', data: pic }, { name: 'tiny.json', data: '{}' }];
+      const zs = zipStore(files), zp = await zipPack(files); if (typeof CompressionStream === 'function') ok(zp.size < zs.size / 3, `not deflated: ${zp.size} of ${zs.size}`);
+      const back = await unzip(await zp.arrayBuffer()), dec = new TextDecoder(); eq(back.map(x => x.name), files.map(f => f.name), 'the names'); eq(dec.decode(back[0].data), txt, 'the figure came back changed'); eq(back[2].data.length, 600, 'the picture');
+      const u = new Uint8Array(await zp.arrayBuffer()), dv = new DataView(u.buffer); let at = 0; const methods = []; while (dv.getUint32(at, true) === 0x04034b50) { methods.push(dv.getUint16(at + 8, true)); at += 30 + dv.getUint16(at + 26, true) + dv.getUint32(at + 18, true) + dv.getUint16(at + 28, true); }
+      if (typeof CompressionStream === 'function') eq(methods, [8, 8, 0, 0], 'deflated text, stored picture and tiny file');
+      // where the figures went says so (both builds: the message after a switch)
+      ok(/the versions in your folder “x” stay there: Open a folder of figures/.test(storeMsg({ copied: 1, differ: ['a.json'] }, 'in this browser', 'your folder “x”')), 'the message does not name the folder: ' + storeMsg({ copied: 1, differ: ['a.json'] }, 'in this browser', 'your folder “x”'));
+      ok(/your earlier copies stay where they were/.test(storeMsg({ differ: ['a.json'] }, 'in D')), 'without the old place');
+      const S = WEBS(), A = S && S.storage; if (!A) return;   // the rest: the website build only
+      // the version list (the emulated server): dates and sizes of every copy, without the texts
+      const Q = o => new URLSearchParams(o || {}), H = () => new Headers();
+      const mb = memBackend(); mb.m.set('v.json', { body: '{"objects":[]}', modified: 3000, size: 14 }); mb.m.set('history/v/2026-01-01_10-00-00.json', { body: 'a'.repeat(50), modified: Date.parse('2026-01-01T10:05:00'), size: 50 }); mb.m.set('history/v/2026-01-01_11-00-00.json', { body: 'b'.repeat(70), modified: Date.parse('2026-01-01T11:05:00'), size: 70 });
+      const hl = JSON.parse((await S.createStore(mb).handle('GET', 'api/history', Q({ file: 'v.json' }), null, H())).body); eq(hl.map(h => [h.name, h.size]), [['2026-01-01_11-00-00.json', 70], ['2026-01-01_10-00-00.json', 50]], 'the version list'); eq(hl[0].modified, '2026-01-01 11:05', 'its date');
+      const keep = { current: A.current, linkFolder: A.linkFolder, useBrowser: A.useBrowser, canFolder: A.canFolder }, bk = localStorage.getItem('fig.webBackup'), tw = D.querySelector('#toast');
+      try {
+        // kept in a folder or a service: not "in this browser", no reminder to back up, no word about the browser clearing them
+        A.current = () => ({ kind: 'folder', name: 'Lab', needs: '' }); eq(webOwn(), false, 'a folder counted as this browser');
+        const line = storeLine({ n: 3, mb: 1.5, kept: false }); eq(line, '3 figures in your folder “Lab”', 'the line about where they are');
+        A.current = () => ({ kind: 'dropbox', name: 'Dropbox', needs: '' }); eq(storeLine({ n: 1, mb: null, kept: false }), '1 figure in Dropbox', 'a service');
+        backupSt({ first: Date.now() - 30 * 864e5, at: 0, later: 0 }); tw.classList.remove('show'); await backupNag(); ok(!tw.classList.contains('show') || !/only in this browser/.test(tw.textContent), 'the backup reminder came for figures in Dropbox: ' + tw.textContent);
+        A.current = keep.current; ok(webOwn(), 'this browser'); ok(/in this browser/.test(storeLine({ n: 2, mb: 0.5, kept: false })), 'in the browser: ' + storeLine({ n: 2, mb: 0.5, kept: false }));
+        // the dialog while it copies to a folder: the choices wait, it counts, and a failure gives them back
+        let tick = null, gate; A.canFolder = true;
+        A.linkFolder = async (copy, ask, prog) => { await ask(); prog(2, 5); tick = [D.querySelector('#stBusy').textContent, D.querySelector('#stFolder').disabled, copy]; await new Promise(r => { gate = r; }); throw new Error('test stop'); };
+        await storageDialog(); D.querySelector('#stFolder').click(); ok(await waitFor(() => tick, 5000), 'the copy did not start');
+        eq(tick, ['Copying your figures… 2 of 5 files', true, true], 'while it copies'); gate(); ok(await waitFor(() => /test stop/.test(D.querySelector('#stErr').textContent), 3000), 'the failure was not said');
+        eq(D.querySelector('#stBusy').textContent, '', 'still counting after the failure'); ok(!D.querySelector('#stFolder').disabled, 'the choice stays disabled after the failure'); closeModal();
+        // offline: only services this site offers are named as waiting for a connection
+        W.__SILICODRAW_CLOUD_IDS__ = { dropbox: '', google: '', onedrive: '' }; ok(!/cloud storage|Dropbox/.test(netOffTip()), 'services named that are not offered: ' + netOffTip());
+        W.__SILICODRAW_CLOUD_IDS__ = { dropbox: 'x', google: '', onedrive: 'y' }; ok(/cloud storage \(Dropbox and OneDrive\)/.test(netOffTip()), 'the services offered: ' + netOffTip());
+      } finally { Object.assign(A, keep); delete W.__SILICODRAW_CLOUD_IDS__; if (bk === null) localStorage.removeItem('fig.webBackup'); else localStorage.setItem('fig.webBackup', bk); if (!D.querySelector('#modal').hidden) closeModal(); tw.classList.remove('show'); }
+    });
+    // round 15: accessibility (focus ring, the canvas keeps the keyboard, the formatting bar from the keyboard, what Delete / Undo did read out, named dialog fields, the panel keeps the focus, contrast, dark-page vectors)
+    test('accessibility round 15: a focus ring of 3 : 1, muted text of 4.5 : 1, a press on the gray area focuses the canvas, the formatting bar works from the keyboard, Delete and Undo are read out, dialog fields have names, the panel keeps the focus, vectors on a dark page', async () => {
+      const hStart = hist.length, p0 = fig.prefs(), st = D.querySelector('#stage'), live = () => D.querySelector('#srLive').textContent;
+      const L = h => { if (/^#[0-9a-f]{3}$/i.test(h)) h = '#' + [...h.slice(1)].map(x => x + x).join(''); const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; };
+      const cr = (a, b) => { const x = L(a), y = L(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); }, tok = n => getComputedStyle(D.documentElement).getPropertyValue(n).trim().toLowerCase();
+      try {
+        // the keyboard focus is an outline in the accent color (the pale halo was 1.2 : 1 on white), and the accent reads against every panel; muted text and the accent on its soft tint read at 4.5 : 1
+        const rule = [...D.styleSheets].flatMap(s => { try { return [...s.cssRules]; } catch (e) { return []; } }).find(r => r.selectorText && r.selectorText.startsWith('button:focus-visible,'));
+        ok(rule && /var\(--accent\)/.test(rule.style.outline || rule.style.outlineColor), 'the focus ring rule: ' + (rule && rule.cssText));
+        for (const theme of ['light', 'dark']) for (const accent of ['blue', 'violet', 'teal', 'orange', 'graphite']) {
+          fig.prefs({ theme, accent, style: 'classic' }); const A = tok('--accent'), P = tok('--panel'), S = tok('--accent-soft'), M = tok('--muted'), Hv = tok('--hover');
+          ok(cr(A, P) >= 3, `${theme} ${accent}: focus ring ${A} on ${P}: ${cr(A, P).toFixed(2)}`); ok(cr(A, S) >= 4.5, `${theme} ${accent}: accent text on its tint: ${cr(A, S).toFixed(2)}`);
+          for (const b of [P, Hv, S]) ok(cr(M, b) >= 4.5, `${theme} ${accent}: muted ${M} on ${b}: ${cr(M, b).toFixed(2)}`);
+        }
+        fig.prefs({ theme: 'light', accent: 'blue' }); { const n = D.querySelector('#palList h3 .n'), m = D.querySelector('#palLibBtn .lbc'); if (n && m) eq(getComputedStyle(n).color, getComputedStyle(m).color, 'the group counts are muted, not faint'); }
+        unslide(); blank(); sel = new Set(); buildPanel(); fit(true); await frame();
+        // a press on the gray area around the page focuses the canvas (the focus stayed in the Add panel, so Tab and the arrows went there)
+        { D.querySelector('#tabAdd').focus(); const r = st.getBoundingClientRect(), x = r.left + 4, y = r.top + 4, t = D.elementFromPoint(x, y);
+          if (t === st || t === D.querySelector('#wrap')) { t.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: 1 })); W.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, clientX: x, clientY: y, pointerId: 1, pointerType: 'mouse', button: 0 }));
+            eq(D.activeElement && D.activeElement.id, 'stage', 'after a press on the gray area'); } }
+        // the formatting bar: named, and Enter / Space on a button (a click with detail 0) formats (it acted only on a mouse press)
+        const t = fig.add('text', { x: 200, y: 200, text: 'Hello' }); fig.select([t]); await frame();
+        const ta = D.querySelector('#props textarea'), bar = [...D.querySelectorAll('#props .fmtbar button')];
+        eq(bar.map(b => b.getAttribute('aria-label')), ['Bold', 'Italic', 'Underline', 'Strikethrough', 'Superscript', 'Subscript', 'Colored text', 'Symbols'], 'the names of the formatting bar');
+        ta.focus(); ta.setSelectionRange(0, 5); bar[0].focus(); bar[0].click(); await frame(); eq(get(t).text, '**Hello**', 'Bold from the keyboard');
+        // the panel keeps the focus when it is drawn anew; after Delete the canvas has it
+        { const a = fig.add('arrow', { x1: 100, y1: 300, x2: 300, y2: 400 }); fig.select([a]); await frame(); const rv = [...D.querySelectorAll('#props button')].find(b => b.textContent.trim() === 'Reverse direction');
+          rv.focus(); rv.click(); await frame(); eq((D.activeElement.textContent || '').trim(), 'Reverse direction', 'the focus after Reverse direction');
+          const dl = [...D.querySelectorAll('#props button')].find(b => b.textContent.trim() === 'Delete'); dl.focus(); dl.click(); await frame(); eq(D.activeElement && D.activeElement.id, 'stage', 'the focus after Delete in the panel'); }
+        // what Delete, Undo and Redo did is read out (Delete said only "Nothing selected", Undo and Redo nothing)
+        fig.select([t]); st.focus(); del(); await sleep(650); eq(live(), 'Text “Hello” deleted', 'Delete read out'); undo(); await sleep(650); eq(live(), 'Undone', 'Undo read out'); redo(); await sleep(650); eq(live(), 'Redone', 'Redo read out');
+        eq(srWhat([fig.add('shape', { x: 50, y: 50 }), fig.add('shape', { x: 90, y: 50 })]), '2 elements', 'several');
+        // dialog fields are named by their row's words
+        exportDialog(); await frame(); eq(['exFmt', 'exPre', 'exMm', 'exUnit', 'exDpi'].map(i => D.getElementById(i).getAttribute('aria-label')), ['Format', 'Size', 'Print width', 'Units', 'Resolution'], 'Export'); closeModal();
+        findReplaceDialog(); await frame(); eq(['frF', 'frR'].map(i => D.getElementById(i).getAttribute('aria-label')), ['Find', 'Replace with'], 'Find and replace'); closeModal();
+        eq(D.querySelector('#palSearch').getAttribute('aria-label'), 'Search the Add panel', 'the Add panel search');
+        // vectors and unit circles added on a dark page start in lighter colors (3.9 and 3.5 : 1); a color given stays
+        fig.set({ version: 4, w: 800, h: 600, bg: '#111827', palette: [], objects: [] });
+        const v = fig.add('vec', { x: 300, y: 300 }), u = fig.add('ucircle', { x: 500, y: 300 }), v2 = fig.add('vec', { x: 300, y: 300, color: '#d64545' });
+        eq([get(v).color, get(u).color, get(v2).color], ['#f87171', '#8fa8e8', '#d64545'], 'dark-page colors'); ok(cr(get(v).color, '#111827') >= 4.5 && cr(get(u).color, '#111827') >= 4.5, 'they read on the dark page');
+      } finally { fig.prefs({ theme: p0.theme, accent: p0.accent, style: p0.style }); if (!D.getElementById('modal').hidden) closeModal(); sel = new Set(); unslide(); blank(); buildPanel(); if (hist.length > hStart) { hist.length = hStart; fut.length = 0; } }
+    });
     // tablets (a touch screen in the desktop layout): the menu of a press and hold
     test('tablet: the click after a press and hold does not run the menu row under the finger; lifting keeps the selection behind the menu', async () => {
       if (PHONE()) throw new Skip('this window has the phone layout');
@@ -870,6 +1116,167 @@
         for (const z of [2.5, 1, 2, .5]) { setZoom(z); eq(width(S), Math.round(scene.w * z), 'the canvas right after a zoom to ' + z); near(width(D.querySelector('#content [data-id="' + id + '"]')) / z, 302, 2, 'the element right after a zoom to ' + z); await sleep(30); }
         const cs = getComputedStyle(S); eq(cs.transitionProperty, 'none', 'transition on the canvas'); const cm = D.querySelector('#ctxMenu'); cm.classList.add('open'); const an = getComputedStyle(cm).animationName; cm.classList.remove('open'); eq(an, 'none', 'animation on an open menu');
       } finally { H.classList.toggle('ui-still', still); setZoom(z0); }
+    });
+    test('canvas editing: a locked element has no handles, group resize rounds, the angle while turning, a cut pastes in place, zoom steps and the wheel', async () => {
+      blank(); const H = D.documentElement, still = H.classList.contains('ui-still'), z0 = zoom, R0 = W.render, S = D.querySelector('#svg');
+      const hs = () => [...D.querySelectorAll('#overlay [data-h]')].map(e => e.dataset.h), mc = e => { const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+      const pe = (t, type, x, y, o) => t.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: 'mouse', isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, ...(o || {}) }));
+      const dragH = (h, dx, dy) => { const el = D.querySelector('#overlay [data-h="' + h + '"]'); ok(el, 'no ' + h + ' handle'); const p = mc(el); pe(el, 'pointerdown', p.x, p.y); pe(S, 'pointermove', p.x + dx / 2, p.y + dy / 2); pe(S, 'pointermove', p.x + dx, p.y + dy); const txt = [...D.querySelectorAll('#overlay text')].map(t => t.textContent).join('|'); pe(S, 'pointerup', p.x + dx, p.y + dy); return txt; };
+      const key = (k, o) => D.querySelector('#stage').dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true, ...(o || {}) }));
+      try {
+        const a = fig.add('shape', { kind: 'rect', x: 300, y: 300, w: 100, h: 100 }), b = fig.add('shape', { kind: 'rect', x: 500, y: 300, w: 100, h: 100 }), t = fig.add('text', { text: 'Turn me', x: 300, y: 600, size: 30 }), ar = fig.add('arrow', { x1: 700, y1: 600, x2: 900, y2: 600 }); await settle();
+        // locked: only the outline (the corner handle scaled it, the turn handle turned it, an arrow's ends moved), and the arrows say why nothing moves
+        for (const id of [a, ar]) { fig.update(id, { locked: true }); sel = new Set([id]); render(); eq(hs(), [], 'handles of a locked ' + get(id).type); }
+        D.querySelector('#toast').textContent = ''; sel = new Set([a]); key('ArrowRight'); eq(get(a).x, 300, 'a locked element nudged'); ok(/Locked/.test(D.querySelector('#toast').textContent), 'no word why it does not move: ' + D.querySelector('#toast').textContent);
+        sel = new Set([a, ar]); render(); eq(hs(), [], 'only locked elements selected: no group resize handle'); fig.update(a, { locked: false }); fig.update(ar, { locked: false }); sel = new Set([a]); render(); ok(hs().includes('scale') && hs().includes('rot'), 'unlocked: its handles are back');
+        // the group resize handle: positions to 0.1 px, scales to 0.001; a comment pin keeps its size
+        const c = fig.add('comment', { x: 520, y: 320, text: 'pin' }); sel = new Set([a, b, c]); render(); dragH('gscale', 37, 41);
+        for (const id of [a, b, c]) { const o = get(id); ok([o.x, o.y].every(v => Math.abs(v * 10 - Math.round(v * 10)) < 1e-6), 'not rounded to 0.1: ' + short([o.x, o.y])); ok(Math.abs(o.s * 1000 - Math.round(o.s * 1000)) < 1e-6, 'scale not rounded: ' + o.s); }
+        ok(get(a).s > 1, 'the group was not scaled'); eq(get(c).s, 1, 'the comment pin was scaled'); undo(); eq([get(a).s, get(a).x], [1, 300], 'one undo step');
+        // turning: the angle is shown while the handle is dragged
+        sel = new Set([t]); render(); const txt = dragH('rot', 120, 60); ok(get(t).r, 'not turned'); ok(txt.includes(Math.round(get(t).r) + '°'), 'no angle shown while turning: ' + txt); undo();
+        // a cut pastes where it was (once), a copy steps 20 px on
+        sel = new Set([b]); copySel('Cut'); del(); ok(!get(b), 'cut'); const cp = getClip(); pasteClip(cp); let p = get([...sel][0]); eq([p.x, p.y], [500, 300], 'a cut pasted in place'); pasteClip(cp); p = get([...sel][0]); eq([p.x, p.y], [520, 320], 'pasted again: 20 px on');
+        sel = new Set([a]); copySel(); pasteClip(getClip()); p = get([...sel][0]); eq([p.x, p.y], [320, 320], 'a copy pasted beside its original');
+        // zoom steps: quick presses each count a whole step; a zoom set meanwhile ends the easing
+        H.classList.remove('ui-still'); setZoom(1); animateZoom(zoomGoal() * 1.25); animateZoom(zoomGoal() * 1.25); near(animateZoom.to, 1.5625, 1e-9, 'two quick zoom steps'); setZoom(.8); eq(animateZoom.to, null, 'a zoom set meanwhile ended the easing'); await sleep(260); near(zoom, .8, 1e-9, 'the easing went on over a zoom set meanwhile');
+        // Ctrl + wheel: the page size follows each event, the full redraw waits until the wheel pauses
+        let n = 0; W.render = function () { n++; return R0.apply(this, arguments); }; const st = D.querySelector('#stage').getBoundingClientRect(), z1 = zoom;
+        for (let i = 0; i < 5; i++) D.querySelector('#stage').dispatchEvent(new WheelEvent('wheel', { deltaY: -40, ctrlKey: true, clientX: st.left + st.width / 2, clientY: st.top + st.height / 2, bubbles: true, cancelable: true }));
+        ok(zoom > z1 * 1.5, 'the wheel did not zoom: ' + z1 + ' → ' + zoom); near(S.getBoundingClientRect().width, scene.w * zoom, 1, 'the page size after the wheel'); eq(n, 0, 'redraws during the wheel'); await sleep(300); ok(n >= 1, 'no redraw after the wheel paused');
+      } finally { W.render = R0; zoomStop(); H.classList.toggle('ui-still', still); setZoom(z0); }
+    });
+    test('text: formatting a selection that holds some formatting, the caret in a word, the in-place field (dark for light text, turned text, one line, the panel follows), mixed fields, Ctrl+B / I on the canvas, find and replace on every slide', async () => {
+      const z0 = zoom, stg = D.querySelector('#stage'), sc0 = [stg.scrollLeft, stg.scrollTop];   // Select matches zooms to them: the view is put back for the tests after this one
+      // the formatting buttons and Ctrl+B / I / U
+      const t = D.createElement('textarea'); D.body.appendChild(t);
+      const fmt = (v, a, b, pre, post) => { t.value = v; t.setSelectionRange(a, b); wrapSel(t, pre, post); return t.value; };
+      try {
+        eq(fmt('**a** b', 0, 7, '**', '**'), '**a b**', 'bold over a selection that is partly bold');
+        eq(fmt('a **b** c', 0, 9, '**', '**'), '**a b c**', 'bold over bold inside');
+        eq(fmt('**a** **b**', 0, 11, '**', '**'), 'a b', 'all bold: bold off');
+        eq(fmt('x *a* y', 0, 7, '*', '*'), '*x a y*', 'italic over italic inside');
+        eq(fmt('***x***', 3, 4, '*', '*'), '**x**', 'italic off inside ***x***');
+        eq(fmt('***x***', 3, 4, '**', '**'), '*x*', 'bold off inside ***x***');
+        eq(fmt('**a** b', 0, 7, '*', '*'), '***a*** *b*', 'italic around a selection that starts bold');
+        eq(fmt('a {#ff0000|red} b', 0, 17, '{#d64545|', '}'), '{#d64545|a red b}', 'a new color over a colored word');
+        eq(fmt('hello world', 2, 2, '**', '**'), '**hello** world', 'the caret in a word formats the word');
+        eq(fmt('**hello**', 4, 4, '**', '**'), 'hello', 'the caret in a bold word takes bold off');
+        eq(fmt('hello world', 0, 5, '*', '*'), '*hello* world', 'a plain selection'); eq(fmt('word ', 0, 5, '__', '__'), '__word__ ', 'marks inside the outer space');
+        ['**a b**', '***a*** *b*', '{#d64545|a red b}'].forEach(s => ok(!/[*{}|#]/.test(plainText(s)), 'stars or marks drawn: ' + s));
+      } finally { t.remove(); }
+      // the in-place field
+      fig.set({ version: 4, w: 1200, h: 700, bg: '#0f172a', objects: [] });
+      const a = fig.add('text', { x: 300, y: 350, text: 'White title', size: 40, anchor: 'middle' }), r = fig.add('text', { x: 800, y: 350, text: 'A long label turned on its side', size: 28, r: 90, anchor: 'middle' });
+      await settle();
+      try {
+        sel = new Set([a]); render(); buildPanel(); editText(get(a)); let ta = D.querySelector('textarea.inline-edit'); ok(ta, 'no field');
+        ok(ta.classList.contains('dk') && /^rgba?\(17, 24, 39/.test(getComputedStyle(ta).backgroundColor), 'light text gets a dark field: ' + getComputedStyle(ta).backgroundColor);
+        ok(ta.getBoundingClientRect().height < 40 * zoom * 1.25 * 1.9 + 12, 'a one-line text has a one-line field: ' + ta.getBoundingClientRect().height);
+        ta.value = 'Typed'; ta.dispatchEvent(new Event('input')); { const p = D.querySelector('#props textarea[data-k="text"]'); ok(p, 'no panel text field'); eq(p.value, 'Typed', 'the panel follows the typing'); }
+        finishEdit(); eq(get(a).text, 'Typed', 'kept');
+        sel = new Set([r]); render(); editText(get(r)); ta = D.querySelector('textarea.inline-edit');
+        const s = D.querySelector('#svg').getBoundingClientRect(), bb = bbox(r), tr = ta.getBoundingClientRect();
+        near(tr.left + tr.width / 2, s.left + (bb.x + bb.w / 2) * zoom, 2, 'a turned text: the field is centered across'); near(tr.top + tr.height / 2, s.top + (bb.y + bb.h / 2) * zoom, 2, 'and up and down');
+        finishEdit();
+        fig.update(a, { color: '#1f2328' }); sel = new Set([a]); editText(get(a)); ok(!D.querySelector('textarea.inline-edit').classList.contains('dk'), 'dark text keeps the white field'); finishEdit();
+      } finally { if (editor) finishEdit(); }
+      // several selected that differ: mixed, not the first one's value
+      { const b = fig.add('text', { x: 300, y: 500, text: 'Two', size: 30, font: 'Georgia, serif', italic: true, weight: 700 }); sel = new Set([a, b]); render(); buildPanel();
+        const f = D.querySelector('#props select[data-k="font"]'); ok(f, 'no font list'); eq(f.value, '', 'two fonts: no font chosen'); eq(f.options[f.selectedIndex].textContent, 'mixed', 'two fonts: mixed');
+        const it = D.querySelector('#props input[data-k="italic"]'); ok(it && it.indeterminate, 'italic on one of them: half set');
+        eq(D.querySelectorAll('#props .segc[data-k="weight"] button.on').length, 0, 'two weights: no weight lit');
+        f.value = 'Arial, sans-serif'; f.dispatchEvent(new Event('input')); f.dispatchEvent(new Event('change')); eq([get(a).font, get(b).font], ['Arial, sans-serif', 'Arial, sans-serif'], 'a font chosen sets both');
+        fig.update(b, { color: get(a).color }); sel = new Set([a, b]); buildPanel(); ok(!D.querySelector('#props select[data-k="font"]').options[0].disabled, 'the same font: no mixed entry');
+        // Ctrl+B / Ctrl+I with texts selected on the canvas: the whole texts (one of two bold: both bold; then both plain again)
+        const kd = k => D.querySelector('#stage').dispatchEvent(new KeyboardEvent('keydown', { key: k, ctrlKey: true, bubbles: true, cancelable: true }));
+        sel = new Set([a, b]); kd('b'); eq([get(a).weight, get(b).weight].map(String), ['700', '700'], 'Ctrl+B: both bold'); kd('b'); eq([get(a).weight, get(b).weight].map(String), ['400', '400'], 'Ctrl+B again: both regular');
+        kd('i'); eq([get(a).italic, get(b).italic], [true, true], 'Ctrl+I: both italic'); undo(); eq([!!get(a).italic, get(b).italic], [false, true], 'one undo step'); }
+      // find and replace: every slide of a file with slides
+      fig.set({ version: 4, w: 1200, h: 700, bg: '#ffffff', slides: [{ id: 's1', objects: [{ id: 'a', type: 'text', x: 100, y: 100, text: 'IL-6 one', size: 30 }] }, { id: 's2', objects: [{ id: 'a', type: 'text', x: 100, y: 100, text: 'IL-6 two and IL-6', size: 30 }, { id: 'b', type: 'chip', x: 300, y: 300, text: 'IL-6' }] }, { id: 's3', objects: [{ id: 'c', type: 'text', x: 100, y: 100, text: 'nothing', size: 30 }] }] });
+      fig.slide(3); await settle();
+      try {
+        findReplaceDialog(true); const q = s => D.querySelector(s), F = q('#frF'), R = q('#frR'), info = () => q('#frInfo').textContent, cur = () => fig.slides().find(x => x.current).n;
+        F.value = 'IL-6'; F.dispatchEvent(new Event('input')); ok(/^4 matches in 3 elements on 2 slides/.test(info()), info());
+        q('#frNext').click(); eq(cur(), 1, 'the first match: its slide is shown'); ok(/slide 1/.test(info()), info()); q('#frNext').click(); eq(cur(), 2, 'the next match on slide 2'); eq([...sel], ['a'], 'selected');
+        R.value = 'IL6'; R.dispatchEvent(new Event('input')); q('#frOne').click(); eq(fig.get({ slides: true }).slides[1].objects[0].text, 'IL6 two and IL-6', 'Replace changed the match shown');
+        q('#frAll').click(); eq(fig.get({ slides: true }).slides.map(x => x.objects.map(o => o.text)), [['IL6 one'], ['IL6 two and IL6', 'IL6'], ['nothing']], 'Replace all: every slide');
+        undo(); eq(fig.get({ slides: true }).slides.map(x => x.objects.map(o => o.text)), [['IL-6 one'], ['IL6 two and IL-6', 'IL-6'], ['nothing']], 'one undo step');
+        fig.slide(3); q('#frSel').click(); eq(cur(), 1, 'Select matches: the first slide with matches'); eq([...sel], ['a'], 'its matches selected');
+      } finally { if (D.querySelector('#frF')) closeModal(); unslide(); zoomStop(); setZoom(z0); stg.scrollLeft = sc0[0]; stg.scrollTop = sc0[1]; }   // a plain figure and the view again for the tests after this one
+    });
+    test('arrows: a new route meets fixed sides, the panel shows its route’s fields, end legs keep a marker’s length, the curve snaps straight, width above 0, Connect counts a group once, the click area, Reverse direction', async () => {
+      blank(); const z0 = zoom, S = D.querySelector('#svg'), mc = e => { const r = e.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; };
+      const pe = (t, type, x, y) => t.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: 'mouse', isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1 }));
+      const dragH = (h, dx, dy) => { const el = D.querySelector('#overlay [data-h="' + h + '"]'); ok(el, 'no ' + h + ' handle'); const p = mc(el); pe(el, 'pointerdown', p.x, p.y); pe(S, 'pointermove', p.x + dx / 2, p.y + dy / 2); pe(S, 'pointermove', p.x + dx, p.y + dy); pe(S, 'pointerup', p.x + dx, p.y + dy); };
+      const keys = () => [...D.querySelectorAll('#props .row [data-k]')].map(e => e.dataset.k), btn = t => [...D.querySelectorAll('#props button')].find(x => x.textContent === t);
+      try {
+        setZoom(1); const a = fig.add('box', { x: 200, y: 200, w: 160, h: 80 }), b = fig.add('box', { x: 600, y: 450, w: 160, h: 80 }); await settle();
+        // a route picked in the panel that cannot meet a fixed side at a right angle takes the elbow that can (it ran flat along the box's edge); the fields follow the route
+        const r = fig.connect({ id: a, side: 'e' }, { id: b, side: 'w' }); sel = new Set([r]); render(); buildPanel();
+        ok(keys().includes('bend') && !keys().includes('mid') && !keys().includes('loop'), 'a straight arrow: the curve only: ' + keys());
+        let se = D.querySelector('#props select[data-k="route"]'); se.value = 'elbowH'; se.dispatchEvent(new Event('input')); se.dispatchEvent(new Event('change'));
+        eq(get(r).route, 'elbow', 'right side → left side across first'); eq(D.querySelector('#props select[data-k="route"]').value, 'elbow', 'the panel shows the new route');
+        ok(keys().includes('mid') && !keys().includes('bend') && !keys().includes('loop'), 'a Z: the middle leg only: ' + keys()); undo(); eq(get(r).route, 'line', 'one undo step');
+        fig.update(r, { route: 'elbowV' }); eq(get(r).route, 'elbow', 'fig.update takes the elbow that fits too');
+        // the legs at the ends keep a marker's length (mid 1 or loop 0 left the head pointing along the box's side)
+        fig.update(r, { mid: 1 }); let o = get(r), g = elbowGeo(o); ok(Math.abs(o.x2 - g.pts[2][0]) >= 6 + 3 * o.width - .1, 'mid 1: the last leg keeps a marker’s length: ' + short(g.pts));
+        const u = fig.connect({ id: b, side: 'e' }, { id: a, side: 'e' }, { route: 'elbow', loop: 0 }); o = get(u); g = elbowGeo(o); ok(g.pts[1][0] - Math.max(o.x1, o.x2) >= 6 + 3 * o.width - .1, 'loop 0: the loop keeps a marker’s length: ' + short(g.pts));
+        sel = new Set([u]); buildPanel(); ok(keys().includes('loop') && !keys().includes('mid'), 'a U: the loop only: ' + keys());
+        // the curve: back near the line it is straight again (a bend of 2 px was a curve to PowerPoint); the line width stays above 0
+        const L = fig.add('arrow', { x1: 200, y1: 700, x2: 700, y2: 700 }); sel = new Set([L]); render(); buildPanel();
+        dragH('bend', 0, -60); ok(get(L).bend < -50, 'not curved: ' + get(L).bend); dragH('bend', 0, 57); eq(get(L).bend, 0, 'dropped 3 px from the line: straight');
+        const wi = D.querySelector('#props input[data-k="width"]'); wi.value = '1'; wi.dispatchEvent(new Event('input')); for (let i = 0; i < 4; i++) wi.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
+        wi.dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowDown', bubbles: true })); ok(get(L).width > 0, 'the arrow keys took the width to ' + get(L).width);
+        eq(D.querySelector('[data-id="' + L + '"] .hit').getAttribute('vector-effect'), 'non-scaling-stroke', 'the click area keeps its screen width at every zoom');
+        // Connect counts a group once, as it connects it (a group and a box offered Connect 1 → each)
+        const c = fig.add('box', { x: 1000, y: 200, w: 100, h: 60 }), d = fig.add('box', { x: 1150, y: 320, w: 100, h: 60 }); fig.update(c, { group: 'gT' }); fig.update(d, { group: 'gT' }); sel = new Set([c, d, a]); render(); buildPanel();
+        eq([...D.querySelectorAll('#props button')].map(x => x.textContent).filter(t => /^Connect/.test(t)), ['Connect'], 'a group and a box: one pair to connect');
+        // Reverse direction: the head moves to the other end; the path, the label and what the ends follow stay
+        const z = fig.connect(a, b, { route: 'elbow', mid: .3, label: 'x', labelPos: .2, labelOff: 10 }), cv = fig.add('arrow', { x1: 300, y1: 800, x2: 600, y2: 820, bend: 70, label: 'c', labelOff: -8 }); await settle();
+        for (const id of [z, cv]) { const o0 = get(id), P0 = arrowPoly(o0).map(p => p.map(Math.round)), L0 = arrowLabelAt(o0).map(Math.round); sel = new Set([id]); render(); buildPanel(); ok(btn('Reverse direction'), 'no Reverse direction'); btn('Reverse direction').click(); await settle();
+          const o1 = get(id); eq(arrowPoly(o1).map(p => p.map(Math.round)).reverse(), P0, 'the same path after Reverse direction (' + o1.route + ')'); eq(arrowLabelAt(o1).map(Math.round), L0, 'the label stays (' + o1.route + ')'); }
+        eq([get(z).from.id, get(z).to.id], [b, a], 'the ends swap what they follow'); undo(); eq(get(cv).bend, 70, 'one undo step');
+        const h = fig.add('arrow', { x1: 100, y1: 600, x2: 400, y2: 660, route: 'elbowH' }); sel = new Set([h]); render(); buildPanel(); btn('Reverse direction').click(); eq(get(h).route, 'elbowV', 'across first becomes up/down first');
+      } finally { zoomStop(); setZoom(z0); sel = new Set(); blank(); render(); }   // a plain empty figure and the zoom again for the tests after this one
+    });
+    test('export: all slides checked on every slide, one slide named with its number, the width kept to 0.1 mm and its unit remembered, a resolution not in the list, Enter exports, Text sizes back to Export, Export several figures starts from the print size and stays open while it runs', async () => {
+      const ls = k => { try { return localStorage.getItem(k); } catch (e) { return null; } }, U0 = ls('fig.exportUnit'), F0 = ls('fig.exportFmt'), se = saveExport, xp = exportPptx, names = [];
+      const q = s => D.querySelector(s), evt = (el, t) => el.dispatchEvent(new Event(t, { bubbles: true })), pick = (s, v) => { const e = q(s); e.value = v; evt(e, 'input'); evt(e, 'change'); };
+      const run = async () => { q('#exGo').click(); await sleep(30); for (let i = 0; i < 300 && q('#exGo') && q('#exGo').disabled; i++) await sleep(50); return q('#exMsg').textContent; };
+      try {
+        try { localStorage.removeItem('fig.exportUnit'); } catch (e) {}
+        saveExport = async n => { names.push(n); return 'Saved ' + n + '.'; };   // nothing is written to exports/
+        exportPptx = async () => ({ blob: new Blob(['x']), slides: 1, inches: [16.67, 9.38], native: 1, pictures: 0, skipped: 0, cropped: 0, print: false });
+        unslide(); blank();
+        fig.set({ version: 4, w: 1600, h: 900, bg: '#ffffff', slides: [{ id: 's1', objects: [{ id: 'a', type: 'text', x: 100, y: 200, text: 'Big title', size: 60 }] }, { id: 's2', objects: [{ id: 'b', type: 'text', x: 100, y: 200, text: 'tiny words', size: 8 }, { id: 'c', type: 'shape', kind: 'rect', x: 800, y: 500, w: 200, h: 100, fill: '#ffffff', stroke: '#000000', sw: 0.2 }] }] });
+        fig.slide(1); scene.exportMm = 180; scene.exportDpi = 200; delete scene.exportSize;
+        // a resolution the list does not have is added (the list was blank and the dialog said "Enter a print width")
+        exportDialog(); await sleep(50); eq(q('#exDpi').value, '200', 'the resolution'); pick('#exFmt', 'pdf'); ok(/vector/.test(q('#exInfo').textContent), 'the info line: ' + q('#exInfo').textContent);
+        // all slides: the smallest text and the thinnest line of every slide, with the slide; only this slide: that slide's
+        eq(q('#exSl').value, 'all', 'a PDF starts on all slides'); ok(/tiny words” on slide 2/.test(q('#exCheck').textContent) && /outline on slide 2/.test(q('#exCheck').textContent), 'all slides: ' + q('#exCheck').textContent);
+        eq(CUR, 0, 'the slide shown is kept'); pick('#exSl', 'one'); ok(/Big title/.test(q('#exCheck').textContent) && !/slide 2/.test(q('#exCheck').textContent), 'this slide: ' + q('#exCheck').textContent);
+        // inches: the width converted, the sizes in inches, the exact width saved (88.9 mm was saved as 89)
+        pick('#exUnit', 'in'); eq(q('#exMm').value, '7.09', 'the width in inches'); const m = q('#exMm'); m.value = '3.25'; evt(m, 'input'); ok(/3\.25 × 1\.83 in/.test(q('#exInfo').textContent), 'the size in inches: ' + q('#exInfo').textContent);
+        pick('#exFmt', 'png'); pick('#exSl', 'one'); await run(); eq(scene.exportMm, 82.6, 'the print width to 0.1 mm'); eq(names.pop(), BASE + '-01-82.6mm-200dpi.png', 'one slide: its number in the name');
+        pick('#exFmt', 'svg'); pick('#exSl', 'one'); await run(); eq(names.pop(), BASE + '-01.svg', 'an SVG of one slide');
+        pick('#exFmt', 'pptx'); pick('#exSl', 'one'); ok(/in: 1 native object, 0 pictures/.test(await run()), 'the PowerPoint message: ' + q('#exMsg').textContent); eq(names.pop(), BASE + '-01.pptx', 'one slide of PowerPoint did not overwrite the whole presentation\'s');
+        closeModal();
+        // the unit and the width come back; Enter in the width exports
+        exportDialog(); await sleep(50); eq([q('#exUnit').value, q('#exMm').value], ['in', '3.25'], 'the unit and width again'); pick('#exFmt', 'svg'); pick('#exSl', 'one'); const n0 = names.length;
+        q('#exMm').dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })); for (let i = 0; i < 100 && names.length === n0; i++) await sleep(30); eq(names.length, n0 + 1, 'Enter did not export');
+        // Text sizes… opened from Export goes back there
+        q('#exTs').click(); await sleep(50); eq(q('#tsClose').textContent, 'Back to Export', 'the Text sizes button'); q('#tsClose').click(); await sleep(50); ok(q('#exFmt'), 'not back in the Export dialog'); closeModal();
+        // Export several figures: the open figure's print size and resolution, the unit; Esc while it runs leaves it open
+        fig.printSize('1.0'); scene.exportDpi = 600; await flushSave(true); await batchExportDialog([FILE]); await sleep(80);
+        eq([q('#bxPre').value, q('#bxDpi').value, q('#bxUnit').value, q('#bxMm').value], ['1.0', '600', 'in', '3.5'], 'Export several figures starts from the print size');
+        q('#bxList').querySelectorAll('input[data-f]').forEach(c => { c.checked = c.dataset.f === FILE; }); pick('#bxFmt', 'svg'); q('#bxGo').click(); await sleep(0);
+        ok(batchExportDialog.running, 'not running'); D.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); ok(!q('#modal').hidden, 'Esc closed Export several figures while it ran');
+        for (let i = 0; i < 200 && batchExportDialog.running; i++) await sleep(50); ok(names.includes(BASE + '-01.svg') && names.includes(BASE + '-02.svg'), 'the slides: ' + short(names)); closeModal(); ok(q('#modal').hidden, 'it closes when done');
+      } finally {
+        saveExport = se; exportPptx = xp; for (const [k, v] of [['fig.exportUnit', U0], ['fig.exportFmt', F0]]) try { if (v) localStorage.setItem(k, v); else localStorage.removeItem(k); } catch (e) {}
+        if (!q('#modal').hidden && !batchExportDialog.running) closeModal(); unslide(); delete scene.exportMm; delete scene.exportDpi; delete scene.exportSize; blank(); sel = new Set(); render();
+      }
     });
     // phone touch tests (M2)
     // synthetic touch PointerEvents (pointerType touch, own pointerIds) in a frame of a phone's size on a figure of its own (removed afterwards); ?phone=1 forces the phone layout
@@ -1220,6 +1627,62 @@
       } finally {
         if (fr) { try { await fr.contentWindow.flushSave(); } catch (e) {} fr.remove(); fr = null; }
         await sleep(200);   // the scratch figure: to the trash, then out of it (its history goes with it); this page's fetch, so the web version's storage too
+        try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
+        try { localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}
+        keys.forEach(k => { try { if (ls0[k] == null) localStorage.removeItem(k); else localStorage.setItem(k, ls0[k]); } catch (e) {} });
+      }
+    }, 300000);
+    // round 13 (phones): the animation sheet takes the place of Add, Layers, Style and Page (it lay over them); a finger's size for the toast's button, the animation
+    // sidebar, the sliders and the citation dialog's buttons; crop zooms to a small element; a 320 px phone shows more of the figure's name; the sideways rail shows it scrolls
+    test('phone round 13: one sheet at a time with animations, Back closes it, toast button, sidebar and slider sizes, crop zooms in, 320 px header, rail scroll cue', async () => {
+      if (typeof phSheet !== 'function') throw new Skip('this editor has no phone layout');
+      const name = String(FILE).replace(/\.json$/i, '') + '-phone.json', keys = ['fig.animPane', 'fig.phHello', 'fig.palRecent'], ls0 = {};   // the phone layout test's name too (see above); what the frame may write in this browser goes back
+      keys.forEach(k => { try { ls0[k] = localStorage.getItem(k); } catch (e) {} });
+      let fr = null; const until = async (f, ms = 3000) => { const t0 = Date.now(); for (;;) { let v = false; try { v = f(); } catch (e) {} if (v) return true; if (Date.now() - t0 > ms) return false; await sleep(40); } };
+      try {
+        fr = D.createElement('iframe'); fr.title = 'phone round 13 test'; fr.style.cssText = 'position:fixed;left:0;top:0;width:390px;height:844px;border:0;z-index:2147483000;background:#fff';
+        fr.src = location.pathname + '?file=' + encodeURIComponent(name) + '&phone=1'; D.body.appendChild(fr);
+        ok(await until(() => fr.contentWindow.fig && fr.contentWindow.eval('typeof fileReady!=="undefined"&&fileReady'), 60000), 'the editor did not start in the phone frame');
+        const w = watch(fr.contentWindow); w.alert = () => {}; w.confirm = () => true; w.prompt = () => null; w.onbeforeunload = null; if (w.applyUIClasses) w.applyUIClasses(); w.dispatchEvent(new w.Event('resize')); await sleep(250);
+        const d = w.document, V = s => w.eval(s), F = w.fig, $$ = s => d.querySelector(s), hi = el => Math.round(el.getBoundingClientRect().height), ph = s => $$(s).dataset.ph || 'closed', mb = m => $$('#mbar [data-m=' + m + ']');
+        ok(d.documentElement.classList.contains('phone'), 'no phone layout in the frame');
+        const box = F.add('box', { x: 800, y: 450, w: 300, h: 160 }), ic = F.add('icon', { kind: 'cell', x: 300, y: 300, size: 60 });
+        // the toast's button (Undo, Details, Select…)
+        w.toastAct('Moved to the archive', 'Undo', () => {}); await sleep(50); ok(hi($$('#toast .tact')) >= 34, 'the toast button is ' + hi($$('#toast .tact')) + ' px high');
+        // one sheet at a time: the animation sheet and Add / Layers / Style
+        F.select([]); await sleep(50); mb('layers').click(); await sleep(80); eq(ph('#left'), 'full', 'Layers did not open');
+        F.animPane(true); await sleep(80); ok(F.animPane(), 'the animation sheet did not open'); eq(ph('#left'), 'closed', 'the Layers sheet stayed open under the animation sheet');
+        mb('add').click(); await sleep(80); eq(ph('#left'), 'full', 'Add did not open'); ok(!F.animPane(), 'the animation sheet stayed over the Add sheet');
+        w.phSheet('#left', 'closed'); F.select([box]); await sleep(50); F.animPane(true); await sleep(80); mb('style').click(); await sleep(80);
+        eq(ph('#props'), 'peek', 'Style did not open'); ok(!F.animPane(), 'the animation sheet stayed over the Style sheet');
+        F.animPane(true); await sleep(80); eq(ph('#props'), 'closed', 'the properties sheet stayed open under the animation sheet');
+        // Back closes it, as it closes the other sheets (it had no entry: Back left the editor); its ✕ takes the entry off again
+        await sleep(150); ok(w.history.state && w.history.state.ph, 'the animation sheet has no Back entry'); w.history.back(); ok(await until(() => !F.animPane()), 'Back did not close the animation sheet'); await sleep(150);
+        F.animPane(true); await sleep(80); const ph0 = w.history.state && w.history.state.ph; ok(ph0, 'no Back entry the second time'); F.animPane(false); ok(await until(() => !(w.history.state && w.history.state.ph === ph0)), 'closing it left its Back entry'); await sleep(150);
+        F.animPane(true); await sleep(80);
+        // the sidebar's controls are a finger's size
+        F.animate(box, { kind: 'in', fx: 'fly', dir: 'l' }); F.select([box]); await sleep(150);
+        const ctl = [...d.querySelectorAll('#animbar .abstart button, #animbar .abdirs button, #animbar .abwhat .ib, #animbar .abtabs button')];
+        ok(ctl.length >= 8, 'the sidebar options are missing (' + ctl.length + ')'); ctl.forEach(b => ok(hi(b) >= 38, (b.getAttribute('aria-label') || b.textContent.trim()) + ' is ' + hi(b) + ' px high'));
+        ok(hi($$('#abAuto')) >= 18, 'the tick box Play when I change something is ' + hi($$('#abAuto')) + ' px');
+        F.animPane(false); await sleep(50);
+        // a panel's slider
+        F.select([box]); await sleep(50); mb('style').click(); await sleep(80); const rg = $$('#props .rangef input[type=range]'); ok(rg && hi(rg) >= 30, 'the opacity slider is ' + (rg && hi(rg)) + ' px high'); w.phSheet('#props', 'closed');
+        // crop zooms to an element that is small on screen
+        F.select([ic]); await sleep(50); const z0 = V('zoom'), b0 = w.bbox(ic); ok(Math.max(b0.w, b0.h) * z0 < 140, 'the icon is not small on screen at the start'); ok(w.cropStart(ic), 'crop mode did not start');
+        await sleep(80); ok(Math.max(b0.w, b0.h) * V('zoom') >= 140, 'crop mode left the icon ' + Math.round(Math.max(b0.w, b0.h) * V('zoom')) + ' px on screen'); w.cropEnd(false); eq(F.crop(ic), null, 'Cancel left a crop');
+        // the citation dialog's buttons
+        w.citeDialog(); await sleep(150); ok(hi($$('#ctFile')) >= 38, 'Choose files… is ' + hi($$('#ctFile')) + ' px high'); w.closeModal(); await sleep(50);
+        // a 320 px phone: the figure's name keeps some room
+        fr.style.width = '320px'; fr.style.height = '568px'; ok(await until(() => w.innerWidth === 320), 'the frame did not get narrower'); w.dispatchEvent(new w.Event('resize')); await sleep(200);
+        ok($$('#fileSel').getBoundingClientRect().width >= 60, 'the name has ' + Math.round($$('#fileSel').getBoundingClientRect().width) + ' px at 320 px');
+        // sideways: the rail shows that it scrolls (a shade at the end with buttons beyond)
+        fr.style.width = '844px'; fr.style.height = '390px'; ok(await until(() => w.innerWidth === 844), 'the frame did not turn'); w.dispatchEvent(new w.Event('resize')); ok(await until(() => d.documentElement.classList.contains('ph-land')), 'no sideways layout');
+        F.select([box]); await sleep(100); ok(/gradient/.test(w.getComputedStyle($$('#mbSel')).backgroundImage), 'the sideways rail has no scroll shade');
+        F.select([]);
+      } finally {
+        if (fr) { try { await fr.contentWindow.flushSave(); } catch (e) {} fr.remove(); fr = null; }
+        await sleep(200);
         try { await fetch('api/move?file=' + encodeURIComponent(name) + '&from=&to=trash', { method: 'POST' }); await fetch('api/delete?file=' + encodeURIComponent(name), { method: 'POST' }); } catch (e) {}
         try { localStorage.removeItem('figEditor.scene.v1:' + name); } catch (e) {}
         keys.forEach(k => { try { if (ls0[k] == null) localStorage.removeItem(k); else localStorage.setItem(k, ls0[k]); } catch (e) {} });
@@ -1804,6 +2267,52 @@
         { fig.addSlide({}); fig.updateSlide(1, { trans: { fx: 'fade' } }); fig.removeSlide(2); await settle(); ok(isDeck(scene) && fig.slides()[0].trans, 'one slide with a transition stays a file with slides'); const hh = hist.length; fig.updateSlide(1, { trans: null }); eq([isDeck(scene), hist.length], [false, hh + 1], 'plain again, one step'); await settle(); ok(isClean(), 'and saved as that'); undo(); ok(isDeck(scene) && fig.slides()[0].trans && fig.slides()[0].trans.fx === 'fade', 'one undo brings the transition back'); }
       } finally { W.open = wo; showOff(); if (fr) fr.remove(); unslide(); blank(); }
     }, 180000);
+    test('slides round: ungrouping keeps a group\'s animations; the tags of one element read in play order; an animation of a hidden element is marked and its click kept; the transition preview shows the slides as the show does; the mouse wheel in the show; F5 over a dialog presents', async () => {
+      if (!hasShow || typeof animRegroup !== 'function') throw new Skip('this editor has no such slides features');
+      const q = s => D.querySelector(s), P = () => fig.presenting(), hStart = hist.length;
+      try {
+        await three(); room(); fig.slide(2); fig.add('shape', { id: 'g1', x: 400, y: 400, w: 100, h: 100, kind: 'rect' }); fig.add('shape', { id: 'g2', x: 600, y: 400, w: 100, h: 100, kind: 'ellipse' }); fig.add('text', { id: 'g3', x: 800, y: 400, text: 'third' });
+        fig.select(['g1', 'g2', 'g3']); groupSel(); const g = scene.objects.find(o => o.id === 'g1').group; fig.animate('g1', { kind: 'in', fx: 'fade', dur: 0.2 }); fig.animate('g3', { kind: 'path', fx: 'line', path: [[100, 0]], start: 'after' });
+        eq(fig.anims().map(a => a.on), ['g:' + g, 'g:' + g], 'the group is animated as one');
+        // ungrouped: each part gets a copy, the first as it was, the others with it (the same times: the slide plays as before)
+        fig.select(['g1', 'g2', 'g3']); const h0 = hist.length; ungroupSel();
+        eq(fig.anims().map(a => [a.on, a.kind, a.start]), [['g1', 'in', 'click'], ['g2', 'in', 'with'], ['g3', 'in', 'with'], ['g1', 'path', 'after'], ['g2', 'path', 'with'], ['g3', 'path', 'with']], 'ungrouping hands the animations to the parts');
+        eq(hist.length, h0 + 1, 'one undo step'); ok(/animations now play on each of its parts/.test(q('#toast').textContent), 'the message says so: ' + q('#toast').textContent);
+        { const L = slideAnims(), T = animTimes(L).T; eq([T[1].s, T[2].s, T[4].s, T[5].s], [T[0].s, T[0].s, T[3].s, T[3].s], 'the copies play together'); }
+        undo(); eq(fig.anims().map(a => a.on), ['g:' + g, 'g:' + g], 'undo: the group and its animations again');
+        // part of a group deleted so that one element is left: it keeps the animations
+        fig.select(['g2', 'g3']); del(); eq(fig.anims().map(a => a.on), ['g1', 'g1'], 'the element left of the group keeps them'); undo();
+        // a group inside the group stays one unit
+        fig.select(['g1', 'g2', 'g3']); ungroupSel(); fig.removeAnim(fig.anims().map(a => a.id)); fig.select(['g1', 'g2']); groupSel(); fig.select(['g1', 'g2', 'g3']); groupSel(); const inner = scene.objects.find(o => o.id === 'g1').pg[0];
+        fig.animate('g3', { kind: 'out', fx: 'fade' }); fig.select(['g1', 'g2', 'g3']); ungroupSel();
+        eq(fig.anims().map(a => [a.on, a.start]), [['g:' + inner, 'click'], ['g3', 'with']], 'the group inside is one part');
+        // the whole group deleted: its animations go with it
+        fig.select(['g1', 'g2', 'g3']); del(); eq(fig.anims().length, 0, 'gone with the elements'); await settle();
+        // the tags of one element: in a row to its left, in play order from left to right
+        fig.add('text', { id: 'tg', x: 700, y: 300, text: 'tagged' }); fig.animate('tg', { kind: 'in', fx: 'fade' }); fig.animate('tg', { kind: 'out', fx: 'fade' }); fig.animate('tg', { kind: 'in', fx: 'wipe' }); sel = new Set(); render();
+        { const s = animOverlay(1, 1, svg.getScreenCTM().inverse()), t = [...s.matchAll(/<rect x="([\d.-]+)"[^>]*\/><text[^>]*>(\d+)<\/text>/g)].map(m => [+m[1], m[2]]); eq(t.map(x => x[1]), ['1', '2', '3'], 'three tags'); ok(t[0][0] < t[1][0] && t[1][0] < t[2][0], 'read left to right in play order: ' + J(t)); }
+        // an animation of a hidden element: the pane and fig.check say it is not played; the show leaves it out and hands its click to the next one (as the PowerPoint export does)
+        fig.add('shape', { id: 'hd', x: 1200, y: 600, w: 80, h: 80, kind: 'rect' }); fig.animate('hd', { kind: 'in', fx: 'fade' }); fig.animate('tA', { kind: 'in', fx: 'fade', start: 'with' }); fig.update('hd', { hidden: true });
+        ok(fig.check().some(r => r.level === 'info' && /not played: what it animates is hidden/.test(r.msg)), 'fig.check says so');
+        { const S = await showSnap(1); eq([S.steps, S.L.length, S.L[S.L.length - 1].start], [4, 4, 'click'], 'the show keeps four clicks: the click goes to the next animation'); }
+        fig.animPane(true); await frame(); { const row = [...D.querySelectorAll('#animbar .aprow')].find(r => /hidden/.test(r.textContent)); ok(row && row.classList.contains('idle'), 'the pane marks its row'); } fig.animPane(false);
+        fig.remove(['hd']); fig.removeAnim(fig.anims().filter(a => a.on === 'tA').map(a => a.id));
+        // the transition preview: the slide before after its animations, this one before them (the figure untouched)
+        fig.slide(3); fig.add('shape', { id: 'mv', x: 300, y: 600, w: 80, h: 80, kind: 'rect' }); fig.animate('mv', { kind: 'path', fx: 'line', path: [[200, 0]] }); fig.updateSlide(3, { trans: { fx: 'fade', dur: 0.3 } });
+        { const before = J(fig.get({ slides: true })), arr = transScene(1, false).objects.map(o => o.id), lv = transScene(1, true).objects.map(o => o.id), mv = transScene(2, true).objects.find(o => o.id === 'mv');
+          ok(!arr.includes('tg') && arr.includes('tA'), 'arriving: what enters later is not there yet: ' + J(arr)); ok(lv.includes('tg'), 'leaving: it came in again at the end'); eq(mv.x, 500, 'leaving: what moved stands at the end of its path');
+          ok(transPreview(2), 'the preview plays'); eq(q('#transPrev').querySelectorAll('.shL').length, 2, 'two layers'); transPreview.stop(); eq(J(fig.get({ slides: true })), before, 'the figure is not touched'); }
+        // the mouse wheel: down = next, up = back, one step per gesture; Ctrl + wheel stays the browser's; never past the end
+        fig.updateSlide(3, { trans: null }); await settle(); const hw = hist.length;
+        await fig.present({ from: 2, fullscreen: false }); const el = q('#show'), wh = (dy, o) => { const e = new WheelEvent('wheel', { deltaY: dy, bubbles: true, cancelable: true, ...(o || {}) }); el.dispatchEvent(e); return e; }, gap = () => new Promise(r => setTimeout(r, 300));
+        { const st0 = P().step; const e = wh(100); ok(e.defaultPrevented, 'the wheel is taken'); eq(P().step, st0 + 1, 'wheel down: the next step'); wh(100); wh(100); eq(P().step, st0 + 1, 'one step per gesture'); await gap(); for (let k = 0; k < 6; k++) wh(9); eq(P().step, st0 + 2, 'small touchpad deltas add up'); await gap(); wh(-120); eq(P().step, st0 + 1, 'wheel up: back'); await gap();
+          const c = wh(100, { ctrlKey: true }); ok(!c.defaultPrevented && P().step === st0 + 1, 'Ctrl + wheel is the browser\'s zoom'); showJump(3); for (let k = 0; k < 9 && !P().end; k++) showNext(); ok(P().end, 'at the end'); await gap(); wh(100); ok(P() && P().end, 'the wheel never ends the show'); }
+        showOff(); eq(hist.length, hw, 'no undo step');
+        // F5 over a dialog presents (it reloaded the page)
+        exportDialog(); await frame(); ok(!q('#modal').hidden, 'a dialog'); { const e = new KeyboardEvent('keydown', { key: 'F5', bubbles: true, cancelable: true }); q('#modal').dispatchEvent(e); ok(e.defaultPrevented, 'F5 is taken'); ok(await waitFor(() => P() && P().ready, 8000), 'and presents'); ok(q('#modal').hidden, 'the dialog closed'); }
+        showOff();
+      } finally { showOff(); if (typeof closeModal === 'function' && !q('#modal').hidden) closeModal(); if (transPreview.stop) transPreview.stop(); unslide(); blank();  if (hist.length > hStart) { hist.length = hStart; fut.length = 0; } }   // (its many steps would fill the history, which then stops growing, for the tests after it)
+    }, 120000);
     // ---------- Home (the page of all figures) ----------
     // the figures these tests make are named <scratch figure>-ws-home-…, so wsClean and the runners' own clean-up remove them; every action on several figures runs with the
     // search box holding that name, and only after the cards shown are checked to be the tests' own (the folder may hold the user's figures)
@@ -1911,7 +2420,7 @@
         await hmOpen('archive', [A, B]); eq([...hmMain().querySelectorAll('.hmbulk [data-act]')].map(b => b.dataset.act), ['active', 'trash', 'clear'], 'the actions in the archive'); ok(!hmMain().querySelector('.hmc.hmnew'), 'a New figure card in the archive');
         hmClick(hmCard(A), { ctrlKey: true }); hmClick(hmCard(B)); eq(hmN(), '2 selected', 'two in the archive'); hmClick(hmBulk('active')); ok(await hmWait(async () => J(await hmIn('')) === J(names)), 'not active again: ' + J(await hmIn(''))); eq(await hmIn('archive'), [], 'the archive after it');
         // Move to trash: no question, a message with the number
-        await hmOpen('figures', names); hmKey('a', { ctrlKey: true }); eq(hmN(), '3 selected', 'all three'); hmClick(hmBulk('trash')); ok(await hmWait(async () => J(await hmIn('trash')) === J(names)), 'not in the trash: ' + J(await hmIn('trash'))); ok(D.querySelector('#modal').hidden, 'moving to the trash asked'); ok(/3 figures moved to trash/.test(D.querySelector('#toast').textContent), 'the message: ' + D.querySelector('#toast').textContent);
+        await hmOpen('figures', names); hmKey('a', { ctrlKey: true }); eq(hmN(), '3 selected', 'all three'); hmClick(hmBulk('trash')); ok(await hmWait(async () => J(await hmIn('trash')) === J(names)), 'not in the trash: ' + J(await hmIn('trash'))); ok(D.querySelector('#modal').hidden, 'moving to the trash asked'); ok(/3 figures moved to the trash/.test(D.querySelector('#toast').textContent), 'the message: ' + D.querySelector('#toast').textContent);
         // Trash: a click only selects; Restore; Delete permanently asks once
         await hmOpen('trash', names); eq([...hmMain().querySelectorAll('.hmbulk [data-act]')].map(b => b.dataset.act), ['active', 'delete', 'clear'], 'the actions in the trash'); ok(hmMain().querySelector('.hmbar [data-act=empty]'), 'no Empty trash…');
         hmClick(hmCard(A)); eq(hmN(), '1 selected', 'a click in the trash selects'); eq(fig.home(), true, 'a click in the trash opened something'); hmClick(hmBulk('active')); ok(await hmWait(async () => J(await hmIn('')) === J([A])), 'not restored'); ok(/restored/.test(D.querySelector('#toast').textContent), 'the message: ' + D.querySelector('#toast').textContent);
@@ -1930,6 +2439,41 @@
         await hmMake([p + '-x.json']); ok((await fetch('api/move?file=' + encodeURIComponent(p + '-x.json') + '&from=&to=archive', { method: 'POST' })).ok, 'archived by hand'); await hmMake([p + '-x.json']); await hmOpen('archive', [p + '-x.json']); hmClick(hmCard(p + '-x.json'), { ctrlKey: true }); hmClick(hmBulk('active'));
         ok(await waitFor(() => /could not be made active: .*-x/.test(D.querySelector('#toast').textContent)), 'a failed move is not named: ' + D.querySelector('#toast').textContent); eq(await hmIn('archive'), [p + '-x.json'], 'the figure that could not move stays');
       } finally { listFiles = lf; homePref.sort = sort0; if (!D.querySelector('#modal').hidden) closeModal(); D.querySelector('#ctxMenu').classList.remove('open'); fig.home(false); if (bc) bc.close(); await wsClean(); }
+    });
+    test('home: the search finds words typed with spaces and in any order, Undo after Archive and Move to trash, the bar counts a long action, Duplicate selects the copies, the arrow keys in Templates, the message for the next page', async () => {
+      if (typeof homeShow !== 'function') throw new Skip('this editor has no Home');
+      if (typeof hmMatch !== 'function') throw new Skip('this editor has no word search on Home');
+      const p = hmPre(), A = p + '-lab-poster-2025.json', B = p + '-other.json', many = Array.from({ length: 8 }, (_, i) => p + '-m' + i + '.json'), sort0 = homePref.sort; homePref.sort = 'name';
+      let msg0 = null; try { msg0 = sessionStorage.getItem('fig.storeMsg'); } catch (e) {}
+      try {
+        // the words: - _ . and spaces alike, every word somewhere in the name
+        eq(hmWords(' Lab  poster-2025 '), ['lab', 'poster', '2025'], 'the words of a search'); ok(hmMatch('lab-poster-2025.json', hmWords('poster 2025')) && hmMatch('lab-poster-2025.json', hmWords('2025 lab')) && hmMatch('a_b.c.json', hmWords('b c')) && hmMatch('x.json', []), 'a match was missed');
+        ok(hmMatch('ganttchart.json', hmWords('chart')) && hmMatch('lab-poster-final-2025.json', hmWords('poster 2025')) && hmMatch('home-a.json', hmWords('HOME-A')), 'a phrase or a part of a word was missed');
+        ok(!hmMatch('lab-poster-2025.json', hmWords('poster 2024')) && !hmMatch('lab.json', hmWords('json')) && !hmMatch('home-bad.json', hmWords('home-a')) && !hmMatch('lab-poster-2025.json', hmWords('poster 25')), 'a name matched words it does not hold (or its .json)');
+        await wsClean(); await hmMake([A, B]); await hmOpen('figures', [A, B]); await hmSearch(p + ' poster 2025'); eq(hmShown(), [A], 'the search "poster 2025" with spaces');
+        // Archive, then Undo in the message: back in Figures, selected there
+        await hmOpen('figures', [A, B]); hmKey('a', { ctrlKey: true }); hmClick(hmBulk('archive')); ok(await hmWait(async () => J(await hmIn('archive')) === J([A, B].sort())), 'not archived');
+        ok(await waitFor(() => D.querySelector('#toast.show .tact')), 'no button in the message'); const u = D.querySelector('#toast .tact'); ok(u && u.textContent === 'Undo' && /2 figures archived/.test(D.querySelector('#toast').textContent), 'no Undo in the message: ' + D.querySelector('#toast').textContent);
+        u.click(); ok(await hmWait(async () => J(await hmIn('')) === J([A, B].sort()) && !(await hmIn('archive')).length), 'Undo did not bring them back: ' + J(await hmIn('archive')));
+        ok(await waitFor(() => /2 figures back in Figures/.test(D.querySelector('#toast').textContent)), 'the message of Undo: ' + D.querySelector('#toast').textContent); ok(await waitFor(() => hmMain().querySelector('.hmbulk .hmn').textContent === '2 selected'), 'what came back is not selected: ' + hmN());
+        // Move to trash of one card with Delete, then Undo
+        hmKey('Escape'); await hmOpen('figures', [A, B]); hmCard(B).focus(); hmKey('Delete', {}, hmCard(B)); ok(await hmWait(async () => J(await hmIn('trash')) === J([B])), 'Delete did not move it to the trash');
+        ok(await waitFor(() => D.querySelector('#toast.show .tact')), 'no Undo after Delete'); hmKey('z', { ctrlKey: true }); ok(await hmWait(async () => J(await hmIn('')) === J([A, B].sort()) && !(await hmIn('trash')).length), 'Ctrl+Z did not restore it');
+        // Duplicate: the copies are selected, not the originals
+        hmKey('Escape'); await hmOpen('figures', [A, B]); hmKey('a', { ctrlKey: true }); hmClick(hmBulk('dup')); ok(await hmWait(async () => (await hmIn('')).length === 4), 'no copies');
+        ok(await waitFor(() => J([...hmMain().querySelectorAll('.hmc.sel')].map(c => c.dataset.n).sort()) === J([A.replace(/\.json$/, '-copy.json'), B.replace(/\.json$/, '-copy.json')].sort())), 'the selected cards: ' + J([...hmMain().querySelectorAll('.hmc.sel')].map(c => c.dataset.n)));
+        // eight or more: the bar counts while it works
+        hmKey('Escape'); await hmMake(many); await hmOpen('figures'); await hmSearch(p + '-m'); ok(await waitFor(() => J(hmShown()) === J(many)), 'the eight are not shown: ' + J(hmShown())); hmKey('a', { ctrlKey: true });
+        const said = [], mo = new MutationObserver(() => { const h = hmMain().querySelector('.hmbulk .hmn'); if (h) said.push(h.textContent); }); mo.observe(hmMain(), { subtree: true, childList: true, characterData: true });
+        try { hmClick(hmBulk('trash')); ok(await hmWait(async () => (await hmIn('trash')).length === 8), 'the eight did not go'); } finally { mo.disconnect(); }
+        ok(said.some(t => /^Moving to trash… [0-8] of 8$/.test(t)), 'the bar did not count: ' + J(said.slice(0, 5)));
+        // Templates: the arrow keys move between the cards
+        fig.home('templates'); ok(await waitFor(() => hmMain().querySelectorAll('.hmtpl').length > 3), 'no template cards'); const tc = [...hmMain().querySelectorAll('.hmtpl')]; tc[0].focus();
+        hmKey('ArrowRight', {}, tc[0]); eq(D.activeElement, tc[1], 'ArrowRight'); hmKey('ArrowLeft', {}, tc[1]); eq(D.activeElement, tc[0], 'ArrowLeft'); hmKey('End', {}, tc[0]); eq(D.activeElement, [...hmMain().querySelectorAll('.hmtpl')].pop(), 'End'); hmKey('Home', {}, D.activeElement); eq(D.activeElement, tc[0], 'Home');
+        hmKey('ArrowDown', {}, tc[0]); ok(D.activeElement !== tc[0] && D.activeElement.classList.contains('hmtpl') && D.activeElement.getBoundingClientRect().top > tc[0].getBoundingClientRect().bottom - 2, 'ArrowDown'); eq(fig.home(), true, 'a key closed Home');
+        // the open figure archived or trashed: its message waits for the page the tab goes on to
+        toastNext('“x” archived'); let m = null; try { m = sessionStorage.getItem('fig.storeMsg'); } catch (e) {} eq(m, '“x” archived', 'the message for the next page');
+      } finally { homePref.sort = sort0; try { if (msg0 === null) sessionStorage.removeItem('fig.storeMsg'); else sessionStorage.setItem('fig.storeMsg', msg0); } catch (e) {} if (!D.querySelector('#modal').hidden) closeModal(); fig.home(false); await wsClean(); }
     });
     test('home: a new section in the registry is listed, drawn, gets the keys and is tidied up', async () => {
       if (typeof homeShow !== 'function') throw new Skip('this editor has no Home');
@@ -2309,7 +2853,7 @@
         const st = w.document.querySelector('#status'); ok(w.document.documentElement.classList.contains('net-off'), 'no Offline note'); ok(/Offline/.test(w.getComputedStyle(st, '::after').content), 'the status line does not say Offline: ' + w.getComputedStyle(st, '::after').content);
         ok(/No internet connection/.test(st.title) && /references/.test(st.title) && /icon packs/.test(st.title), 'the status tooltip does not say what waits: ' + st.title);
         { const H = w.document.documentElement, had = H.classList.contains('phone'); H.classList.add('phone'); const b = w.getComputedStyle(st, '::before'); ok(/inset/.test(b.boxShadow) || /rgb\(156, 163, 175\)/.test(b.boxShadow), 'the phone layout shows no offline dot: ' + b.boxShadow); if (!had) H.classList.remove('phone'); }
-        w.packMenu(true); ok(w.document.querySelector('#packMenu .pkoff'), 'Import more icons does not say it needs a connection'); w.packMenu(false);
+        await w.packInit(); w.packMenu(true); ok(w.document.querySelector('#packMenu .pkoff'), 'Import more icons does not say it needs a connection: ' + w.document.querySelector('#packMenu').textContent.slice(0, 120));   // (the pack list first: a page that answers fast has not read it yet) w.packMenu(false);
         Object.defineProperty(w.navigator, 'onLine', { configurable: true, get: () => true }); w.dispatchEvent(new w.Event('online'));
         ok(!w.document.documentElement.classList.contains('net-off') && !/No internet connection/.test(st.title), 'the Offline note stays when the connection is back');
         // back online; a newer release taking over says so once, with Reload; the same release says nothing
@@ -2458,7 +3002,7 @@
         const S = s => !D.querySelector('#modal').hidden && D.querySelector('#modalBox h2') && D.querySelector('#modalBox h2').textContent === s;
         const want = { cite: () => S('Add citation') && !fig.home(), anims: () => animPane() && !fig.home(), iconPacks: () => !D.querySelector('#packMenu').hidden && !fig.home(), envmicro: () => palState.cat === 'Environmental microbiology' && !fig.home(), addPanel: () => D.querySelector('#tabAdd').classList.contains('on') && !fig.home(),
           newFigure: () => S('New figure'), newPresentation: () => S('New presentation'), import: () => S('Import figures'), templates: () => fig.home() && HOME.sec === 'templates', prefs: () => S('Appearance'), whatsnew: () => S('What’s new'),
-          'help:home': () => S('Shortcuts') && /Home: all your figures/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent), 'help:present': () => /Slideshow/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent), 'help:anim': () => /Animations: a sidebar/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent),
+          'help:home': () => S('Help and shortcuts') && /Home: all your figures/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent), 'help:present': () => /Slideshow/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent), 'help:anim': () => /Animations: a sidebar/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent),
           'help:crop': () => /Crop any element/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent), 'help:cite': () => /Add citation: paste/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent), 'help:colors': () => /Colors in this icon/.test((D.querySelector('#modalBox tr.nbhl') || {}).textContent) };
         eq(Object.keys(NB_ACTS).sort(), Object.keys(want).sort(), 'the actions'); const cat0 = palState.cat, an0 = animPane();
         try { for (const a of Object.keys(want)) { fig.home('figures'); await frame(); NB_ACTS[a][1](); ok(await waitFor(want[a], 6000), 'the action ' + a + ' did not work'); if (!D.querySelector('#modal').hidden) closeModal(); await frame(); if (!D.querySelector('#modal').hidden) closeModal(); if (animPane() !== an0) animPane(an0); packMenu(false); if (palState.cat !== cat0) { palState.cat = cat0; buildPalette(); } } }
@@ -2917,6 +3461,192 @@
       } finally { try { closeModal(); } catch (e) {} unslide(); blank(); }
     }, 240000);
 
+    test('citations round 9: the style cards (Example text, a DOI moves to the next line whole, a page range kept together, why the boxes are off); a link on the canvas starts its own line; J.-P.; a hidden citation; a Vancouver book; the panel note', async () => {
+      if (!hasCite) throw new Skip('this editor has no citations');
+      const $$ = s => D.querySelector(s), $all = s => [...D.querySelectorAll(s)];
+      try {
+        unslide(); blank(); citePrefsOff(); sel = new Set(); buildPanel();
+        // the cards: the numbered ones read "Example text"; a DOI or link is one piece (an inline block) and a page range does not break at its dash
+        citeDialog(); const pv = k => $$(`.ctst[data-s="${k}"] .ctpv`);
+        ok(!/Lifespan/.test($$('#ctStyles').textContent) && /^Example text\s*\[1\]$/.test(pv('num').textContent.trim()) && /^Example text1$/.test(pv('sup').textContent.trim()), 'the sample sentence: ' + J(pv('num').textContent));
+        const ln = [...pv('apa').querySelectorAll('.ctlink')].map(x => x.textContent), lv = [...pv('vancouver').querySelectorAll('.ctlink')].map(x => x.textContent);
+        eq([J(ln), J(lv)], [J(['https://doi.org/10.1000/example']), J(['doi:10.1000/example'])], 'the DOI of each full card is one piece');
+        ok(pv('apa').querySelector('.ctlink') && getComputedStyle(pv('apa').querySelector('.ctlink')).display === 'inline-block', 'an inline block: it goes to the next line whole');
+        ok([pv('apa'), pv('vancouver')].every(p => [...p.querySelectorAll('.ctnw')].some(x => x.textContent === '123–130' && getComputedStyle(x).whiteSpace === 'nowrap')), 'the page range is kept together');
+        ok(/\*?Nature\*?/.test(citeText(['x'], 'apa', { doi: true, title: true }, new Map([['x', citeSample()]]), new Map())) && /<i>4<\/i>\(2\)/.test(pv('apa').innerHTML) && /2026;4\(2\):/.test(pv('vancouver').textContent), 'APA italic volume and Vancouver 2026;4(2): as before');
+        { const box = $$('#modal .box'), w0 = box.style.width; for (const W of [600, 700, 800, 900]) { box.style.width = W + 'px'; const L = pv('apa').querySelector('.ctlink'), lh = parseFloat(getComputedStyle(pv('apa')).lineHeight); ok(L.offsetHeight < lh * 1.5, 'at ' + W + ' px the DOI is on one line: ' + L.offsetHeight + ' px high') } box.style.width = w0; }
+        // the boxes: off with a word for the numbered styles and author–year, without it for the full ones
+        const pick = k => { $$(`.ctst[data-s="${k}"]`).click(); return [$$('#ctTitle').disabled, $$('#ctOffNote').hidden] };
+        eq(J([pick('num'), pick('authoryear'), pick('apa'), pick('short')]), J([[true, false], [true, false], [false, true], [false, true]]), 'Not in this style shows only where the boxes are off');
+        closeModal(); citePrefsOff();
+        // the canvas: a link wider than the box starts on a line of its own, and is cut after that
+        { const L = wrapRuns('Okafor, C. (2023). A web page. Example site. https://www.example.org/some/long/path/to/a/resource/page.html', 420, 16).map(l => l.map(r => r.text).join(''));
+          ok(L.some(l => /^https:\/\/www\.example\.org\//.test(l)) && !L.some(l => /Example site\. https/.test(l)), 'the link starts its own line: ' + J(L));
+          const G = wrapRuns('Genes ATG5/ATG7/ATG12/ATG16L1/BECN1/ULK1/PIK3C3/WIPI2/MAP1LC3B/SQSTM1 were studied', 220, 16).map(l => l.map(r => r.text).join('')); ok(/^Genes ATG/.test(G[0]), 'a gene list is still packed after the words before it: ' + J(G)); }
+        // initials written with a hyphen keep it
+        eq([citeInit('J.-P.', true), citeInit('Jean-Paul', true), citeInit('J.-P.'), citeInit('J. A.', true)], ['J.-P.', 'J.-P.', 'JP', 'J. A.'], 'J.-P. as Jean-Paul');
+        // a hidden citation numbers nothing first and is not in the list of cited references
+        { const [a, b, c] = fig.addRef([{ authors: ['Zed, A'], year: 2020, title: 'Z one', container: 'J' }, { authors: ['Bee, B'], year: 2021, title: 'B two', container: 'J' }, { authors: ['Ay, C'], year: 2022, title: 'A three', container: 'J' }]);
+          const c1 = fig.cite(a, { style: 'num', x: 100, y: 100 }), c2 = fig.cite(b, { style: 'num', x: 100, y: 200 }), L = fig.refList({}), h0 = hist.length;
+          fig.update(c1, { hidden: true }); eq([get(c2).text, get(c1).text, get(L).text.split('\n').length, /^1\. Bee/.test(get(L).text)], ['[1]', '[2]', 1, true], 'hidden: the seen citation is [1], the list has only its reference');
+          fig.update(L, { refAll: true }); eq(get(L).text.split('\n').map(x => x.slice(0, 6)), ['1. Bee', '2. Zed', '3. Ay '], 'every reference: the others after, numbered on without a repeat');
+          fig.update(c1, { hidden: false }); eq([get(c1).text, get(c2).text], ['[1]', '[2]'], 'shown again: numbered as before'); while (hist.length > h0) undo(); }
+        // a Vancouver book and chapter
+        { const r = refParse('World Health Organization. Ageing and health. Geneva: WHO; 2021.').refs[0]; eq([r.type, J(r.authors), r.title, r.publisher, r.year], ['book', J([{ literal: 'World Health Organization' }]), 'Ageing and health', 'WHO', 2021], 'a book by an organization');
+          const c = refParse('Meltzer PS, Kallioniemi A, Trent JM. Chromosome alterations in human solid tumors. In: Vogelstein B, Kinzler KW, editors. The genetic basis of human cancer. New York: McGraw-Hill; 2002. p. 93-113.').refs[0];
+          eq([c.type, c.authors.length, c.title, c.container, c.publisher, c.pages], ['chapter', 3, 'Chromosome alterations in human solid tumors', 'The genetic basis of human cancer', 'McGraw-Hill', '93–113'], 'a chapter');
+          eq(refParse('Smith JA, Doe J. Caloric restriction and aging. Aging Cell. 2021;20(3):e13345.').refs[0].type, 'article', 'an article stays an article'); }
+        // the panel note of a citation of several references
+        { blank(); const [x, y] = fig.addRef([{ authors: ['Ab, C'], year: 2001, title: 'One', container: 'J' }, { authors: ['De, F'], year: 2002, title: 'Two', container: 'J' }]); fig.select(fig.cite([x, y])); ok(/written from its references and follows them/.test($$('#props .ctpnote').textContent), 'several references: plural');
+          fig.select(fig.cite(x, { x: 100, y: 100 })); ok(/written from the reference and follows it/.test($$('#props .ctpnote').textContent), 'one: singular'); }
+      } finally { try { closeModal(); } catch (e) {} citePrefsOff(); unslide(); blank(); }
+    });
+
+    test('charts round 10: legend markers follow the text size and line up; a scatter key shows dots; long bar labels wrap; small pie slices keep their labels apart; function plot tick labels over the curves; the default funnel passes the color check; a Gantt key wraps; numbers written as text; the chart panel shows what its kind uses', async () => {
+      const mk = (type, p) => healNums(Object.assign({ id: 'zz' + type, type, x: 0, y: 0, s: 1 }, JSON.parse(J(DEF[type])), p)), doc = s => new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${s}</svg>`, 'image/svg+xml').documentElement;
+      try {
+        unslide(); blank(); sel = new Set(); buildPanel();
+        // legend: 16 px draws as before; 10 px markers shrink with the text (rows no longer overlap); a column of circles and a line shares one label edge; a pale circle gets a dark arrow
+        { const a = doc(drawLegend(mk('legend', { items: 'circle|#0072b2|A', size: 16 }))); eq([a.querySelector('circle').getAttribute('r'), a.querySelector('circle').getAttribute('cx'), a.querySelector('text').getAttribute('x')], ['9', '10', '28'], '16 px as before');
+          const b = doc(drawLegend(mk('legend', { items: 'circle|#0072b2|A\nline|#009e73|B\nup|#ffffff|C', size: 10, dir: 'v' }))), r = +b.querySelector('circle').getAttribute('r'), xs = [...b.querySelectorAll('text')].filter(t => /^[ABC]$/.test(t.textContent)).map(t => t.getAttribute('x'));
+          ok(r * 2 < 10 * 1.75 && r > 4, 'markers in proportion: r ' + r); eq(new Set(xs).size, 1, 'one label edge: ' + J(xs));
+          eq([...b.querySelectorAll('text')].find(t => t.textContent === '↑').getAttribute('fill'), '#1f2937', 'a dark arrow on a white circle'); }
+        // plot: a scatter's key is a dot per named series (an unnamed series leaves no gap); a line's stays a line
+        { const s = doc(drawPlot(mk('plot', { kind: 'scatter', legend: true, data: 'A: 1,1 2,2\n: 1,2\nB: 1,3 2,1' }))), dots = [...s.querySelectorAll('circle')];
+          eq([dots.length, s.querySelectorAll('line[stroke-width="2.6"]').length], [7, 0], 'five points and two key dots, no key lines');
+          const ty = [...s.querySelectorAll('text')].filter(t => /^[AB]$/.test(t.textContent)).map(t => +t.getAttribute('y')); near(ty[1] - ty[0], 12 * 1.55, .5, 'B on the next row of the key');
+          eq(doc(drawPlot(mk('plot', { kind: 'line', legend: true, data: 'A: 1 2 3' }))).querySelectorAll('line[stroke-width="2.6"]').length, 1, 'a line chart keeps its key line'); }
+        // bars: a label wider than its slot wraps at spaces, the x label moves down below it; a label that fits is one line as before
+        { const q = mk('plot', { kind: 'bar', data: 'Very long label one: 1\nAnother long label: 2\nC: 3', xlabel: 'Group' }), t = [...doc(drawPlot(q)).querySelectorAll('text')], one = [...doc(drawPlot(mk('plot', { kind: 'bar', data: 'A: 1\nB: 2', xlabel: 'Group' }))).querySelectorAll('text')];
+          ok(t.some(x => x.textContent === 'label one') && t.some(x => x.textContent === 'C'), 'wrapped: ' + J(t.map(x => x.textContent)));
+          near(+t.find(x => x.textContent === 'Group').getAttribute('y') - +one.find(x => x.textContent === 'Group').getAttribute('y'), 12 * 1.15, .5, 'the x label below the second line'); }
+        // pie: the labels of two tiny neighbors are a line apart and outside the pie; a pie with room keeps its places
+        { const t = [...doc(drawPlot(mk('plot', { kind: 'pie', data: 'Big: 90\nTiny one: 1\nTiny two: 1' }))).querySelectorAll('text')], y = n => +t.find(x => x.textContent === n).getAttribute('y'), x = n => +t.find(x => x.textContent === n).getAttribute('x');
+          ok(Math.abs(y('Tiny one') - y('Tiny two')) >= 12 * 1.15 - .2, 'apart: ' + y('Tiny one') + ' / ' + y('Tiny two'));
+          ok(['Tiny one', 'Tiny two'].every(n => Math.hypot(x(n), y(n) - 12 * .35) >= 80 + 12 * .8 - 1), 'outside the pie');
+          const p = [...doc(drawPlot(mk('plot', { kind: 'pie', data: 'A: 1\nB: 1' }))).querySelectorAll('text')].map(e => [e.textContent, e.getAttribute('x'), e.getAttribute('text-anchor')]); eq(J(p), J([['A', '89.6', 'start'], ['B', '-89.6', 'end']]), 'room: as before'); }
+        // function plot: through the origin the tick labels come after the curves with a rim; at the edges they are plain
+        { const s = drawFplot(mk('fplot', {})), iC = s.indexOf('</g>'), iT = s.indexOf('paint-order="stroke"'); ok(iT > iC, 'tick labels after the curves, with a rim');
+          ok(!/paint-order/.test(drawFplot(mk('fplot', { axes: 'box' }))), 'at the edges: no rim'); }
+        // the default funnel passes the color check; a narrow Gantt chart's key wraps inside the chart and sits below a today label
+        { blank(); const f = fig.add('funnel', { x: 400, y: 100 }); eq(fig.check([f]).filter(r => r.level !== 'info').map(r => r.msg), [], 'default funnel');
+          const g = mk('gantt', { cols: 'Q1|Q2', colW: 90, labelW: 120 }), G = ganttGeom(g), rx = [...doc(drawGantt(g)).querySelectorAll('rect[width="14"]')].map(r => +r.getAttribute('x'));
+          ok(rx.length === 4 && rx.every(x => x >= 0 && x < G.X1), 'the key inside the chart: ' + J(rx));
+          const ky = gg => Math.min(...[...doc(drawGantt(gg)).querySelectorAll('rect[width="14"]')].map(r => +r.getAttribute('y'))); ok(ky(mk('gantt', { today: '2' })) > ky(mk('gantt', {})) + 10, 'below the today label');
+          eq(new Set([...doc(drawGantt(mk('gantt', {}))).querySelectorAll('rect[width="14"]')].map(r => r.getAttribute('y'))).size, 1, 'a wide chart: one row'); }
+        // a number written as text ("200") draws as the number: a survival chart joined it as text and flew a million px off
+        { blank(); const sv = fig.add('survival', { x: 300, y: 300 }); fig.update(sv, { w: '200' }); render(); const b = bbox(sv); ok(finiteBox(b) && b.w > 150 && b.w < 400 && b.x > 100, 'survival bbox: ' + J(b)); eq(typeof get(sv).w, 'number', 'w is a number again'); }
+        // the panel: a pie hides axes, labels, y range and key; bars hide the key; changing the kind draws the panel for it
+        { blank(); const p = fig.add('plot', { x: 300, y: 300, kind: 'pie' }); fig.select([p]); await frame(); const ks = () => [...D.querySelectorAll('#props [data-k]')].map(e => e.dataset.k);
+          ok(!ks().some(k => /^(axes|xlabel|ylabel|ymin|ymax|legend)$/.test(k)), 'pie: ' + J(ks()));
+          const se = D.querySelector('#props select[data-k="kind"]'), h0 = hist.length; se.value = 'scatter'; se.dispatchEvent(new Event('input', { bubbles: true })); se.dispatchEvent(new Event('change', { bubbles: true })); await frame();
+          ok(['axes', 'xlabel', 'ylabel', 'legend'].every(k => ks().includes(k)), 'scatter: ' + J(ks())); eq(D.activeElement && D.activeElement.dataset.k, 'kind', 'the focus stays on the list');
+          while (hist.length > h0) undo(); }
+      } finally { sel = new Set(); unslide(); blank(); buildPanel(); }
+    });
+
+    test('chemistry and math round 11: charged aromatic rings get their double bonds; SMILES mistakes are named; atom labels centered on their element, an H between two bonds above or below; branches zigzag; geometry side labels of a concave shape outside, "3.2 cm", narrow angle labels clear their sides, an angle has 3 points; number line marks apart; vector labels; Esc cancels the formula builder', async () => {
+      const mk = (type, p) => Object.assign({ id: 'zz' + type, type, x: 0, y: 0, s: 1 }, JSON.parse(J(DEF[type])), p), doc = s => new DOMParser().parseFromString(`<svg xmlns="http://www.w3.org/2000/svg">${s}</svg>`, 'image/svg+xml').documentElement;
+      const dbl = s => { const m = smilesParse(s), d = m.atoms.map(() => 0); m.bonds.forEach(b => { if (b.o === 2) { d[b.a]++; d[b.b]++ } }); return { m, d, n: m.bonds.filter(b => b.o === 2).length } };
+      try {
+        unslide(); blank(); sel = new Set(); buildPanel();
+        // Kekulé form: N-methylpyridinium and pyrylium take three C=C / C=X, the cyclopentadienyl anion's charged carbon and selenophene's Se none; benzene, pyrrole, caffeine as before
+        eq(dbl('c1cc[n+](C)cc1').n, 3, 'N-methylpyridinium'); eq(dbl('c1cc[o+]cc1').n, 3, 'pyrylium'); { const a = dbl('[cH-]1cccc1'); eq([a.n, a.d[0]], [2, 0], 'cyclopentadienyl anion'); const b = dbl('c1cc[se]c1'); eq([b.n, b.d[3]], [2, 0], 'selenophene'); }
+        eq([dbl('c1ccccc1').n, dbl('c1cc[nH]c1').n, dbl('Cn1cnc2c1c(=O)n(C)c(=O)n2C').n], [3, 2, 4], 'benzene, pyrrole, caffeine');
+        // mistakes are named (they were dropped without a word); a correct SMILES has none; Na without brackets is sodium now (it drew N)
+        ok(/\( is not closed/.test(smilesParse('CC(C').warn.join()), 'open branch'); ok(/ring number 1 not closed/.test(smilesParse('C1CC').warn.join()), 'open ring'); ok(/\) without \(/.test(smilesParse('CC)C').warn.join()), 'stray )');
+        ok(/“Xx” is not an element/.test(smilesParse('C[Xx]').warn.join()), 'unknown element'); ok(/left out: “\$”/.test(smilesParse('CC$C').warn.join()), 'unknown character'); ok(/bond at the end/.test(smilesParse('CC=').warn.join()), 'dangling bond');
+        { const m = smilesParse('CNa'); eq([m.atoms.map(a => a.el).join(','), /“Na” needs brackets/.test(m.warn.join())], ['C,Na', true], 'Na without brackets'); }
+        eq(['CCCC(=O)O', 'c1ccccc1', 'C[Na+]', 'OC(=O)[C@@H](N)C', 'C1CC%10CC1.C%10'].map(s => smilesParse(s).warn.length), [0, 0, 0, 0, 0], 'correct SMILES: no warnings');
+        { const c = fig.add('chem', { smiles: 'CC(C', x: 400, y: 300 }); ok(fig.check([c]).some(r => r.level === 'warn' && /SMILES: a \( is not closed/.test(r.msg)), 'fig.check names it');
+          fig.select([c]); await frame(); ok(/a \( is not closed/.test((D.querySelector('#chErr') || {}).textContent || ''), 'the panel names it'); fig.update(c, { smiles: 'CC(C)O' }); render(); await frame(); buildPanel(); eq(D.querySelector('#chErr').textContent, '', 'fixed: nothing said'); sel = new Set(); blank(); }
+        // labels: the O of an OH is centered on its atom (the whole "OH" was); -NH- in a chain gets its H below the N; a terminal NH2 stays on one line
+        { const o = mk('chem', { smiles: 'CCO' }); const t = [...doc(drawChem(o)).querySelectorAll('text')], at = o.atoms[2], fs = +o.labelSize;
+          eq(t.length, 1, 'one label'); ok(/^(OH|HO)$/.test(t[0].textContent), 'OH: ' + t[0].textContent);
+          const x0 = +t[0].getAttribute('x'), oX = t[0].textContent === 'OH' ? x0 + textW('O', fs, 400, SANS) / 2 : x0 + textW('H', fs, 400, SANS) + textW('O', fs, 400, SANS) / 2; near(oX, at.x, .6, 'the O over its atom'); }
+        { const o = mk('chem', { smiles: 'CCNCC' }), t = [...doc(drawChem(o)).querySelectorAll('text')], n = o.atoms[2]; eq(t.map(e => e.textContent).sort(), ['H', 'N'], 'N and H apart: ' + J(t.map(e => e.textContent)));
+          const h = t.find(e => e.textContent === 'H'), nn = t.find(e => e.textContent === 'N'); near(+h.getAttribute('x'), n.x, .6, 'H under the N'); ok(Math.abs(+h.getAttribute('y') - +nn.getAttribute('y')) > 10, 'on a line of its own'); }
+        { const t = [...doc(drawChem(mk('chem', { smiles: 'NCC(=O)O' }))).querySelectorAll('text')].map(e => e.textContent); ok(t.some(x => /^(H₂N|NH₂)$/.test(x)), 'NH₂ on one line: ' + J(t)); }
+        // a branch point: the longer arm goes on in the zigzag (glycerol's two end O at one height, the middle OH below them; it was a U)
+        { const o = mk('chem', { smiles: 'OCC(O)CO' }); drawChem(o); const y = o.atoms.map(a => a.y); near(y[0], y[5], 1, 'ends level: ' + J(y)); ok(Math.abs(y[3] - y[0]) > 20 && Math.abs(y[1] - y[0]) < 25, 'the middle OH away from the chain: ' + J(y)); }
+        // geometry: a dart's concave sides are labeled outside the shape (they sat inside, on the angles); "3.2 cm"; a 45° label clears both sides; an angle draws 3 points
+        { const P = [[-80, 40], [0, -60], [80, 40], [0, 0]], inside = (x, y) => { let c = false; for (let i = 0, j = P.length - 1; i < P.length; j = i++) if ((P[i][1] > y) !== (P[j][1] > y) && x < (P[j][0] - P[i][0]) * (y - P[i][1]) / (P[j][1] - P[i][1]) + P[i][0]) c = !c; return c };
+          const t = [...doc(drawGeom(mk('geom', { pts: P, showAngles: false, showSides: true }))).querySelectorAll('text')]; eq(t.length, 4, 'four side labels');
+          ok(t.every(e => !inside(+e.getAttribute('x'), +e.getAttribute('y') - 13 * .35)), 'outside: ' + J(t.map(e => [e.getAttribute('x'), e.getAttribute('y')])));
+          ok([...doc(drawGeom(mk('geom', { suffix: 'cm' }))).querySelectorAll('text')].some(e => /^\d+\.\d cm$/.test(e.textContent)), 'a space before the unit');
+          const a = mk('geom', { kind: 'angle', pts: [[80, 0], [0, 0], [60, -60], [0, 90]], showSides: false }), g = doc(drawGeom(a)), lab = [...g.querySelectorAll('text')].find(e => /°$/.test(e.textContent));
+          eq((g.querySelector('path').getAttribute('d').match(/L/g) || []).length, 2, 'an angle is 3 points'); eq(lab.textContent, '45.0°', 'its angle');
+          const lx = +lab.getAttribute('x'), ly = +lab.getAttribute('y') - 13 * .35, hw = textW('45.0°', 13, 400) / 2; ok(ly + 13 * .5 < 0 && (lx - hw) + (ly - 13 * .5) > 0, 'clear of both rays: ' + lx + ', ' + ly); }
+        { const g = fig.add('geom', { x: 900, y: 400, kind: 'polygon', pts: [[-60, -60], [60, -60], [60, 60], [-60, 60]] }); fig.select([g]); await frame(); const h0 = hist.length, se = D.querySelector('#props select[data-k="kind"]');
+          se.value = 'angle'; se.dispatchEvent(new Event('input', { bubbles: true })); se.dispatchEvent(new Event('change', { bubbles: true })); await frame();
+          eq([get(g).pts.length, hist.length - h0], [3, 1], 'angle: 3 points, one undo step'); ok(![...D.querySelectorAll('#props button')].some(b => /vertex/i.test(b.textContent)), 'no Add / Remove vertex for an angle');
+          while (hist.length > h0) undo(); eq(get(g).pts.length, 4, 'undo: the square'); sel = new Set(); blank(); }
+        // number line: two marks close together are a line apart; ticks with a minus sign; vector: no "0.0" on the origin, the name of a flat vector away from its component's number
+        { const t = [...doc(drawNumline(mk('numline', { min: 0, max: 100, step: 1, len: 300, marks: 'mean: 42\nx: 42.5' }))).querySelectorAll('text')], y = n => +t.find(e => e.textContent === n).getAttribute('y'); ok(Math.abs(y('mean') - y('x')) >= 12, 'apart: ' + y('mean') + ' / ' + y('x'));
+          ok([...doc(drawNumline(mk('numline', {}))).querySelectorAll('text')].some(e => e.textContent === '−5'), 'a minus sign'); }
+        { const t = [...doc(drawVec(mk('vec', { vx: 0, vy: 3 }))).querySelectorAll('text')].map(e => e.textContent); ok(!t.includes('0.0') && t.includes('3.0'), 'no zero component: ' + J(t));
+          const v = [...doc(drawVec(mk('vec', { vx: 4, vy: 0.2 }))).querySelectorAll('text')], ny = +v.find(e => e.textContent === 'v').getAttribute('y'), cy = +v.find(e => e.textContent === '4.0').getAttribute('y'); ok(ny < 0 && cy > 0, 'name above, number below: ' + ny + ' / ' + cy);
+          ok([...doc(drawVec(mk('vec', { vx: -2, vy: -3 }))).querySelectorAll('text')].some(e => e.textContent === 'v = (−2.0, −3.0)'), 'values with a minus sign'); }
+        // the formula builder: Esc with the focus on a symbol button cancels like Esc in the text box (it kept the change)
+        { const f = fig.add('formula', { tex: 'a+b', x: 400, y: 300 }); fig.select([f]); const h0 = hist.length; formulaBuilder(get(f)); await frame(); const ta = D.getElementById('fbTex'); ta.value = 'x^2'; ta.dispatchEvent(new Event('input'));
+          D.querySelector('#fbSyms button').focus(); D.activeElement.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); await frame();
+          eq([D.getElementById('modal').hidden, get(f).tex, hist.length], [true, 'a+b', h0], 'canceled'); sel = new Set(); blank(); }
+      } finally { if (!D.getElementById('modal').hidden) closeModal(); sel = new Set(); unslide(); blank(); buildPanel(); }
+    });
+
+    test('groups, layers and pictures round 12: a group\'s hidden member moves, nudges, aligns, reorders, copies and is deleted with it; align is exact; distribute with two and locked-only say so; hide / lock say how to undo; a click through a locked element says why; layer names for membranes and pictures; a two-point loop; several pictures are one step; picture clips of thumbnails get ids of their own', async () => {
+      const hStart = hist.length, toastT = () => D.querySelector('#toast').textContent, lk0 = lockHint.done, fetch0 = W.fetch;
+      const PE = (t, el, x, y) => el.dispatchEvent(new PointerEvent(t, { bubbles: true, cancelable: true, clientX: x, clientY: y, pointerId: 1, pointerType: 'mouse', isPrimary: true, button: 0, buttons: t === 'pointerup' ? 0 : 1 }));
+      const key = k => { D.querySelector('#stage').focus({ preventScroll: true }); return D.querySelector('#stage').dispatchEvent(new KeyboardEvent('keydown', { key: k, bubbles: true, cancelable: true })) };
+      try {
+        unslide(); blank(); sel = new Set(); buildPanel();
+        const a = fig.add('shape', { kind: 'rect', x: 300, y: 300, w: 100, h: 60 }), b = fig.add('shape', { kind: 'circle', x: 500, y: 320, w: 80, h: 80 }), t = fig.add('text', { x: 357, y: 600, text: 'Hello' });
+        fig.select([a, b]); groupSel(); fig.update(b, { hidden: true }); const gx = () => [get(a).x, get(b).x];
+        eq(withHidden([a]).sort(), [a, b].sort(), 'withHidden: the shown members selected → the hidden one too'); eq(withHidden([t]), [t], 'no group: as given');
+        // a drag of the group (a click on its shown member selects the shown members)
+        fit(true); await frame(); fig.select([]); render(); await frame();
+        { const r = linkNode(a).getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2; PE('pointerdown', D.elementFromPoint(x, y), x, y); PE('pointermove', svg, x + 10 * zoom * 4, y); PE('pointermove', svg, x + 20 * zoom * 4, y); PE('pointerup', svg, x + 20 * zoom * 4, y); await frame();
+          const d = get(a).x - 300; ok(d > 0, 'the group moved: ' + d); eq(get(b).x - 500, d, 'the hidden member moved with it (it stayed behind)'); }
+        fig.select([a]); { const [x0, y0] = gx(); key('ArrowRight'); await sleep(30); eq(gx(), [x0 + 1, y0 + 1], 'a nudge takes the hidden member along'); }
+        // align: the group as one block with the text; the hidden member follows; the text's fractional edge is met exactly (whole-px steps left it 0.5 px off)
+        fig.select([a, t]); const bx0 = get(b).x - get(a).x; align('l'); eq(get(b).x - get(a).x, bx0, 'align: the hidden member keeps its place in the group'); near(bbox(t).x, bbox(a).x, 0.06, 'align left is exact');
+        { const v = get(t).x; near(v * 10, Math.round(v * 10), 1e-6, 'positions to 0.1 px: ' + v); }
+        // distribute with two units, and only locked ones: said (it did nothing without a word)
+        align('dh'); ok(/three or more/.test(toastT()), 'distribute with two: ' + toastT());
+        fig.update(t, { locked: true }); fig.update(a, { locked: true }); fig.select([a, t]); { const x0 = get(t).x; align('r'); eq(get(t).x, x0, 'locked: nothing moves'); ok(/Locked: they do not move/.test(toastT()), 'locked: ' + toastT()); }
+        fig.update(t, { locked: false }); fig.update(a, { locked: false });
+        // order: the group to the back takes its hidden member
+        fig.select([a]); reorder('front'); eq(scene.objects.slice(-2).map(o => o.id).sort(), [a, b].sort(), 'to the front with its hidden member'); reorder('back'); eq(scene.objects.slice(0, 2).map(o => o.id).sort(), [a, b].sort(), 'and to the back');
+        // duplicate: the copy has the hidden member too, hidden and not selected
+        fig.select([a]); duplicate(); { const cs = [...sel].map(get); eq(cs.length, 1, 'only the shown copy is selected'); const g = cs[0].group, m = scene.objects.filter(o => o.group === g); eq([m.length, m.filter(o => o.hidden).length], [2, 1], 'the copied group keeps its hidden member'); }
+        // delete: the hidden member goes with its group (an invisible orphan stayed in Layers)
+        { const n0 = scene.objects.length; del(); eq(scene.objects.length, n0 - 2, 'deleted with its hidden member'); }
+        // fig.remove of one member of two: no group of one is left
+        { fig.update(b, { hidden: false }); fig.remove(a); ok(!get(b).group, 'a lone member keeps no group'); }
+        // hide / lock from the panel say how to get it back; the Layers buttons say nothing more
+        fig.select([t]); D.querySelector('#toast').textContent = ''; toggleFlag(get(t), 'locked'); ok(/Locked: it no longer moves.*Layers/.test(toastT()), 'lock: ' + toastT());
+        // a click through a locked element to the empty page: said once
+        lockHint.done = 0; fig.select([]); render(); await frame();
+        { const r = linkNode(t).getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2; D.querySelector('#toast').textContent = ''; PE('pointerdown', D.elementFromPoint(x, y), x, y); PE('pointerup', svg, x, y); await frame(); ok(/locked, so clicks go through it/.test(toastT()), 'a click through a locked element: ' + toastT()); }
+        toggleFlag(get(t), 'locked', true); fig.select([t]); toggleFlag(get(t), 'hidden'); ok(/Hidden: it is not drawn or exported.*eye button in Layers/.test(toastT()), 'hide: ' + toastT()); ok(!sel.has(t), 'out of the selection');
+        D.querySelector('#toast').textContent = ''; toggleFlag(get(t), 'hidden', true); eq(toastT(), '', 'quiet (Layers): no toast');
+        // layer names: a membrane by its style and shape, a picture of the assets folder by its file (the saved name's time stamp left out)
+        eq([layerName({ type: 'membrane', style: 'tube' }), layerName({ type: 'membrane', kind: 'closed' }), layerName({ type: 'image', src: 'assets/mwiszi7l-western-blot.png' }), layerName({ type: 'image', src: 'assets/western-blot.png' }), layerName({ type: 'image', src: 'data:image/png;base64,AA' })],
+          ['Microtubule (tube)', 'Lipid bilayer loop', 'western-blot.png', 'western-blot.png', 'image'], 'layer names');
+        // a closed membrane of two points is drawn as an open strip (it ran there and back on one line); Remove point keeps the anchor in the middle
+        { const m = { type: 'membrane', kind: 'closed', pts: [[-50, 0], [50, 0]] }; ok(!/Z$/.test(memPath(m).d), 'two points: no loop');
+          const id = fig.add('membrane', { x: 600, y: 400, pts: [[-150, 0], [-50, 0], [50, 0], [250, 0]] }); fig.select([id]); await frame(); [...D.querySelectorAll('#props button')].find(x => x.textContent === 'Remove point').click();
+          const o = get(id), xs = o.pts.map(p => p[0]); eq([Math.min(...xs) + Math.max(...xs), o.x], [0, 550], 'recentered after Remove point'); }
+        // several pictures inserted at once: one undo step, all of them selected (no upload: the test writes nothing into assets/)
+        { W.fetch = (u, o) => /assets\//.test(String(u)) && o && o.method === 'POST' ? Promise.resolve({ ok: false }) : fetch0(u, o);
+          const mk = c => new Promise(r => { const cv = D.createElement('canvas'); cv.width = 30; cv.height = 20; const x = cv.getContext('2d'); x.fillStyle = c; x.fillRect(0, 0, 30, 20); cv.toBlob(bl => r(new File([bl], 'pic-' + c.slice(1) + '.png', { type: 'image/png' })), 'image/png'); });
+          const fs = [await mk('#ff0000'), await mk('#00ff00'), await mk('#0000ff')], n0 = scene.objects.length, h0 = hist.length; await insertImages(fs); W.fetch = fetch0;
+          eq([scene.objects.length - n0, sel.size, hist.length - h0], [3, 3, h0 >= 300 ? 0 : 1], 'three pictures, all selected, one step'); undo(); eq(scene.objects.length, n0, 'one Ctrl+Z takes them all away'); }
+        // a picture or function plot drawn as a thumbnail in the page gets a clip id of its own (the list of Export several figures showed one figure's clip on another's picture)
+        { const o = { id: 'o1', type: 'image', src: 'data:image/png;base64,AA', w: 50, h: 40, rounded: 6, _thumb: true }, ids = [drawImage(o), drawImage(o)].map(s => (s.match(/clipPath id="([^"]+)"/) || [])[1]); ok(ids[0] && ids[1] && ids[0] !== ids[1], 'thumbnail clip ids: ' + ids); eq((drawImage({ ...o, _thumb: false }).match(/clipPath id="([^"]+)"/) || [])[1], 'clipo1', 'the canvas keeps clip + id'); }
+      } finally { W.fetch = fetch0; lockHint.done = lk0; if (!D.getElementById('modal').hidden) closeModal(); sel = new Set(); unslide(); blank(); buildPanel(); if (hist.length > hStart) { hist.length = hStart; fut.length = 0; } }
+    });
+
     // --- icon expansions (Import more icons): a pack of three made-up icons in tests/icon-pack-test/ stands for a repository; then the packs that are shipped ---
     const TP = 'zz-test', TPK = k => TP + ':' + k;
     const T_ALPHA = 'Icons: Alpha disc by Test Author A (doi:10.0000/zz.alpha), example.org, CC BY 4.0, adapted';
@@ -2973,7 +3703,7 @@
         ok(fig.iconPacks().find(p => p.id === TP).imported, 'fig.iconPacks() says so');
         // imported while the pack asked for no credit ("terms read"), and an update made it ask for some: not imported until its terms are accepted again
         { const was = PACKS.state[TP]; blank(); PACKS.state[TP] = { ...was, accepted: 'terms read' }; ok(!packImported(TP) && !fig.iconPacks().find(p => p.id === TP).imported, 'an acceptance of a pack that asked for no credit does not hold once it asks for some');
-          let e2 = ''; try { fig.add('icon', { kind: TPK('alpha') }); } catch (e) { e2 = e.message; } ok(/not imported here/.test(e2), 'fig.add refuses its icons: ' + e2);
+          let e2 = ''; try { fig.add('icon', { kind: TPK('alpha') }); } catch (e) { e2 = e.message; } ok(/terms changed since it was imported/.test(e2) && /asks for credit/.test(e2), 'fig.add refuses its icons and says why: ' + e2); ok(fig.iconPacks().find(p => p.id === TP).stale === true, 'fig.iconPacks() marks it stale');
           packMenu(true); const rs = $q('#packMenu .pkrow[data-id="' + TP + '"]'); ok(rs && /Terms changed/.test(rs.textContent) && !/Imported/.test(rs.textContent), 'its row says so: ' + (rs && rs.textContent)); packMenu(false);
           packDialog(TP); ok(/terms changed since you imported it/.test($q('#modalBox').textContent) && $q('#modalBox #pkOk'), 'its pop-up says so and asks for the box again'); closeModal();
           await fig.importIconPack(TP, { accept: true }); ok(packImported(TP) && PACKS.state[TP].accepted === 'attribution is my responsibility', 'imported again: ' + J(PACKS.state[TP])); }
@@ -3762,6 +4492,64 @@
         palState.cat = 'All'; await dropPack(); buildPalette();
       }
     }, 300000);
+    test('performance: the search\'s quick check of an item\'s words drops no match, a pack icon\'s thumbnail without parsing it, a long option list made once, a click draws the figure once', async () => {
+      await usePack(true); const R0 = W.render, S = D.querySelector('#svg'), z0 = zoom;
+      const pe = (t, type, x, y, o) => t.dispatchEvent(new PointerEvent(type, { pointerId: 1, pointerType: 'mouse', isPrimary: true, clientX: x, clientY: y, bubbles: true, cancelable: true, button: 0, buttons: type === 'pointerup' ? 0 : 1, ...(o || {}) }));
+      try {
+        // the quick check (palMay: an item's words in one string) gives exactly the ranking of the full checks (rows whose words lack that string)
+        const rows = palRows(palShown()), bare = rows.map(r => { const x = r.x || (r.x = palIndex(r.n, r.ty || 'icon', r.t || '')), c = { ...r, x: { ...x, H: undefined } }; if (r.a) c.xa = r.a.map(n => ({ ...palIndex(n, r.ty || 'icon', r.t || ''), H: undefined })); return c; });
+        ok(rows.length > 1000 && rows.every(r => typeof r.x.H === 'string'), 'the rows carry their words: ' + rows.length);
+        const hs = h => h.hits.map(x => x.i + ':' + x.s.toFixed(4)).join(',') + '|' + h.fuzzy;
+        for (const q of ['mouse', 'cell', 'b', 'e', 'x', 'mo', 'neuro', 'cardiac', 'tcell', 't cell', 'b cell', 'nerve cell', 'heart attack', 'flow cytometry', 'e coli', 'mice', 'colour', 'grey', 'kidneys', 'gases', 'ab', 'rbc', 'ai', 'nueron', 'alpah', 'alpha disc', 'beta', 'peak', 'zzqx', 'ing', 'x-ray', 'zebra fish', 'leaves', 'haemoglobin', 'mitochondria', 'test'])
+          eq(hs(palRank(q, rows)), hs(palRank(q, bare)), 'the ranking of "' + q + '" with the quick check');
+        // a pack icon's thumbnail: framed exactly as when its drawing is parsed and measured, with the same drawing
+        for (const k of [TPK('alpha'), TPK('beta'), TPK('gamma')]) {
+          const s = thumb('icon', { kind: k }), o = { id: 't', x: 0, y: 0, s: 1, r: 0, _thumb: true, ...JSON.parse(JSON.stringify(DEF.icon)), kind: k }, g = D.createElementNS(NS, 'g'); g.innerHTML = DRAW.icon(o); thumbSvg.innerHTML = ''; thumbSvg.appendChild(g); const old = thumbFit(g); thumbSvg.innerHTML = '';
+          ok(typeof s === 'string' && /^<svg viewBox=/.test(s), 'a thumbnail: ' + String(s).slice(0, 40)); const vb = v => (/viewBox="([^"]*)"/.exec(v) || [])[1]; eq(vb(s), vb(old), k + ': the frame');
+          const n = v => { const d = D.createElement('div'); d.innerHTML = v.replace(/-n[0-9a-z]+(?=["')])/g, '-N'); return d.innerHTML; }; eq(n(s), n(old), k + ': the drawing');
+        }
+        { const s = '<svg data-tr="trzz" viewBox="0 0 10 10">' + '<rect width="10" height="10" fill="#d64545"/>'.repeat(300) + '</svg>'; thumbCache.set('zz-raster', s); thumbRaster('zz-raster', s, 'trzz');
+          for (let i = 0; i < 60 && thumbCache.get('zz-raster') === s; i++) await sleep(50); ok(/^<svg viewBox="0 0 96 96"[^>]*><image href="data:image\/png/.test(thumbCache.get('zz-raster')), 'a long drawing becomes a small picture: ' + String(thumbCache.get('zz-raster')).slice(0, 60)); thumbCache.delete('zz-raster'); }
+        // the icon's kind list: made once and copied (each panel its own list), the value shown, a pack icon's own entry only in its panel
+        blank(); const a = fig.add('icon', { kind: 'mito', x: 200, y: 200 }), b = fig.add('icon', { kind: TPK('alpha'), x: 400, y: 200 }); await fig.iconsReady(); const N = SCHEMA.icon[0][2].length, ks = () => D.querySelector('#props select[data-k="kind"]');
+        sel = new Set([a]); render(); buildPanel(); const s1 = ks(); ok(s1 && N > 200, 'a long list: ' + N); eq([s1.value, s1.options.length], ['mito', N], 'the kind shown');
+        sel = new Set([b]); render(); buildPanel(); const s2 = ks(); ok(s2 !== s1, 'a list of its own'); eq([s2.value, s2.options.length], [TPK('alpha'), N + 1], 'a pack icon: its own entry added');
+        sel = new Set([a]); render(); buildPanel(); eq(ks().options.length, N, 'the next list has no entry of the other icon'); ks().value = 'cell'; ks().dispatchEvent(new Event('input')); ks().dispatchEvent(new Event('change')); eq(get(a).kind, 'cell', 'picking a kind still sets it');
+        render(); buildPanel(); { const w = [...D.querySelectorAll('#props label.row')].find(r => /^width px/.test(r.textContent.trim())); ok(w, 'no width field'); eq(+w.querySelector('input').value, Math.round(bbox(a).w), 'the width field shows the drawn width'); }
+        // a click: the figure is drawn when it is pressed, the lift only redraws the handles (unless it changes the selection)
+        blank(); const p = fig.add('shape', { kind: 'rect', x: 300, y: 300, w: 120, h: 120 }), q = fig.add('shape', { kind: 'rect', x: 520, y: 300, w: 120, h: 120 }); await settle(); fig.select([p, q]); sel = new Set(); render(); buildPanel();
+        let n = 0; W.render = function () { n++; return R0.apply(this, arguments); };
+        const click = id => { const r = D.querySelector('#content [data-id="' + id + '"]').getBoundingClientRect(), x = r.left + r.width / 2, y = r.top + r.height / 2, t = D.elementFromPoint(x, y); ok(t && S.contains(t), 'the element is under the pointer'); n = 0; pe(t, 'pointerdown', x, y); pe(S, 'pointerup', x, y); return n; };
+        eq(click(p), 1, 'a click that selects: drawn once'); eq([...sel], [p], 'selected'); ok(D.querySelector('#overlay [data-h="scale"]'), 'its handles'); ok(D.querySelector('#props select[data-k="kind"]'), 'its panel');
+        eq(click(p), 1, 'a click on the selected element: drawn once'); eq([...sel], [p], 'still selected');
+        sel = new Set([p, q]); render(); buildPanel(); eq(click(p), 2, 'a click in a selection of two: drawn again when it lifts'); eq([...sel], [p], 'that one selected');
+      } finally { W.render = R0; zoomStop(); setZoom(z0); sel = new Set(); blank(); await dropPack(); buildPalette(); }
+    });
+    test('icon packs: the width field follows another kind, the pack list never scrolls sideways, a group by its chip name, the credit line at a print size, All counts what is listed, colors alike to everyone', async () => {
+      await usePack(true); const lib0 = fig.iconLibrary().shown;
+      try {
+        // the "width px" field follows another kind and another size (it kept the old width until the panel was drawn again)
+        blank(); const a = fig.add('icon', { kind: 'mito', x: 300, y: 300 }); fig.select([a]); render(); buildPanel();
+        const wpx = () => +D.querySelector('#props input.wpx').value, ks = D.querySelector('#props select[data-k="kind"]');
+        eq(wpx(), Math.round(bbox(a).w), 'the width shown'); ks.value = 'mouse'; ks.dispatchEvent(new Event('input')); ks.dispatchEvent(new Event('change'));
+        eq([get(a).kind, wpx()], ['mouse', Math.round(bbox(a).w)], 'another kind: its width'); const si = D.querySelector('#props input[data-k="size"]'); si.value = 150; si.dispatchEvent(new Event('input')); si.dispatchEvent(new Event('change'));
+        eq(wpx(), Math.round(bbox(a).w), 'another size: its width');
+        // the list of packs: a long name ("WMO WorldWeatherSymbols") breaks instead of making the whole list scroll sideways
+        packMenu(true); await frame(); { const M = $q('#packMenu'); ok(M.scrollWidth <= M.clientWidth + 1, 'no sideways scroll: ' + M.scrollWidth + ' > ' + M.clientWidth); } packMenu(false);
+        // inside a pack's library a group goes by the name its chip shows
+        fig.iconLibrary(TP); fig.iconCategory('Test'); eq([fig.iconLibrary().shown, fig.iconLibrary().group], [TP, 'Test pack · Test'], 'fig.iconCategory(\'Test\') in the test pack');
+        { let err = ''; try { fig.iconCategory('Nothing such'); } catch (e) { err = e.message; } ok(/no category or group/.test(err), 'an unknown group still throws: ' + err); }
+        // All libraries counts what the list shows: with SiliCoDraw hidden, the basic items stay (it said 0 beside them)
+        fig.iconLibrary('all'); fig.showIconPacks({ builtin: false }); buildPalette(); { const n = palLibs()[0].count, ph = $q('#palSearch').placeholder; ok(n > 0 && ph.includes(n.toLocaleString('en-US')), 'All: ' + n + ', the field: ' + ph); }
+        fig.showIconPacks({ builtin: true }); buildPalette(); ok(/Search [\d,]+ items/.test($q('#palSearch').placeholder) && (palLibs()[0].count < 1000 || $q('#palSearch').placeholder.includes(',')), 'thousands written with a comma: ' + $q('#palSearch').placeholder);
+        // the credit line at a print size: never below what it asks for (12 px printed at 3.9 pt in 183 mm, and fig.check warned about the editor's own line)
+        blank(); fig.printSize('1.2'); fig.add('icon', { kind: TPK('alpha'), x: 400, y: 300 }); await settle(); { const L = credLine()[0]; ok(L && L.size * printK() >= printMin() - .01, 'printed at ' + (L && (L.size * printK()).toFixed(2)) + ' pt'); }
+        ok(!fig.check().some(r => /text prints at/.test(r.msg)), 'no small-text warning: ' + J(fig.check().map(r => r.msg)));
+        // two colors that look alike to everyone are said to look alike (not "with protanopia" because a simulation brings them a hair closer)
+        eq(colPairLook(colRgba('#2266cc'), colRgba('#2267cc'))[1], '', 'alike in normal vision: said so'); eq(colPairLook(colRgba('#d55e00'), colRgba('#009e73'))[1], colPairDE(colRgba('#d55e00'), colRgba('#009e73'))[1], 'apart in normal vision: the closest simulation');
+        blank(); fig.add('plot', { kind: 'line', data: 'A: 1 2 3 #2266cc\nB: 2 3 4 #2267cc', x: 600, y: 400 }); { const m = colorCheck().alike.map(r => r.msg).join(' | '); ok(/have the same color/.test(m) && !/protanopia/.test(m), 'the chart: ' + m); }
+      } finally { sel = new Set(); blank(); try { fig.iconLibrary(lib0 === TP ? 'all' : lib0); } catch (e) {} await dropPack(); buildPalette(); }
+    });
     test('icon packs: libraries and relevance search: the ranking (pure, a table of real queries), Most relevant then More results by library, findIcon agrees, the library switcher, timings', async () => {
       // the ranking itself (palRank, palTop): pure functions of the query and the rows, no pack needed
       const R = (q, rows) => palRank(q, rows.map(r => typeof r === 'string' ? { n: r, t: '', ty: 'icon', src: 'p1' } : { t: '', ty: 'icon', src: 'p1', ...r }), {}), names = (q, rows) => R(q, rows).hits.map(h => h.r.n);

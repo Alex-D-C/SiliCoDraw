@@ -264,13 +264,15 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
   *italic*, underline, strikethrough, superscript and subscript (`x^2`, `Ca^{2+}`, `H_2O`, `CO_{2}`; letters need braces: `x^{n}`) or a
   colored run (`{#d64545|text}`). The same marks work in chips, arrow labels and legends, lone
   significance stars and sample names such as `rep_1` are left alone (type `\*` for a literal star), species names are italicized
-  automatically, and every run survives the PowerPoint export as real formatting.
+  automatically, and every run survives the PowerPoint export as real formatting. With texts selected on the canvas (not typing),
+  Ctrl+B / Ctrl+I make the whole texts bold or italic.
 - **Symbols and typography**: the **Ω** button on the formatting bar (and beside label fields) types µ, Greek letters, ±, °, ≤,
   arrows and more; or type a LaTeX name and a space (`\alpha `, `\mu `, `\pm `, `\deg `). Icon, chip and arrow labels take a
   second line (Enter in the field), icon labels have their own color, texts and section boxes a line spacing, and the font list
   includes Verdana and Courier (monospace, for sequences). Long gene lists, links and DOIs wrap inside their box.
 - **Find and replace** (Ctrl+F, or right-click empty canvas): renames "Drug A" to "Rapamycin" in every text, chip, label,
-  chart, legend and Gantt list at once (match case, whole word), selects every element that has a word, and undoes in one step.
+  chart, legend and Gantt list at once, on every slide of a presentation (match case, whole word), selects every element that
+  has a word, and undoes in one step.
 - **Formulas**: a LaTeX element with a builder (Greek letters, operators, fractions, roots, matrices,
   ready-made equations, live preview), typeset into real vector paths that export cleanly.
 - **Charts from your data**: type values in the side panel and get bars with error bars, box plots
@@ -339,6 +341,7 @@ an icon is ten lines of SVG and `AGENTS.md` explains the format.
 **Arrows for pathways.** Arrow, open, inhibitor ⊣, circle and diamond ends at either end, straight,
 curved or elbow routing (the automatic elbow bends up to twice, for side-to-side steps and loops back),
 solid, dashed or dotted, and a label you can slide along the line, on a backdrop in the page color.
+*Reverse direction* (side panel or right-click) turns an arrow round without moving it.
 **Connectors**: drag an arrow end onto an element (or select elements and choose *Connect*: a chain,
 one to many, or many into one) and the arrow stays attached: it follows when the element is moved,
 turned, resized or aligned, elbows re-route, several arrows on one side spread out, and the
@@ -458,9 +461,11 @@ with a slide per figure.
   Slides button). **File ▾ → Add slides from figures…** brings existing figure files in as slides. Each slide has
   a name and speaker notes (Page panel); the page size, background and palette are the file's. Undo covers all
   slides. In the Export dialog choose **All slides** or only the one shown: PowerPoint gets a slide for each (with
-  the speaker notes, and slide numbers if you tick them), PDF a page for each, PNG / TIFF / SVG a file per slide.
-- **Presenting**: the **Present** button (`F5`; `Shift+F5` from the slide shown) plays the slides full screen: click, `Space`
-  or `→` for the next animation step or slide, `←` back, a number and `Enter` to jump, `B` / `W` for a black or white
+  the speaker notes, and slide numbers if you tick them), PDF a page for each, PNG / TIFF / SVG a file per slide; the
+  smallest-text and thinnest-line checks then cover every slide. One slide alone gets its number in the file name, so it
+  never replaces another slide's export.
+- **Presenting**: the **Present** button (`F5`; `Shift+F5` from the slide shown) plays the slides full screen: click, `Space`,
+  `→` or the mouse wheel for the next animation step or slide, `←` (or the wheel up) back, a number and `Enter` to jump, `B` / `W` for a black or white
   screen, `Esc` to end (on a touch screen: tap the right or left half, and the bottom edge for the controls). **Presenter view** opens a second window with the current slide, the next one, your speaker notes,
   a timer and a clock. In the Page panel each slide can have a **transition** (Fade or Push, with direction, duration and
   an optional advance time; they go into the PowerPoint export as PowerPoint's own) and, with **Different background
@@ -496,7 +501,7 @@ and choose **Archive**, **Move to trash**, **Duplicate** or **Export…** in the
 **Archive** and **Trash** sections make figures active again, restore them or delete them for good, and
 **Templates** begins a new figure from a poster, a graphical abstract or an example. A search box, sorting by date or name and a list view
 help with many figures; **⋯** on a card (or a right-click) has Open in a new tab, Rename… and the rest.
-Figures you ticked stay ticked while you search for more (the bar then says how many are not shown).
+Figures you ticked stay ticked while you search for more (the bar then says how many are not shown); the search treats spaces like - and _ and finds several words in any order, so “poster 2025” finds lab-poster-final-2025. The message after Archive, Move to trash, Restore or Make active has **Undo** (or Ctrl+Z), and Duplicate selects the copies.
 A notice board in the bar shows a tip or something new every few seconds, always in full (click it to try the feature; **What’s new** lists the latest update and every tip; **✕** folds it into a **Tips** button).
 Delete moves the card with the focus to the trash; the figure you have open asks first.
 Esc goes back to the figure you were on.
