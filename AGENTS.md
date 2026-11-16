@@ -851,8 +851,8 @@ column of sections and a main area. It opens with the house button or the logo a
   new tab), **More…**, and ✕, which folds it away in this browser (`localStorage` `fig.webHome`, `webFold`; other tabs follow); phones get a short version without the link
   and the instruction), a section **Desktop & AI** (`id: 'desktop'`, `hmDesktop`: why the desktop version, install as README "Install and start" says it with the Mac
   line to copy, the link and the instruction for a coding agent, Save all figures to a folder… here and Open a folder of figures… there, links: GitHub, README, License, Report a
-  problem = `issues/new/choose`, About), and links under the sections (`webNavFoot`: GitHub, About SiliCoDraw, MIT license; phones: at the end of the row of tabs). The
-  editor knows only the GitHub repository (`WEB_LINKS`); the site's own pages come from the storage script: `window.SiliCoDrawWeb.links = {about: 'https://silicodraw.com/about'}`
+  problem = `issues/new/choose`, About, Privacy), and links under the sections (`webNavFoot`: GitHub, About SiliCoDraw, Privacy, MIT license; phones: at the end of the row of tabs). The
+  editor knows only the GitHub repository (`WEB_LINKS`); the site's own pages come from the storage script: `window.SiliCoDrawWeb.links = {about: 'https://silicodraw.com/about', privacy: 'https://silicodraw.com/privacy'}`
   (https:// or a path from the site's root; `github` there replaces the repository; an item without its link is left out), so the local website build
   (`dev/web/editor.html`) works as the site does. While the figure under Home is a blank one never saved (a first visit), Home's top-right button reads
   **Start a blank figure** instead of "Back to figure" (`homeBackLabel`).

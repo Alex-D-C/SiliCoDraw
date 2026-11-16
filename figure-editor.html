@@ -27966,7 +27966,7 @@ const HOME_SECTIONS=[
    pages come from the storage script: window.SiliCoDrawWeb.links = {about: 'https://silicodraw.com/about', github?} (https:// or a path from the site's root; an item whose link is
    missing is left out). Nothing of it exists in the desktop editor ===== */
 const WEB_LINKS=(()=>{let L={};try{const x=WEB&&window.SiliCoDrawWeb.links;if(x&&typeof x==='object')L=x}catch(e){}const ok=u=>typeof u==='string'&&/^(https:\/\/[^\s"'<>`\\]+|\/[^\s"'<>`\\/][^\s"'<>`\\]*)$/.test(u)?u:'';
-  const gh=(ok(L.github)||'https://github.com/Alex-D-C/SiliCoDraw').replace(/\/+$/,'');return{github:gh,readme:gh+'#install-and-start',license:gh+'/blob/main/LICENSE',issues:gh+'/issues/new/choose',about:ok(L.about)}})();
+  const gh=(ok(L.github)||'https://github.com/Alex-D-C/SiliCoDraw').replace(/\/+$/,'');return{github:gh,readme:gh+'#install-and-start',license:gh+'/blob/main/LICENSE',issues:gh+'/issues/new/choose',about:ok(L.about),privacy:ok(L.privacy)}})();
 const WEB_MAC='curl -fsSL https://raw.githubusercontent.com/Alex-D-C/SiliCoDraw/main/install.sh | sh';   // README, Install and start → Mac (the same line works on Linux)
 // what a coding agent is given (the strip's Copy, the section's prompt): the repository, its README and AGENTS.md (CLAUDE.md is the same text), then the editor started and opened
 const webAgent=()=>`Set up ${WEB_LINKS.github} for me: clone it (or download and unzip the ZIP from its Code button), follow its README, read its AGENTS.md, start the figure editor and open it in my browser, so we can make and edit figures together.`;
@@ -27996,7 +27996,7 @@ function webStrip(){if(!WEB||WEBH.folded)return'';const L=WEB_LINKS;
     `<span class="hmwbt">${webA(L.github,WEB_GH+'<span>Desktop version</span>','hmlb primary','The desktop version on GitHub (opens in a new tab)')}<button type="button" data-web="more" title="Install it, use it with an AI coding agent, bring your figures along">More…</button></span>`+
     `<button type="button" class="ib hmwx" data-web="fold" title="Hide this (Home → Desktop & AI keeps it)" aria-label="Hide the directions to the desktop version"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button></section>`}
 // under the sections of the navigation: GitHub, About SiliCoDraw (when the site gives its address) and the license
-function webNavFoot(){if(!WEB)return'';const L=WEB_LINKS;return`<div class="hmfoot" role="group" aria-label="SiliCoDraw links">${webA(L.github,WEB_GH+'<span>GitHub</span>'+WEB_EXT,'','SiliCoDraw on GitHub: the desktop version and its source (opens in a new tab)')}${L.about?webA(L.about,'<span>About SiliCoDraw</span>'+WEB_EXT,'','What SiliCoDraw is, with examples (opens in a new tab)'):''}${webA(L.license,'<span>MIT license</span>'+WEB_EXT,'','The license: free to use, change and share (opens in a new tab)')}</div>`}
+function webNavFoot(){if(!WEB)return'';const L=WEB_LINKS;return`<div class="hmfoot" role="group" aria-label="SiliCoDraw links">${webA(L.github,WEB_GH+'<span>GitHub</span>'+WEB_EXT,'','SiliCoDraw on GitHub: the desktop version and its source (opens in a new tab)')}${L.about?webA(L.about,'<span>About SiliCoDraw</span>'+WEB_EXT,'','What SiliCoDraw is, with examples (opens in a new tab)'):''}${L.privacy?webA(L.privacy,'<span>Privacy</span>'+WEB_EXT,'','What happens to your data on this website (opens in a new tab)'):''}${webA(L.license,'<span>MIT license</span>'+WEB_EXT,'','The license: free to use, change and share (opens in a new tab)')}</div>`}
 // the section Desktop & AI: why, install (as README.md → Install and start says it), with an AI coding agent, figures from this website, links
 // the website without a connection: which address opens offline (the editor's own; the site's front page needs the network), and whether this browser has the copy
 function webOffSec(){const O=window.SiliCoDrawWeb&&SiliCoDrawWeb.offline;if(!O||!O.supported)return'';const at=location.origin+location.pathname,ctl=O.controlled&&O.controlled();
@@ -28030,7 +28030,7 @@ ${webOffSec()}<section aria-labelledby="hmdk5"><h3 class="hmh" id="hmdk5">Links<
 <li>${webA(L.readme,'<span>README</span>'+ext)}<span>install, start, and everything the editor does</span></li>
 <li>${webA(L.license,'<span>License (MIT)</span>'+ext)}<span>free to use, change and share</span></li>
 <li>${webA(L.issues,'<span>Report a problem</span>'+ext)}<span>or suggest a feature (a free GitHub account is needed)</span></li>
-${L.about?`<li>${webA(L.about,'<span>About SiliCoDraw</span>'+ext)}<span>what it is, with examples</span></li>`:''}</ul></section></div>`;
+${L.about?`<li>${webA(L.about,'<span>About SiliCoDraw</span>'+ext)}<span>what it is, with examples</span></li>`:''}${L.privacy?`<li>${webA(L.privacy,'<span>Privacy</span>'+ext)}<span>what happens to your data on this website</span></li>`:''}</ul></section></div>`;
   main.onclick=e=>{const b=e.target.closest('[data-web]');if(b&&main.contains(b))webAct(b,ctx)}}
 if(WEB)HOME_SECTIONS.push({id:'desktop',label:'Desktop & AI',icon:WEB_TERM,render:hmDesktop});
 // the button at the top right: back to the figure open underneath; on the website a blank figure never saved (a first visit) is no figure yet: it starts one
