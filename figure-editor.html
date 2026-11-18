@@ -198,7 +198,8 @@ html.phone #packBtn{height:40px;font-size:15px}html.phone .pkrow{padding:9px 10p
 .layer{display:flex;align-items:center;gap:4px;padding:4px 6px;border-radius:var(--r-sm);cursor:pointer;font-size:12px;transition:background .12s}
 .layer:hover{background:var(--hover)}.layer.sel{background:var(--accent-soft)}.layer.dim .nm,.layer.dim .ty{opacity:.45}
 .layer.dragging{opacity:.45}.layer.ins-above{box-shadow:0 -2px 0 var(--accent)}.layer.ins-below{box-shadow:0 2px 0 var(--accent)}
-.layer .ty{color:var(--muted);font-size:10.5px;width:50px;flex:none;overflow:hidden;text-overflow:ellipsis}
+.layer .ty{color:var(--muted);font-size:10.5px;width:var(--tyw,5.75em);max-width:40%;flex:none;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}   /* as wide as the longest type listed, measured in the font this browser uses (layerTyWidth): a fixed 50 px cut "membrane" in the wider Mac and Linux fonts (DejaVu Sans: 5.47 em), while "text" needs 1.7 em; at most 40 % of the row, so a narrow panel keeps room for the name and the buttons */
+.layer.typrobe{position:absolute;left:0;top:0;height:0;min-height:0;padding:0;overflow:hidden;visibility:hidden;pointer-events:none}.layer.typrobe .ty{display:inline-block;width:auto;max-width:none;overflow:visible;white-space:nowrap}   /* layerTyWidth measures here, for an instant */
 .layer .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .layer .ic{height:22px;width:22px;border:0;background:none;padding:0;color:var(--icon-off);justify-content:center}.layer .ic.on{color:var(--icon-on)}.layer .ic:hover{background:var(--hover-2);color:var(--ink)}
 /* stage */
@@ -353,7 +354,7 @@ html.phone.ph-land #animbar{left:auto;top:var(--hh);right:calc(56px + env(safe-a
 button[hidden]{display:none}   /* so did a button's inline-flex: Export's "Give the page the sheet's shape" showed without a sheet picked, and did nothing */
 .row>span{color:var(--muted);font-size:12px}
 .row input[type=number],.row input[type=text],.row select,.row textarea{width:100%;height:30px;border:1px solid var(--line);border-radius:var(--r);padding:0 8px;background:var(--field);transition:border-color .15s,box-shadow .15s}
-#cw,#ch{min-width:0;padding:0 4px 0 7px}   /* the page size: two fields in one row; with Large text in the Soft style (its panel is 16 px narrower) 1600 showed as "160" */
+#cw,#ch{min-width:0;padding:0 4px 0 6px;-moz-appearance:textfield;appearance:textfield}#cw::-webkit-inner-spin-button,#cw::-webkit-outer-spin-button,#ch::-webkit-inner-spin-button,#ch::-webkit-outer-spin-button{-webkit-appearance:none;margin:0}   /* the page size: two fields in one row; with Large text in the Soft style (its panel is 16 px narrower) 1600 showed as "160", and with the wider Mac and Linux fonts still did: the up/down arrows kept ~15 px of each field (Firefox always shows them), so they are left out here; the arrow keys still step the value */
 .row textarea{height:auto;padding:6px 8px;resize:vertical;font-family:inherit;line-height:1.4}
 .row input:hover,.row select:hover,.row textarea:hover{border-color:var(--line-strong)}
 .row select{-webkit-appearance:none;appearance:none;background:var(--field) var(--chev) no-repeat right 8px center;padding-right:26px}
@@ -376,7 +377,7 @@ button[hidden]{display:none}   /* so did a button's inline-flex: Export's "Give 
 .stList{display:flex;flex-direction:column;gap:6px;margin:8px 0}.stOpt{display:block;width:100%;height:auto;min-height:40px;padding:8px 10px;text-align:left;white-space:normal;line-height:1.35}
 .tag{display:inline-block;background:var(--hover);border-radius:5px;padding:1px 7px;font-size:11px;color:var(--muted)}
 /* citations: the Add citation dialog (.ctbox on the dialog box), the reference form, and the Citation section of the side panel */
-#modal .ctbox .ctg{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:20px;align-items:start}
+#modal .ctbox .ctg{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(260px,1fr);gap:20px;align-items:start}   /* the style column never narrower than 260 px: the DOI line of the APA card (https://doi.org/10.1000/example, 13 px) is ~210 px wide in the Mac and Linux fonts and must stay one piece; below 760 px the columns stack anyway */
 #modal .ctbox .tabs{margin:0 0 10px}
 .ctbox .ctn{margin-left:7px;font-size:11px;font-weight:500;color:var(--muted);background:var(--hover-2);border-radius:999px;padding:1px 7px}.ctbox .ctn:empty{display:none}
 .ctbox textarea,.ctbox input[type=text],.ctbox input[type=url],.ctbox input[type=search],.ctbox select{width:100%;min-width:0;border:1px solid var(--line);border-radius:var(--r);padding:6px 9px}
@@ -411,6 +412,7 @@ button[hidden]{display:none}   /* so did a button's inline-flex: Export's "Give 
 .ctbox .ctrow.on .cttitle,.ctbox .ctst.on .ctsn,.ctbox .ctrow .ctnote{color:var(--ink-2)}   /* muted ink on the accent tint of a ticked row or the chosen style is below 4.5:1; a note says something the user must read */
 .ctbox .ctline{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:6px 12px}.ctbox .ctall{display:inline-flex;gap:6px;flex:none}
 .ctbox .ctpv{font-size:13px;line-height:1.4;overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
+.ctbox .ctst[data-s="apa"] .ctpv,.ctbox .ctst[data-s="vancouver"] .ctpv{-webkit-line-clamp:6}   /* the full references: at 3 lines the DOI line (last) was cut away in a dialog of 800 px or less with the wider Mac and Linux fonts */
 .ctbox .ctopts{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:12px 0 0;padding:0 12px}.ctbox .ctopts.off label{opacity:.45;cursor:default}
 .ctbox .ctoffnote{font-size:12px;color:var(--muted)}.ctbox .ctoffnote[hidden]{display:none}
 .ctbox .ctlink{display:inline-block;max-width:100%;overflow-wrap:break-word}.ctbox .ctnw{white-space:nowrap}   /* see citePvHtml */
@@ -530,7 +532,7 @@ html.dark .accsw [data-v=blue]{background:#7aa5ff}html.dark .accsw [data-v=viole
 #sketchBar .sw.on{box-shadow:0 0 0 2px var(--accent)}#sketchBar .sw:hover{transform:scale(1.15)}
 #sketchBar select{height:28px;border:1px solid var(--line);border-radius:var(--r-sm);padding:0 24px 0 7px;-webkit-appearance:none;appearance:none;background:var(--field) var(--chev) no-repeat right 7px center}   /* the chevron of every other list (the system one was black and bold, also in dark mode) */
 kbd{font:11px/1 ui-monospace,Consolas,monospace;background:var(--hover);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:2px 5px;white-space:nowrap}
-@media (max-width:900px){:root{--lw:170px;--rw:240px}#palette,#layers{padding:4px 6px}#props{padding:8px}.row{grid-template-columns:64px minmax(0,1fr)}.layer .ty{display:none}header .brand span{display:none}}
+@media (max-width:900px){:root{--lw:170px;--rw:240px}#palette,#layers{padding:4px 6px}#props{padding:8px}.row{grid-template-columns:64px minmax(0,1fr)}.layer .ty{display:none}header .brand span{display:none}#cw,#ch{padding:0 3px 0 4px}}   /* #cw/#ch: the narrower panel left "1600" 0.6 px short in Soft with Large text and the wider Mac and Linux fonts */
 /* ===== phones: html.phone (under 700 px wide, or under 500 px high on a touch screen; Appearance → Phone layout; ?phone=1 / ?phone=0 in the address force it, unsaved)
    and html.ph-land (a phone held sideways). A one-row top bar, the canvas, a bottom toolbar (#mbar; a rail on the right when sideways), the side panels as sheets.
    Every rule is under html.phone, so tablets and desktops keep the layout above; "body" sits in selectors where a later Appearance rule would otherwise win.
@@ -737,7 +739,7 @@ html.ui-lg .pitem{font-size:12px}
 html.ui-lg .pcat{font-size:12.5px;height:26px}
 html.ui-lg:not(.phone) #palLibBtn{font-size:13px;height:30px}html.ui-lg:not(.phone) #palLibAll{font-size:12.5px;height:26px}html.ui-lg:not(.phone) #palHere,html.ui-lg #palRes{font-size:12.5px}html.ui-lg:not(.phone) .plopt{font-size:13.5px}html.ui-lg:not(.phone) .libmk{font-size:10px}html.ui-lg:not(.phone) #palList .palmore{font-size:12px}html.ui-lg:not(.phone) .plopt .plh{font-size:11.5px}   /* the library switcher and the search's blocks follow Text size: Large too */
 html.ui-lg #palette h3,html.ui-lg #props h3,html.ui-lg #layers h3,html.ui-lg kbd,html.ui-lg .tag{font-size:12px}
-html.ui-lg .layer .ty{font-size:11.5px;width:56px}   /* "membrane", the longest type name, whole (it lost its last letters) */
+html.ui-lg .layer .ty{font-size:11.5px}   /* "membrane", the longest type name, whole (it lost its last letters); the width follows the size (--tyw is in em) */
 html.ui-lg #zoomLbl{font-size:13.5px}
 html.ui-lg #modal .muted{font-size:13.5px}
 @media (max-width:900px){html.ui-lg .row{grid-template-columns:72px minmax(0,1fr)}}
@@ -795,6 +797,26 @@ html.ui-switching *,html.ui-switching *::before,html.ui-switching *::after{trans
 html.focus body{--lw:0px!important;--rw:0px!important}
 html.focus #left,html.focus #props,html.focus .gutter,html.focus #slides{display:none!important}html.focus.has-slides #stage{margin-left:0}
 html.focus #focusExit{display:inline-flex}
+/* each sidebar pinned or not (GitHub issue #2, then the owner's design of 2026-11-17; panelsApply / panelsLayout): the pin at a sidebar's top right
+   toggles it. Pinned: it stays and the canvas makes room. Unpinned: it tucks into a labeled tab on a rail at its side of the canvas (the tabs of one
+   side stack); hovering a tab shows it over the canvas while the pointer is on the tab or the sidebar, a click keeps it open until a click elsewhere,
+   Esc or the tab again. Only the tabs open a sidebar, never the bare edge. Not on phones (the panels are sheets there) and not in focus mode. */
+.pinbtn{flex:none!important;width:28px!important;height:28px;padding:0;color:var(--muted)}.pinbtn svg{width:15px;height:15px}.pinbtn:hover{color:var(--ink)}.pinbtn[aria-pressed=true]{color:var(--accent-ink,var(--accent))}
+#props>.pinbtn{float:right;margin:-6px -8px 2px 8px;position:relative;z-index:1}
+#animbar .abhead .pinbtn{margin-left:auto}#animbar .abhead .pinbtn~#abClose{margin-left:0}
+.rail{display:none;position:fixed;z-index:36;flex-direction:column;justify-content:center;gap:8px;pointer-events:none;top:var(--rail-t,52px);bottom:var(--rail-b,28px)}
+#railL{left:var(--rail-l,0px)}#railR{right:var(--rail-r,0px)}html:not(.phone):not(.focus) .rail.on{display:flex}
+.exptab{pointer-events:auto;display:flex;flex-direction:column;align-items:center;gap:6px;width:26px;height:auto;padding:9px 0;border:1px solid var(--line);background:var(--panel);color:var(--muted);box-shadow:var(--shadow-pop);font-size:var(--fs-small);font-weight:500;cursor:pointer}
+#railL .exptab{border-left:0;border-radius:0 10px 10px 0}#railR .exptab{border-right:0;border-radius:10px 0 0 10px}
+.exptab span{writing-mode:vertical-rl;white-space:nowrap}#railL .exptab span{transform:rotate(180deg)}
+.exptab svg{width:12px;height:12px;flex:none}#railL .exptab svg{transform:scaleX(-1)}
+.exptab:hover,.exptab:focus-visible,.exptab[aria-expanded=true]{color:var(--ink);background:var(--hover)}.exptab[hidden]{display:none}
+html:not(.phone).col-l body{--lw:0px!important}html:not(.phone).col-r body{--rw:0px!important}
+html:not(.phone).col-l #left:not(.peeking),html:not(.phone).col-l #gutL,html:not(.phone).col-r #props:not(.peeking),html:not(.phone).col-r #gutR,html:not(.phone).col-a #animbar:not(.peeking){display:none}
+html:not(.phone).col-a.anim-open #stage{margin-right:0}
+.peeking{position:fixed!important;grid-area:auto!important;justify-self:auto!important;z-index:35;top:var(--pk-t);bottom:var(--pk-b);left:var(--pk-l,auto);right:var(--pk-r,auto);width:var(--pk-w)!important;box-shadow:var(--shadow-pop);visibility:visible!important}
+#left.peeking,#animbar.peeking{display:flex}#props.peeking{display:block}
+html.phone .pinbtn,html.focus .pinbtn{display:none!important}
 /* ===== Windows contrast themes (forced colors): the figure, icon previews and color swatches keep their real colors (they are content);
    states shown only by a background or a shadow (lit toggles, chips, segments, the selected layer, focus rings) get a system-colored outline ===== */
 @media (forced-colors: active){
@@ -1083,7 +1105,8 @@ html.phone.ph-land .hmgrid{grid-template-columns:repeat(4,minmax(0,1fr))}html.ph
    before the first paint, so dark mode does not flash. Unknown or old values fall back to the default. */
 (function(){var D={theme:['light','dark','system'],style:['classic','soft','flat','contrast'],accent:['blue','violet','teal','orange','graphite'],layout:['std','swap','right'],text:['normal','large'],density:['comfortable','compact'],labels:['icons','words'],motion:['system','reduced','full'],phone:['auto','on','off'],start:['last','home','figure']},u={},v={},k;
   try{u=JSON.parse(localStorage.getItem('fig.ui')||'{}')}catch(e){}if(!u||typeof u!=='object')u={};
-  window.uiOld=function(u){if(u&&u.start==='home'&&!(u.v>=2))u.start='last';return u};uiOld(u);   // "At start: Home page" saved by the build before "Where I left off" existed was that build's default, never a choice: it becomes the new default (saveUI writes v: 2 from now on)
+  window.uiOld=function(u){if(u&&u.start==='home'&&!(u.v>=2))u.start='last';return u};uiOld(u);
+  try{var pn=JSON.parse(localStorage.getItem('fig.panels')||'{}');if(pn&&pn.l)document.documentElement.classList.add('col-l');if(pn&&pn.r)document.documentElement.classList.add('col-r');if(pn&&pn.a)document.documentElement.classList.add('col-a')}catch(e){}   // side panels hidden in this browser: before the first paint too (panelsApply)   // "At start: Home page" saved by the build before "Where I left off" existed was that build's default, never a choice: it becomes the new default (saveUI writes v: 2 from now on)
   for(k in D)v[k]=D[k].indexOf(u[k])<0?D[k][0]:u[k];
   window.UI_OPTIONS=D;window.UI=v;
   // the start of the plain address (see homeStart): what this browser had in front last (Home or a figure: fig.lastView and fig.lastFile, per editor folder) and, for a page
@@ -1223,8 +1246,8 @@ html.phone.ph-land .hmgrid{grid-template-columns:repeat(4,minmax(0,1fr))}html.ph
 </defs></svg>
 <div id="cvdBadge" role="status" hidden><span></span><button type="button" id="cvdNext" title="Next vision type">Next</button><button type="button" id="cvdOff" title="Back to normal colors" aria-label="Stop the color preview">✕</button></div>
 
-<nav id="left"><div class="tabs"><button id="tabAdd" class="on">Add</button><button id="tabLayers">Layers</button></div><div id="palette"><div id="packTop"><button type="button" id="packBtn" aria-expanded="false" aria-controls="packMenu" title="More icons from open repositories, each under its own license: see a repository’s terms, then import it"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>Import more icons</button><div id="packMenu" hidden></div></div><input id="palSearch" type="search" aria-label="Search the Add panel" placeholder="Search ~1600 items… (neuron, flask, formula)"><div id="palLib" hidden></div><div id="packShow" hidden></div><div id="palCats"></div><div id="palList"></div></div><div id="layers" hidden></div></nav>
-<div class="gutter" id="gutL" data-k="lw" title="Drag to resize the panel · double-click to reset"></div><div class="gutter" id="gutR" data-k="rw" title="Drag to resize the panel · double-click to reset"></div>
+<nav id="left"><div class="tabs"><button id="tabAdd" class="on">Add</button><button id="tabLayers">Layers</button><button type="button" class="ib pinbtn" id="pinL" aria-pressed="true" aria-label="Pin the Add and Layers sidebar" aria-controls="left"></button></div><div id="palette"><div id="packTop"><button type="button" id="packBtn" aria-expanded="false" aria-controls="packMenu" title="More icons from open repositories, each under its own license: see a repository’s terms, then import it"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7.5 10.5 12 15l4.5-4.5M5 19h14"/></svg>Import more icons</button><div id="packMenu" hidden></div></div><input id="palSearch" type="search" aria-label="Search the Add panel" placeholder="Search ~1600 items… (neuron, flask, formula)"><div id="palLib" hidden></div><div id="packShow" hidden></div><div id="palCats"></div><div id="palList"></div></div><div id="layers" hidden></div></nav>
+<div class="gutter" id="gutL" data-k="lw" title="Drag to resize the panel · double-click to reset"></div><div class="gutter" id="gutR" data-k="rw" title="Drag to resize the panel · double-click to reset"></div><div class="rail" id="railL"></div><div class="rail" id="railR"></div><button type="button" class="exptab" id="expL" aria-controls="left" aria-expanded="false" hidden title="Add and Layers: hover to look in, click to keep it open"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Add &amp; Layers</span></button><button type="button" class="exptab" id="expR" aria-controls="props" aria-expanded="false" hidden title="Properties: hover to look in, click to keep it open"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Properties</span></button><button type="button" class="exptab" id="expA" aria-controls="animbar" aria-expanded="false" hidden title="Animations: hover to look in, click to keep it open"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M10 3 5 8l5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span>Animations</span></button>
 <main id="stage" tabindex="0" role="application" aria-roledescription="figure canvas" aria-label="Figure canvas. Tab and Shift+Tab select the next or previous element, arrow keys move it (Shift: 10 px), Enter edits it, Delete removes it, Escape deselects, F6 goes to the next part of the window."><div id="wrap">
   <svg id="svg" xmlns="http://www.w3.org/2000/svg">
     <rect id="bg" x="0" y="0"/>
@@ -1238,7 +1261,7 @@ html.phone.ph-land .hmgrid{grid-template-columns:repeat(4,minmax(0,1fr))}html.ph
 <nav id="slides" aria-label="Slides" hidden><div class="slhead"><span class="slhl">Slides</span><button type="button" class="ib" id="slAdd" title="New slide after this one"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button><button type="button" class="ib" id="slMin" title="Hide the slide thumbnails" aria-expanded="true"><svg viewBox="0 0 24 24"><path d="M14 6l-6 6 6 6"/></svg></button></div><div id="slList" role="listbox" aria-label="Slides: Up and Down switch, Enter goes to the canvas, F2 renames, Delete removes, Alt+Up and Alt+Down move the slide"></div><div id="slPos" hidden></div></nav>
 <aside id="props"></aside>
 <!-- the animation sidebar (the Animations button, Shift+A): playback on top, then the gallery, the options of the chosen animation and the animation pane (animBarDraw fills #abBody) -->
-<aside id="animbar" aria-label="Animations" hidden><div class="abhead"><b>Animations</b><span class="tag" id="abWhere" hidden></span><button type="button" class="ib" id="abClose" title="Close the animation sidebar (Shift+A)" aria-label="Close the animation sidebar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+<aside id="animbar" aria-label="Animations" hidden><div class="abhead"><b>Animations</b><span class="tag" id="abWhere" hidden></span><button type="button" class="ib pinbtn" id="pinA" aria-pressed="true" aria-label="Pin the Animations sidebar" aria-controls="animbar"></button><button type="button" class="ib" id="abClose" title="Close the animation sidebar (Shift+A)" aria-label="Close the animation sidebar"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
 <div id="abOver"><span>Properties are hidden.</span><button type="button" id="abProps" title="Close the animation sidebar and show the properties panel (Shift+A)">Show properties</button></div>
 <div class="abplay"><div class="abpb"><button type="button" class="primary" id="abPlay" title="Play every animation of this slide in order (Escape or a press on the canvas stops it)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4.5l13 7.5-13 7.5z"/></svg>Play slide</button><button type="button" id="abFrom" title="Play from the animation chosen in the list to the end of the slide"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4.5h3v15H4zM10 4.5l11 7.5-11 7.5z"/></svg>From selected</button><button type="button" class="ib" id="abStop" title="Stop (Esc)" aria-label="Stop" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5.5" y="5.5" width="13" height="13" rx="2"/></svg></button></div>
 <div id="abProg" aria-hidden="true"><i></i></div><label class="abauto" title="After you add an animation or change its effect, direction or timing, it plays once (without its delay)"><input type="checkbox" id="abAuto"> Play when I change something</label></div>
@@ -19902,7 +19925,8 @@ let mjLib=null;
 const MJ_LOCAL='lib/mathjax/tex-svg.js',MJ_CDN='https://cdn.jsdelivr.net/npm/mathjax@3.2.2/es5/tex-svg.js',MJ_SRI='sha384-KKWa9jJ1MZvssLeOoXG6FiOAZfAgmzsIIfw8BXwI9+kYm0lPCbC6yTQPBC00F1/L';
 function mjLocal(){return libHere(MJ_LOCAL)}
 function loadMathJax(){return mjLib||(mjLib=mjLocal().then(loc=>new Promise((res,rej)=>{
-  const add=src=>{window.MathJax={svg:{fontCache:'none'},startup:{typeset:false},options:{enableMenu:false,enableAssistiveMml:false}};const s=document.createElement('script');s.src=src;if(src===MJ_CDN){s.integrity=MJ_SRI;s.crossOrigin='anonymous'}
+  // \href, \class, \cssId, \style and \data (MathJax's html extension) never load, not even through \require: a formula is drawing, never a link or markup
+  const add=src=>{window.MathJax={svg:{fontCache:'none'},startup:{typeset:false},options:{enableMenu:false,enableAssistiveMml:false},tex:{autoload:{html:[]}},require:{allow:{html:false}}};const s=document.createElement('script');s.src=src;if(src===MJ_CDN){s.integrity=MJ_SRI;s.crossOrigin='anonymous'}
     // offline: every redraw of an untypeset formula fetched the library again (one script tag per drag frame); keep the failure 20 s, then allow a retry
     s.onload=()=>{const M=window.MathJax;if(M&&M.startup&&M.startup.promise)M.startup.promise.then(()=>res(M),fail);else fail()};
     const fail=()=>{s.remove();if(src!==MJ_CDN)return add(MJ_CDN);const p=mjLib;setTimeout(()=>{if(mjLib===p)mjLib=null},20000);rej(new Error('Could not load the formula library (internet is needed the first time a formula is typeset).'))};
@@ -19915,7 +19939,7 @@ let mjQ=Promise.resolve();function mjSvg(MJ,tex,display){const p=mjQ.then(()=>MJ
 async function typesetTex(tex,display){const MJ=await loadMathJax();const svg=(await mjSvg(MJ,tex,display)).querySelector('svg');
   const vb=svg.getAttribute('viewBox').split(/\s+/).map(Number),g=svg.querySelector('g'),err=mjErr(MJ,svg,tex,display);
   svg.querySelectorAll('[data-mml-node="merror"] rect[data-background]').forEach(n=>n.remove());   // the error box took the formula color: a solid block hid its own message
-  return{paths:g.innerHTML.replace(/ data-(mml-node|c|semantic-node|latex|variant|mjx-texclass)="[^"]*"/g,''),vb,err}}
+  return{paths:svgScrub(g.innerHTML.replace(/ data-(mml-node|c|semantic-node|latex|variant|mjx-texclass)="[^"]*"/g,'')),vb,err}}   // through svgScrub like any drawing: a formula from a file made a live link (\href{javascript:…}), and a file could leave its paths empty to have it typeset
 // what is wrong with a typeset formula: MathJax keeps the parse error in data-mjx-error (there is no <title>: it always said "syntax error"); an unknown \command is only drawn in red
 function mjErr(MJ,el,tex,display){const bad=el.querySelector('[data-mml-node="merror"]');if(bad)return'check the LaTeX: '+(bad.getAttribute('data-mjx-error')||'syntax error');
   if(el.querySelector('[data-mml-node="mtext"][fill="red"]'))try{const u=[...new Set([...MJ.tex2mml(String(tex),{display:!!display}).matchAll(/<mtext mathcolor="red">(\\[^<]*)<\/mtext>/g)].map(m=>m[1]))];if(u.length)return'unknown command'+(u.length>1?'s ':' ')+u.join(' ')}catch(e){}
@@ -20401,12 +20425,34 @@ function pushFile(){if(!FILE_SYNC||QUIT)return;if(fileGone){markGone(fileGone);r
     if(mgPend.length)mgTake();   // a version that came in during a drag or typing is merged before this is written over it
     if(fileSame()){setStatus('saved','Saved');return}postFig()},250)}
 // a hand-edited file may miss things the editor relies on: objects without a type are dropped, missing or duplicate ids are replaced, the page size is restored
-// a figure file is data, never code: markup it carries (custom svg, formula paths, user icons) loses scripts, event handlers and javascript: links
-// (a figure from someone else ran its own script in the editor, which can write and delete files through the server)
-function svgScrub(s){if(typeof s!=='string')return'';if(!/<\s*\/?\s*(script|foreignObject|iframe|embed|object|set|animate|handler|style|link|meta)|\son[a-z]+\s*=|javascript:|vbscript:|data:text|href\s*=\s*["']?\s*(?!data:image\/)(?:[a-z][a-z0-9+.\-]*:|\/\/)|url\(\s*(?!['"]?#)|@import/i.test(s))return s;   /* (a drawing may bring neither a style sheet, which would restyle the whole editor, nor a picture or reference on another host, which the browser would call) */const D=document.implementation.createHTMLDocument(''),g=D.createElementNS('http://www.w3.org/2000/svg','g');g.innerHTML=s;   /* parsed in an inert document: nothing loads or runs */
-  g.querySelectorAll('script,foreignObject,foreignobject,iframe,embed,object,set,animate,animateMotion,animateTransform,handler,style,link,meta').forEach(e=>e.remove());
-  g.querySelectorAll('*').forEach(e=>{const pic=/^(image|feimage|use)$/i.test(e.localName);for(const a of [...e.attributes]){const v=a.value.replace(/[\s\0-\x1f]/g,'').toLowerCase();
-    if(/^on/i.test(a.name)||/href$/i.test(a.name)&&(/^(javascript|vbscript|data:text)/.test(v)||pic&&(/^[a-z][a-z0-9+.\-]*:/.test(v)&&!/^data:image\//.test(v)||/^\/\//.test(v)))||!/href$/i.test(a.name)&&/url\((?!['"]?#)/.test(v))e.removeAttribute(a.name)}});return g.innerHTML}   // a picture or <use> keeps a reference into the drawing (#id), a file of this folder (assets/…) or an embedded picture; url(…) only one into the drawing
+// a figure file is data, never code: every drawing it carries (custom svg, formula paths, icons of a figure, My icons, thumbnails) is parsed and
+// rebuilt from an allowed list of SVG elements and attributes, always. (Until 2026-11-17 a quick check let markup that looked harmless through
+// unchanged, and <svg/onload=…>, <image/onerror=…> or an href of javascript&#58;… looked harmless to it: a figure from someone else ran its own
+// script in the editor, which can read, write and delete files through the server. Reported privately; tests "security: …" try each way.)
+// Kept: drawing elements in the SVG namespace (no <script>, <style>, <foreignObject>, <a>, animation or HTML; a <title> or <desc> keeps its words only);
+// no on… attribute; an href only into the drawing (#id), or for a picture a file of this folder (assets/…) or an embedded picture (<use>: #id only);
+// url(…) only into the drawing, and no backslash in a value (a CSS escape such as \75 rl( hid a url(). A link (<a>) keeps its drawing and loses the link.
+// svgScrub.cut = how much was taken out (0 = nothing).
+const SCRUB_NS='http://www.w3.org/2000/svg',SCRUB_OK=new Set(('svg g path rect circle ellipse line polyline polygon text tspan textpath defs clippath mask lineargradient radialgradient stop pattern use symbol image marker filter '+
+  'feblend fecolormatrix fecomponenttransfer fecomposite feconvolvematrix fediffuselighting fedisplacementmap fedistantlight fedropshadow feflood fefunca fefuncb fefuncg fefuncr fegaussianblur feimage femerge femergenode femorphology feoffset fepointlight fespecularlighting fespotlight fetile feturbulence').split(' '));
+function svgAttrOk(n,a){const ln=a.localName.toLowerCase(),v=a.value.replace(/[\s\0-\x1f]/g,'').toLowerCase();
+  if(/^on/.test(ln)||/^on/i.test(a.name)||ln==='base')return false;   // event handlers (however written: the parser has read the name), xml:base
+  if(ln==='href')return v[0]==='#'||/^(image|feimage)$/.test(n)&&(/^data:image\/(png|jpe?g|gif|webp|svg\+xml)[;,]/.test(v)||/^assets\/[^:\\]*$/.test(v)&&!v.includes('..'));
+  return!/\\/.test(v)&&!/(javascript|vbscript|livescript):/.test(v)&&!/url\((?!['"]?#)/.test(v)&&!(ln==='style'&&/expression\(|@import|behavior:|-moz-binding/.test(v))}
+function svgScrubKids(el){let cut=0;for(const e of [...el.children]){const n=e.localName.toLowerCase();
+    if(e.namespaceURI===SCRUB_NS&&(n==='title'||n==='desc')){for(const k of [...e.children]){k.remove();cut++}for(const a of [...e.attributes])if(!svgAttrOk(n,a)){e.removeAttributeNode(a);cut++}continue}   // a name or a description: its words only (HTML can live in a <title>)
+    if(e.namespaceURI!==SCRUB_NS||!SCRUB_OK.has(n)&&n!=='a'){e.remove();cut++;continue}
+    for(const a of [...e.attributes])if(!svgAttrOk(n,a)){e.removeAttributeNode(a);cut++}
+    cut+=svgScrubKids(e);if(n==='a'){e.replaceWith(...e.childNodes);cut++}}
+  return cut}
+const SCRUB_MEMO=new Map();
+function svgScrub(s){svgScrub.cut=0;if(typeof s!=='string')return'';if(s.indexOf('<')<0)return s;   // no tag, no element: nothing to run
+  const m=SCRUB_MEMO.get(s);if(m){svgScrub.cut=m[1];return m[0]}
+  const D=document.implementation.createHTMLDocument(''),g=D.createElementNS(SCRUB_NS,'g');g.innerHTML=s;   // parsed in an inert document, as the page will parse it (inside SVG): nothing loads or runs
+  const cut=svgScrubKids(g),out=g.innerHTML;svgScrub.cut=cut;
+  if(s.length<300000){if(SCRUB_MEMO.size>800)SCRUB_MEMO.clear();SCRUB_MEMO.set(s,[out,cut])}return out}
+// a live drawing (the formula builder's preview, which MathJax made from the typed or opened formula) cleaned in place by the same rules
+function svgScrubNode(svg){if(!svg)return;for(const a of [...svg.attributes])if(!svgAttrOk('svg',a))svg.removeAttributeNode(a);svgScrubKids(svg)}
 // fields written into an attribute (colors, kinds, path data, ids…) lose " < > so they cannot break out of the drawing; free text (escaped when drawn) is left alone.
 // Wrong kinds of values are repaired: a list field that is not a list gets its default, a text field holding an object gets its default (a number becomes text), bad x/y/s/r/op are dropped
 function scrubStr(v){return/["<>]/.test(v)?v.replace(/["<>]/g,''):v}   // declarations (not const): the startup copy from this browser is healed before this line runs
@@ -21345,10 +21391,12 @@ function animOverlay(k,hk,M){if(!isDeck(scene)||animRun)return'';const L=animLiv
 var animSel=new Set(),animAct=null,animHover=null;
 const animBar={tab:'in',selKey:null,drag:null,tm:0},ANIM_KIND={in:'Entrance',out:'Exit',path:'Motion path'},ANIM_COL={in:'#16a34a',out:'#dc2626',path:'#2563eb'};
 const animAuto=()=>{try{return localStorage.getItem('fig.animAuto')!=='off'}catch(e){return true}};
+// the Animations button, Shift+A, the menu: an open sidebar that is unpinned (tucked into its tab) is shown for a look, kept open, instead of closed unseen
+function animToggle(){try{if(animPane()&&PANELS.a&&!PHONE()&&!inFocus()&&PEEK.k!=='a'){peekOpen('a',true);return true}}catch(e){}return animPane(!animPane())}
 function animPane(show){const B=$('#animbar'),de=document.documentElement,open=!B.hidden,was=open&&!inFocus();if(show==null)return was;show=!!show;if(show===open&&show===was)return was;   // (focus mode hides it: there it counts as closed, and showing it leaves focus mode)
   if(show&&inFocus())setFocusMode(false,true);animStop();if(animDrawing)animDrawing.end(false);
   if(show&&PHONE())['#left','#props'].forEach(s=>{if($(s).dataset.ph)phSheet(s,'closed')});   // phones: it is a sheet too, and takes the place of an open one (it covered them)
-  const set=()=>{B.hidden=!show;de.classList.toggle('anim-open',show);animBarFit()};
+  const set=()=>{B.hidden=!show;de.classList.toggle('anim-open',show);animBarFit();try{panelsLayout();if(show&&PANELS.a&&!PHONE())peekOpen('a',true)}catch(e){}};   // (unpinned: its tab comes and goes with it, and opening it shows it)   // (an unpinned sidebar: its tab comes and goes with it)
   {const fitted=fit.z==null||Math.abs(zoom-fit.z)<=.002;keepView(set);if(fitted)requestAnimationFrame(()=>{if(fit.z==null||Math.abs(zoom-fit.z)<=.002)fit(true)})}   // the canvas got narrower or wider (phones: lower, the sheet lies under it): the page is fitted again, unless the user has zoomed
   const b=$('#bAnim');b.classList.toggle('on',show);b.setAttribute('aria-pressed',show?'true':'false');try{if(show)localStorage.setItem('fig.animPane','1');else localStorage.removeItem('fig.animPane')}catch(e){}
   if(show&&PHONE()&&!B._ph)B._ph=phPush(()=>{B._ph=0;animPane(false)});else if(!show&&B._ph){const id=B._ph;B._ph=0;phDone(id)}   // phones: Back closes it, as it closes the other sheets (it had no entry, so Back left the editor)
@@ -21356,7 +21404,7 @@ function animPane(show){const B=$('#animbar'),de=document.documentElement,open=!
   buildPanel();drawOverlay();return show}
 // room for it beside the canvas? else it lies over the properties panel
 function animBarFit(){const de=document.documentElement,B=$('#animbar');if(!B||B.hidden||PHONE()){de.classList.remove('anim-over');return}
-  const cs=getComputedStyle(document.body),v=k=>parseFloat(cs.getPropertyValue(k))||0,sw=de.classList.contains('has-slides')?(de.classList.contains('sl-min')?30:132):0,over=innerWidth-v('--lw')-v('--rw')-sw-(v('--aw')||304)<640;   // beside the properties while the canvas keeps 640 px
+  const cs=getComputedStyle(document.body),v=k=>parseFloat(cs.getPropertyValue(k))||0,sw=de.classList.contains('has-slides')?(de.classList.contains('sl-min')?30:132):0,over=!de.classList.contains('col-r')&&!de.classList.contains('col-a')&&innerWidth-v('--lw')-v('--rw')-sw-(v('--aw')||304)<640;   /* (over a hidden properties panel it was 1 px wide) */   // beside the properties while the canvas keeps 640 px
   if(over!==de.classList.contains('anim-over'))keepView(()=>de.classList.toggle('anim-over',over))}
 function animIco(kind,fx){const S='<svg viewBox="0 0 32 24" aria-hidden="true">',E='</svg>',r=(x,y,w,h,o)=>`<rect x="${x}" y="${y}" width="${w}" height="${h}" rx="2" fill="currentColor" stroke="none"${o?` opacity="${o}"`:''}/>`;
   if(kind==='path'&&fx==='back')return S+'<circle cx="6.5" cy="12" r="2.4" fill="currentColor" stroke="none"/><circle cx="25.5" cy="12" r="2.4" stroke-dasharray="1.7 1.7"/><path d="M21.5 12H11M11 12l3.8-3.8M11 12l3.8 3.8"/>'+E;
@@ -21471,7 +21519,7 @@ function animBarDraw(){const B=$('#animbar');if(!B||B.hidden||animBar.drag)retur
   body.scrollTop=top;if(fresh||animBar.show){animBar.show=false;animRowShow(body.querySelector('.aprow.act'))}   /* the canvas chose, or one was just added: its row is in sight (under its step's heading) */if(fk){const n=body.querySelector(`[data-k="${CSS.escape(fk)}"]`);if(n&&n!==document.activeElement)n.focus({preventScroll:true})}
   {const w=$('#abWhere');w.textContent=deck&&scene.slides.length>1?`Slide ${CUR+1}`:'';w.hidden=!w.textContent;$('#abPlay').disabled=!L.length;$('#abFrom').disabled=!L.length||!animSel.size;$('#abStop').disabled=!run;B.classList.toggle('playing',run)}}
 $('#bCite').onclick=()=>citeDialog();   // the same as Shift+C, File ▾ → Add citation… and the Add panel's Citation
-{const b=$('#bAnim'),B=$('#animbar');b.onclick=()=>animPane(!animPane());$('#abClose').onclick=()=>animPane(false);$('#abProps').onclick=()=>animPane(false);
+{const b=$('#bAnim'),B=$('#animbar');b.onclick=()=>animToggle();$('#abClose').onclick=()=>animPane(false);$('#abProps').onclick=()=>animPane(false);
   // keys in the sidebar never reach the canvas shortcuts (Delete took the selected element away, the arrows moved it): Delete removes the chosen animations, the arrows go through the tabs and the effects
   B.addEventListener('keydown',e=>{const t=e.target,k=e.key;if(!t.closest||t.matches(TYPING+',input[type=range]'))return;
     if(k==='Delete'||k==='Backspace'){e.preventDefault();e.stopPropagation();const ids=slideAnims().filter(a=>animSel.has(a.id)).map(a=>a.id);if(ids.length){animRemove(ids);animBarFocus()}return}
@@ -22858,7 +22906,10 @@ function toneOf(x,k,n){const X=rgbHsl(x),K=rgbHsl(k),N=rgbHsl(n),c01=v=>Math.max
 const recolorSvg=(svg,k,a,b,kt,c)=>{let T=null;a=hex6(a);b=hex6(b);
   if(kt&&c){T=new Map();[[a,0],[b,1]].forEach(([n,i])=>{const nn=String(n||'').toLowerCase();if(!kt[i]||!k[i]||!HEX6.test(nn)||nn===String(c[i]||'').toLowerCase())return;for(const x of kt[i])T.set(x,toneOf(x,k[i],nn))});if(!T.size)T=null}
   return svg.replace(/(fill|stroke|stop-color)="(#[0-9a-fA-F]{3,6})"/g,(m,p,cl)=>{const cc=cl.toLowerCase();if(p!=='stop-color'){if(cc===k[0])return`${p}="${a}"`;if(cc===k[1])return`${p}="${b}"`}const t=T&&T.get(cc);return t?`${p}="${t}"`:m})};
-function registerIcon(key,def){if(!def||typeof def!=='object'||builtinIcon(key))return;const svg=svgScrub(def.svg),c=Array.isArray(def.c)?def.c.map(x=>scrubStr(String(x))):['#6f86c8','#3f5a9e'],k=Array.isArray(def.k)?def.k.map(x=>String(x).toLowerCase()):[];const kt=Array.isArray(def.kt)?def.kt.slice(0,2).map(L=>Array.isArray(L)?L.map(x=>String(x).toLowerCase()).filter(x=>HEX6.test(x)).slice(0,256):[]):null;   /* recolorSvg compares lowercased colors: a "#6F86C8" key (hand-written or AI-made file) never recolored */   // an icon carried by a figure file is data too: no scripts, no attribute break-outs
+// shipped = a part of an icon pack this editor ships (icon-expansions/<id>/, served with the program, checked by the tests "the shipped packs are
+// complete and safe"): taken as it is, since parsing 60 MB of drawings would stop the page. Everything else (a figure's icons, My icons, a pack from
+// elsewhere) goes through svgScrub.
+function registerIcon(key,def,shipped){if(!def||typeof def!=='object'||builtinIcon(key))return;const svg=shipped?String(def.svg):svgScrub(def.svg),c=Array.isArray(def.c)?def.c.map(x=>scrubStr(String(x))):['#6f86c8','#3f5a9e'],k=Array.isArray(def.k)?def.k.map(x=>String(x).toLowerCase()):[];const kt=Array.isArray(def.kt)?def.kt.slice(0,2).map(L=>Array.isArray(L)?L.map(x=>String(x).toLowerCase()).filter(x=>HEX6.test(x)).slice(0,256):[]):null;   /* recolorSvg compares lowercased colors: a "#6F86C8" key (hand-written or AI-made file) never recolored */   // an icon carried by a figure file is data too: no scripts, no attribute break-outs
   ICONS[key]={n:String(def.n||key),t:String(def.t||''),c,user:true,def:{...def,svg,c,k,...(kt?{kt}:{})},d:(a,b,o)=>recolorSvg(svg,k,a,b,kt,c)};
   const pk=packOfKey(key,def);if(pk){ICONS[key].pack=pk;ICONS[key].def.pack=pk}   /* an icon of an icon pack (icon expansions): not one of My icons */
   if(def.att&&typeof def.att==='object'&&!Array.isArray(def.att))for(const a of Object.keys(def.att))if(def.att[a]&&typeof def.att[a]==='object')ATT_MEMO.set(a,def.att[a])}   // def: copied elements carry it, so they draw in a tab/figure that does not know the icon
@@ -23230,7 +23281,7 @@ function packNames(id){const P=PACKS.by.get(id);if(!P)return Promise.reject(new 
 const packDef=(d,P)=>({...d,pack:P.id,packName:P.name,...(P.site?{packSite:String(P.site)}:{}),...(P.credit?{packCredit:String(P.credit)}:{}),...(!d.lic&&P.license&&P.attribution!=='mixed'?{lic:String(P.license)}:{}),...(P.licenseUrl?{packLicUrl:String(P.licenseUrl)}:{}),perIcon:!!P.perIcon,req:packReq(P,d)});   // (the pack's own wording travels too: the credit line reads the same where the pack is not installed)
 function packChunk(id,fi){const P=PACKS.by.get(id),ch=P&&P.chunks[fi];if(!ch)return Promise.reject(new Error('No such part of the icon pack '+id));const ck=id+'/'+fi;let p=PACKS.chunk.get(ck);if(p)return p;
   p=fetch(P.dir+ch.file,{cache:'no-cache'}).then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}).then(d=>{const got=[];   /* no-cache: kept by the browser and only asked "changed?" (the parts are megabytes and change with a new version only) */
-    for(const k of Object.keys(d||{})){if(packOfKey(k)!==id||!d[k]||typeof d[k].svg!=='string')continue;const was=ICONS[k];if(!was||!was.lib){registerIcon(k,packDef(d[k],P));if(ICONS[k])ICONS[k].lib=true;if(was&&!was.stub)for(const t of [...thumbCache.keys()])if(t.startsWith('icon{"kind":"'+k+'"'))thumbCache.delete(t);got.push(k)}}packArrived(got);return got}).catch(e=>{PACKS.chunk.delete(ck);throw e});   // lib: the pack's own entry (it replaces a stub, and a copy that a figure brought)
+    for(const k of Object.keys(d||{})){if(packOfKey(k)!==id||!d[k]||typeof d[k].svg!=='string')continue;const was=ICONS[k];if(!was||!was.lib){registerIcon(k,packDef(d[k],P),/^icon-expansions\/[\w-]+\/$/.test(P.dir));if(ICONS[k])ICONS[k].lib=true;if(was&&!was.stub)for(const t of [...thumbCache.keys()])if(t.startsWith('icon{"kind":"'+k+'"'))thumbCache.delete(t);got.push(k)}}packArrived(got);return got}).catch(e=>{PACKS.chunk.delete(ck);throw e});   // lib: the pack's own entry (it replaces a stub, and a copy that a figure brought)
   PACKS.chunk.set(ck,p);return p}
 function packNeed(key){const ic=ICONS[key];if(!ic||!(ic.stub||ic.pack&&!ic.lib&&ic.meta&&packLib(key)))return Promise.resolve();return packChunk(ic.pack,+(ic.meta&&ic.meta.f)||0).catch(()=>{packMiss(ic.pack)})}
 // the website: a part of a pack that could not be loaded (offline: not in this browser yet) is said once per pack, not only at an export
@@ -23660,12 +23711,12 @@ async function fuseSel(save){
     const name=String(nm).trim()||'My icon',base=name.toLowerCase().replace(/[^a-z0-9]+/g,'').replace(/\d+$/,'')||'icon',key=ICONS[base]||USER[base]?nextIconKey(base):base;
     const tags=[...new Set(objs.filter(o=>o.type==='icon'&&ICONS[o.kind]).map(o=>ICONS[o.kind].n.toLowerCase()))].join(' ');
     const sc=96/Math.max(w,h,1),k=dominantColours(svgStr);
-    const def={n:name,t:[name.toLowerCase(),tags,srcIc&&srcIc.t,'custom my icon'].filter(Boolean).join(' '),svg:`<g transform="scale(${f(sc)})">${svgStr}</g>`,k,c:k,from:srcBase||base};{const ak=[...new Set(objs.flatMap(attKeys))],A={};ak.forEach(a=>{const m=attMeta(a);if(m)A[a]=m});if(Object.keys(A).length)def.att=A}   /* made from icons of a repository: their credits stay with the new icon */
+    const def={n:name,t:[name.toLowerCase(),tags,srcIc&&srcIc.t,'custom my icon'].filter(Boolean).join(' '),svg:svgScrub(`<g transform="scale(${f(sc)})">${svgStr}</g>`),k,c:k,from:srcBase||base};{const ak=[...new Set(objs.flatMap(attKeys))],A={};ak.forEach(a=>{const m=attMeta(a);if(m)A[a]=m});if(Object.keys(A).length)def.att=A}   /* made from icons of a repository: their credits stay with the new icon */
     USER[key]=def;saveUserIcons();registerIcon(key,def);refreshUserPalette();
     // a group of ordinary elements stays as it is; parts made with "Convert to editable parts" become the new icon again
     if(!objs.every(o=>typeof o.from==='string')){commit();render();buildPanel();toast(`Saved “${name}” in My icons (Add panel); the elements here stay as they are`);return}
     el={id:uid(),type:'icon',x:+cx.toFixed(2),y:+cy.toFixed(2),s:1,r:0,...JSON.parse(JSON.stringify(DEF.icon)),kind:key,size:+(Math.max(w,h)/0.96).toFixed(1),c1:k[0],c2:k[1]};
-  }else{el={id:uid(),type:'custom',x:+cx.toFixed(2),y:+cy.toFixed(2),s:1,r:0,svg:svgStr,w:+w.toFixed(1),h:+h.toFixed(1)};const ak=[...new Set(objs.flatMap(attKeys))].filter(attMeta);if(ak.length)el.att=ak;if(objs.some(o=>o.cred))el.cred=1}
+  }else{el={id:uid(),type:'custom',x:+cx.toFixed(2),y:+cy.toFixed(2),s:1,r:0,svg:svgScrub(svgStr)/* in the form svgScrub writes: read again from the file it is the same text */,w:+w.toFixed(1),h:+h.toFixed(1)};const ak=[...new Set(objs.flatMap(attKeys))].filter(attMeta);if(ak.length)el.att=ak;if(objs.some(o=>o.cred))el.cred=1}
   {const g0=objs[0].group,p0=JSON.stringify(objs[0].pg||[]);if(g0&&objs.every(o=>o.group===g0)){el.group=g0;if(p0!=='[]'&&objs.every(o=>JSON.stringify(o.pg||[])===p0))el.pg=JSON.parse(p0)}}   // members of one group fused: the result stays in that group (the rest of it was left behind)
   scene.objects.splice(at+1,0,el);scene.objects=scene.objects.filter(o=>!ids.has(o.id));pruneGroups();
   scene.objects.forEach(a=>{if(a.type!=='arrow')return;let n=0;for(const k of ['from','to']){const L=linkNorm(a[k]);if(L&&ids.has(L.id)){a[k]={id:el.id};n++}}if(n===2){delete a.from;delete a.to}});   // arrows attached to a fused part stay attached, to the new element (one between two parts: free)
@@ -23918,7 +23969,7 @@ function buildPanel1(){if(nmActive&&!(sel.size===1&&sel.has(nmActive.id)))nmActi
   renderLayers();
   const P=$('#props');const key=[...sel].sort().join(',');if(key!==buildPanel.key){buildPanel.key=key;P.classList.remove('fade');void P.offsetWidth;P.classList.add('fade')}
   hint();const b1=sel.size===1&&!cropping?[[...sel][0]].map(id=>{try{return[id,get(id)?bbox(id):null]}catch(e){return[null]}})[0]:null;   // the size of one selected element is measured here, while the layout is still clean (measured after the fields were made, it laid out the panel and the canvas an extra time: ~15 ms in a 5000-element figure)
-  P.innerHTML='';
+  P.innerHTML='';if(!PHONE())P.appendChild(pinBtnR());   // the pin of this sidebar (setPanels)
   if(cropping){cropPanel(P);return}   // crop mode: only the crop's own fields
   if(!sel.size){slidePanel(P);P.appendChild(h3(isDeck(scene)?'Page (all slides)':'Page'));canvasControls(P);
     P.appendChild(field(scene,['bg','color',0,'background'],()=>{applyCanvas();render()}));
@@ -24179,7 +24230,7 @@ function renderLayers(){
   // only the selection changed (a click, a drag, a panel edit): the rows are updated in place; rebuilding 4000 rows took 1–2 s per click with this tab open
   // (same element objects in the same order, same names/flags: the rows' handlers hold those objects, so an undo or a reload still rebuilds)
   const objs=[...scene.objects],sig=(PHONE()?'p\u0002':'')+objs.map(o=>[o.id,layerName(o),o.type,o.text||o.label||'',o.hidden?1:0,o.locked?1:0,o.group||''].join('\u0001')).join('\u0002'),prev=renderLayers.objs;   // (the phone layout switched: rebuilt with its own hint and no row dragging)
-  if(sig===renderLayers.sig&&prev&&prev.length===objs.length&&prev.every((o,i)=>o===objs[i])&&L.querySelector('.layer')){const rows=[...L.querySelectorAll('.layer')];rows.forEach(x=>{const s=sel.has(x.dataset.id);x.classList.toggle('sel',s);x.setAttribute('aria-selected',s?'true':'false')});layerTabStops(rows,rowFocus);return}
+  if(sig===renderLayers.sig&&prev&&prev.length===objs.length&&prev.every((o,i)=>o===objs[i])&&L.querySelector('.layer')){const rows=[...L.querySelectorAll('.layer')];rows.forEach(x=>{const s=sel.has(x.dataset.id);x.classList.toggle('sel',s);x.setAttribute('aria-selected',s?'true':'false')});if(layerTyWidth.stale)layerTyWidth(L);layerTabStops(rows,rowFocus);return}
   renderLayers.sig=sig;renderLayers.objs=objs;L.innerHTML='';   // a rebuild while typing in the filter (figure reloaded, autosave) keeps the field focused
   const hd=document.createElement('p');hd.style.cssText='color:var(--muted);font-size:var(--fs-small);margin:0 0 6px';hd.textContent=PHONE()?'Top of the list = in front. Tap a row to select it (also locked ones); Arrange in the toolbar changes the order.':'Top of the list = in front. Click to select (also locked ones); drag a row to change the order.';L.appendChild(hd);
   if(!objs.length){const e=document.createElement('p');e.className='empty lyempty';e.textContent=`Nothing on this ${isDeck(scene)?'slide':'page'} yet: what you add ${PHONE()?'with Add':'from the Add panel'} is listed here.`;L.appendChild(e)}   // an empty figure showed only the line above, as if the list had failed
@@ -24218,8 +24269,18 @@ function renderLayers(){
     r.tabIndex=-1;r.onkeydown=e=>{if(e.target!==r)return;const k=e.key;if(k==='ArrowUp'||k==='ArrowDown'){e.preventDefault();e.stopPropagation();const rows=[...L.querySelectorAll('.layer')].filter(x=>x.style.display!=='none'),i=rows.indexOf(r),n=rows[i+(k==='ArrowUp'?-1:1)];if(n){n.focus();if(!get(n.dataset.id).hidden)n.click()}}
       else if(k==='Enter'||k==='F2'){e.preventDefault();e.stopPropagation();r.ondblclick(e)}else if(k===' '){e.preventDefault();e.stopPropagation();r.click()}};
     G.appendChild(r)});
+  layerTyWidth(L);
   layerTabStops([...L.querySelectorAll('.layer')],rowFocus);
 }
+// the type column is as wide as the longest type listed, measured in the font this browser really uses (the Mac and Linux fonts are
+// wider than Segoe UI: a fixed 50 px cut "membrane" to "membra…" there, and a wider fixed column took room from every name on Windows);
+// in em, .25 em to spare (font hinting differs by size); measured again when the text size changes (applyUI). A list built while it
+// cannot be measured (focus mode hides the panels: everything is 0 wide) is marked stale and measured once it can be.
+function layerTyWidth(L){const names=[...new Set([...L.querySelectorAll('.layer .ty')].map(t=>t.textContent))];if(!names.length){layerTyWidth.stale=false;return}
+  const pr=document.createElement('div');pr.className='layer typrobe';pr.setAttribute('aria-hidden','true');names.forEach(n=>{const s=document.createElement('span');s.className='ty';s.textContent=n;pr.appendChild(s)});L.appendChild(pr);
+  let w=0;const sp=[...pr.children];sp.forEach(s=>{w=Math.max(w,s.getBoundingClientRect().width)});const fs=parseFloat(getComputedStyle(sp[0]).fontSize);pr.remove();
+  layerTyWidth.stale=!(w>0&&fs>0);if(!layerTyWidth.stale)L.style.setProperty('--tyw',(Math.ceil((w/fs+.25)*100)/100)+'em')}
+function layerTyFresh(){const L=$('#layers');if(L&&!L.hidden&&L.querySelector('.layer'))layerTyWidth(L)}
 function layerTabStops(rows,rowFocus){const fr=rows.find(x=>x.dataset.id===rowFocus)||rows.find(x=>x.classList.contains('sel'))||rows[0];rows.forEach(x=>{x.tabIndex=x===fr?0:-1;x.querySelectorAll('button').forEach(b=>b.tabIndex=x===fr?0:-1)});if(fr&&rowFocus&&!fr.contains(document.activeElement))fr.focus({preventScroll:true})}   // a rebuild (selecting, renaming) keeps the focused row; only that row's hide/lock buttons are Tab stops
 
 /* ---------- comments ---------- */
@@ -25523,7 +25584,7 @@ async function storageDialog(){await Promise.race([flushSave().catch(()=>{}),new
       ${j.options.length?'':'<p class="muted">No sync app’s folder was found on this computer. Give its path below.</p>'}
       <p style="display:flex;gap:6px;align-items:center"><input id="stPath" style="flex:1;min-width:0" placeholder="The whole path of another folder" spellcheck="false" autocomplete="off"><button id="stUse"${unsaved?' disabled':''}>Use it</button></p><p id="stErr" role="alert" style="color:var(--danger,#b42318)"></p>`:'<p class="muted">This server was started with a fixed folder (--data), or for your whole network, so it is not changed from here.</p>'}
       <div class="btns">${!j.isDefault&&j.canChange&&!unsaved?'<button id="stBack">Back to the program’s folder</button>':''}<button class="primary" id="stOk">Close</button></div>`);
-    const set=async(dir,label)=>{const c=box.querySelector('#stCopy'),er=box.querySelector('#stErr');er.textContent='';if(await storeAsk()){er.textContent=BUSY_MSG;return}let r=null;try{r=await fetch(`api/storage?dir=${encodeURIComponent(dir)}&copy=${c&&c.checked?1:0}`,{method:'POST'})}catch(e){}
+    const set=async(dir,label)=>{const c=box.querySelector('#stCopy'),er=box.querySelector('#stErr');er.textContent='';if(await storeAsk()){er.textContent=BUSY_MSG;return}let r=null;if(dir)er.textContent='SiliCoDraw asks you to confirm this folder in a window of its own (it may open behind the browser)…';   /* the server asks the person at the computer, which no page can answer for (serve.ps1 Confirm-Folder, serve.py confirm_folder) */try{r=await fetch(`api/storage?dir=${encodeURIComponent(dir)}&copy=${c&&c.checked?1:0}`,{method:'POST'})}catch(e){}er.textContent='';
       if(!r||!r.ok){er.textContent=(r?await r.text():'')||NO_SERVER();return}const a=await r.json();closeModal();storeGo(storeMsg(a,label||`in ${a.dir}`))};
     box.querySelectorAll('.stOpt').forEach(b=>b.onclick=()=>{const o=j.options[+b.dataset.i];set(sub(o.path),`in ${o.name}`)});
     wire(box,'stUse',()=>{const v=box.querySelector('#stPath').value.trim().replace(/^"(.*)"$/,'$1');if(v)set(v)});wire(box,'stBack',()=>set('','in the program’s own folder'));wire(box,'stOk',bye);return}
@@ -25951,7 +26012,7 @@ function formulaBuilder(o){
     <div class="btns"><button class="primary" id="fbDone">Done</button><button id="fbCancel">Cancel</button></div>`);
   $('#modal .box').style.width='min(680px,94vw)';
   const ta=box.querySelector('#fbTex'),prev=box.querySelector('#fbPrev'),syms=box.querySelector('#fbSyms');let tm=0;
-  let pv=0;const preview=()=>{const my=++pv;loadMathJax().then(async MJ=>{if(my!==pv)return;let el;try{el=await mjSvg(MJ,ta.value||'\\;',o.display)}catch(e){if(my===pv)prev.textContent=e.message;return}if(my!==pv)return;prev.innerHTML='';try{el.querySelectorAll('mjx-assistive-mml').forEach(n=>n.remove());const bad=mjErr(MJ,el,ta.value,o.display);prev.appendChild(el);if(bad){const w=document.createElement('div');w.style.cssText='color:#b91c1c;font-size:var(--fs-note);width:100%;text-align:center';w.textContent=bad[0].toUpperCase()+bad.slice(1);prev.appendChild(w)}}catch(e){prev.textContent=e.message}}).catch(e=>{prev.innerHTML=`<span style="color:#b91c1c;font-size:13px">${esc(e.message)}</span>`})};
+  let pv=0;const preview=()=>{const my=++pv;loadMathJax().then(async MJ=>{if(my!==pv)return;let el;try{el=await mjSvg(MJ,ta.value||'\\;',o.display)}catch(e){if(my===pv)prev.textContent=e.message;return}if(my!==pv)return;prev.innerHTML='';try{el.querySelectorAll('mjx-assistive-mml').forEach(n=>n.remove());const bad=mjErr(MJ,el,ta.value,o.display);svgScrubNode(el.querySelector('svg'));prev.appendChild(el);if(bad){const w=document.createElement('div');w.style.cssText='color:#b91c1c;font-size:var(--fs-note);width:100%;text-align:center';w.textContent=bad[0].toUpperCase()+bad.slice(1);prev.appendChild(w)}}catch(e){prev.textContent=e.message}}).catch(e=>{prev.innerHTML=`<span style="color:#b91c1c;font-size:13px">${esc(e.message)}</span>`})};
   ta.oninput=()=>{o.tex=ta.value;render();clearTimeout(tm);tm=setTimeout(preview,120)};ta.onkeydown=e=>{e.stopPropagation();if(e.key==='Escape'){e.preventDefault();cancel()}};
   const showGroup=i=>{box.querySelectorAll('#fbTabs button').forEach(b=>b.classList.toggle('on',+b.dataset.g===i));syms.innerHTML='';
     if(i===FB_GROUPS.length){FB_TEMPLATES.forEach(([n,tex])=>{const b=document.createElement('button');b.textContent=n;b.title=tex;b.style.height='28px';b.onclick=()=>{ta.value=tex;ta.setSelectionRange(tex.length,tex.length);ta.focus();ta.dispatchEvent(new Event('input'))};syms.appendChild(b)});return}
@@ -25991,7 +26052,8 @@ function keepView(fn){const st=$('#stage'),r=st.getBoundingClientRect(),cx=r.lef
 function applyUI(){const h=document.documentElement;h.classList.add('ui-switching');keepView(applyUIClasses);
   ['lw','rw'].forEach(k=>{const v=parseFloat(document.body.style.getPropertyValue('--'+k));if(v)setPanel(k,v)});   // two panels on one side: keep room for the canvas
   requestAnimationFrame(()=>requestAnimationFrame(()=>h.classList.remove('ui-switching')));if(sk.on)placeSketchBar();
-  document.querySelectorAll('#modal .prefrow [data-k]').forEach(b=>{const on=UI[b.dataset.k]===b.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)})}   // an open Appearance sheet follows changes from fig.prefs or another tab
+  document.querySelectorAll('#modal .prefrow [data-k]').forEach(b=>{const on=UI[b.dataset.k]===b.dataset.v;b.classList.toggle('on',on);b.setAttribute('aria-checked',on)});   // an open Appearance sheet follows changes from fig.prefs or another tab
+  try{panelsLayout()}catch(e){}layerTyFresh()}   // (the side panels' edge strips may have moved) the Layers type column measured again at the new text size (no rebuild follows a setting)
 function setUI(patch){let ch=false,pick=false;for(const k in patch||{})if(UI_OPTIONS[k]&&UI_OPTIONS[k].includes(patch[k])){if(k==='style'&&UI_SYS.style){delete UI_SYS.style;pick=true}if(UI[k]!==patch[k]){UI[k]=patch[k];ch=true}}   // picking the style it already shows still makes it the user's choice
   if(ch||pick)saveUI();if(ch)applyUI();return ch}
 // another tab of the editor changed the settings: follow it (a style it left out follows the system's contrast setting again)
@@ -26000,9 +26062,65 @@ addEventListener('storage',e=>{if(e.key!=='fig.ui')return;let u={};try{u=JSON.pa
   let ch=false;for(const k in p)if(UI[k]!==p[k]){UI[k]=p[k];ch=true}if(ch)applyUI()});
 /* focus mode: hide both side panels; never saved, so the panels are always back after a reload */
 const inFocus=()=>document.documentElement.classList.contains('focus');
-function setFocusMode(on,quiet){if(inFocus()===!!on||on&&PHONE())return;   /* phones show the canvas alone already (the panels are sheets) */keepView(()=>document.documentElement.classList.toggle('focus',!!on));if(sk.on)placeSketchBar();
+function setFocusMode(on,quiet){if(inFocus()===!!on||on&&PHONE())return;   /* phones show the canvas alone already (the panels are sheets) */keepView(()=>document.documentElement.classList.toggle('focus',!!on));if(sk.on)placeSketchBar();if(!on&&layerTyWidth.stale)layerTyFresh();try{panelsLayout()}catch(e){}   /* the Layers list rebuilt while hidden could not be measured */
   if(!quiet)toast(on?`Focus mode: press ${MODK} \\ or “Show panels” to bring the panels back`:'The panels are back')}
 $('#focusExit').onclick=()=>setFocusMode(false);
+/* each sidebar pinned or not (GitHub issue #2, then the owner's design of 2026-11-17): the pin at the top right of a sidebar (Add and Layers,
+   Properties, Animations) toggles it. Pinned: it stays and the canvas makes room. Unpinned: it tucks into a labeled tab on a rail at its side of
+   the canvas (the sidebars of one side: their tabs stack); hovering a tab (a mouse) shows it over the canvas, beside the rail, while the pointer is
+   on the tab or the sidebar (or a field in it is in use, or a button is held); a click, Enter or Space on the tab keeps it open until a click
+   elsewhere, Esc or the tab again. Only the tabs open a sidebar, never the bare edge. Kept in this browser (localStorage fig.panels: true =
+   unpinned), never in a figure; focus mode hides all of it, phones have sheets instead. The rails and the sidebars shown for a look are placed
+   from where the canvas is (panelsLayout), so every layout, the slide strip and a pinned animation sidebar come out right. */
+const PANEL_K={l:{el:'#left',tab:'#expL',pin:'#pinL',name:'Add and Layers'},r:{el:'#props',tab:'#expR',pin:null,name:'Properties'},a:{el:'#animbar',tab:'#expA',pin:'#pinA',name:'Animations'}};
+const PANELS={l:false,r:false,a:false};try{const v=JSON.parse(localStorage.getItem('fig.panels')||'{}');for(const k in PANELS)PANELS[k]=!!v[k]}catch(e){}
+const PEEK={k:null,held:false,t:0};
+const PIN_SVG=on=>`<svg viewBox="0 0 16 16" aria-hidden="true"><g${on?'':' transform="rotate(35 8 8)"'}><path d="M5.5 2h5l-.6 4.2 2.6 2.4v1.4h-9V8.6l2.6-2.4z" fill="${on?'currentColor':'none'}" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/><path d="M8 10v4.5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></g></svg>`;
+function panelSide(k){const h=document.documentElement;if(k==='a')return'R';const sw=h.classList.contains('lay-swap'),rt=h.classList.contains('lay-right');return k==='l'?(sw||rt?'R':'L'):(sw?'L':'R')}
+function panelOpenW(k){if(k==='a')return parseFloat(getComputedStyle(document.body).getPropertyValue('--aw'))||304;const v=parseFloat(document.body.style.getPropertyValue(k==='l'?'--lw':'--rw'));return v||parseFloat(getComputedStyle(document.documentElement).getPropertyValue(k==='l'?'--lw':'--rw'))||(k==='l'?236:300)}
+function pinState(b,k){if(!b)return;const on=!PANELS[k];b.setAttribute('aria-pressed',on?'true':'false');b.title=on?'Pinned: click to tuck this sidebar into a tab at the edge of the canvas':'Pin this sidebar, so it stays open';b.innerHTML=PIN_SVG(on)}
+function pinBtnR(){const b=document.createElement('button');b.type='button';b.className='ib pinbtn';b.setAttribute('aria-label','Pin the Properties sidebar');b.setAttribute('aria-controls','props');b.onclick=()=>setPanels({r:!PANELS.r});pinState(b,'r');return b}
+// the rails at the canvas's edges, their tabs, and a sidebar shown for a look
+function panelsLayout(){const h=document.documentElement,st=$('#stage'),rails={L:$('#railL'),R:$('#railR')};if(!st||!rails.L)return;
+  if(PEEK.k&&(!PANELS[PEEK.k]||PEEK.k==='a'&&$('#animbar').hidden||PHONE()||inFocus()))peekClose(true);
+  const r=st.getBoundingClientRect(),hd=$('header'),ft=$('footer'),top=hd?hd.getBoundingClientRect().bottom:52,bot=ft&&ft.offsetHeight?innerHeight-ft.getBoundingClientRect().top:0;
+  h.style.setProperty('--rail-t',top+'px');h.style.setProperty('--rail-b',bot+'px');const rl=Math.max(0,r.left),rr=Math.max(0,innerWidth-r.right);h.style.setProperty('--rail-l',(rl>0?rl+4:0)+'px');h.style.setProperty('--rail-r',(rr>0?rr+4:0)+'px');   // beside a pinned sidebar's resize gutter, not on it
+  for(const k of ['l','r','a']){const tb=$(PANEL_K[k].tab),show=PANELS[k]&&(k!=='a'||!$('#animbar').hidden);tb.hidden=!show;const R=rails[panelSide(k)];if(tb.parentNode!==R)R.appendChild(tb)}
+  for(const s of ['L','R']){const R=rails[s];for(const k of ['l','r','a']){const tb=$(PANEL_K[k].tab);if(tb.parentNode===R)R.appendChild(tb)}R.classList.toggle('on',[...R.children].some(x=>!x.hidden))}   // top to bottom: Add and Layers, Properties, Animations
+  if(PEEK.k)peekPlace(PEEK.k)}
+function peekPlace(k){const el=$(PANEL_K[k].el),cs=getComputedStyle(document.documentElement),rail=$(panelSide(k)==='L'?'#railL':'#railR'),rw=rail.offsetWidth||0;
+  el.style.setProperty('--pk-t',cs.getPropertyValue('--rail-t'));el.style.setProperty('--pk-b',cs.getPropertyValue('--rail-b'));el.style.setProperty('--pk-w',panelOpenW(k)+'px');
+  if(panelSide(k)==='L'){el.style.setProperty('--pk-l',((parseFloat(cs.getPropertyValue('--rail-l'))||0)+rw)+'px');el.style.setProperty('--pk-r','auto')}
+  else{el.style.setProperty('--pk-r',((parseFloat(cs.getPropertyValue('--rail-r'))||0)+rw)+'px');el.style.setProperty('--pk-l','auto')}}
+function peekOpen(k,held){if(!PANELS[k]||PHONE()||inFocus()||k==='a'&&$('#animbar').hidden)return;clearTimeout(PEEK.t);if(PEEK.k&&PEEK.k!==k)peekClose(true);
+  const el=$(PANEL_K[k].el);PEEK.k=k;PEEK.held=!!held;peekPlace(k);el.classList.add('peeking');$(PANEL_K[k].tab).setAttribute('aria-expanded','true');
+  if(k==='l')try{layerTyFresh()}catch(e){}}
+function peekClose(quiet,focusTab){clearTimeout(PEEK.t);const k=PEEK.k;if(!k)return;const el=$(PANEL_K[k].el),tb=$(PANEL_K[k].tab),inP=el.contains(document.activeElement);
+  el.classList.remove('peeking');tb.setAttribute('aria-expanded','false');PEEK.k=null;PEEK.held=false;if(!quiet&&(inP||focusTab)&&!tb.hidden)tb.focus({preventScroll:true})}
+function panelsApply(){const h=document.documentElement;h.classList.toggle('col-l',PANELS.l);h.classList.toggle('col-r',PANELS.r);h.classList.toggle('col-a',PANELS.a);
+  pinState($('#pinL'),'l');pinState($('#pinA'),'a');pinState($('#props>.pinbtn'),'r');try{animBarFit()}catch(e){}try{if(sk.on)placeSketchBar()}catch(e){}panelsLayout()}   // (at the start sk does not exist yet)
+function setPanels(p,quiet){const was={...PANELS};for(const k in p)if(k in PANELS)PANELS[k]=!!p[k];const k=['l','r','a'].find(k=>was[k]!==PANELS[k]);if(!k)return;
+  keepView(panelsApply);try{localStorage.setItem('fig.panels',JSON.stringify(PANELS))}catch(e){}
+  if(!quiet)srSay(PANEL_K[k].name+(PANELS[k]?' sidebar unpinned: its tab at the edge of the canvas shows it':' sidebar pinned'));
+  if(!quiet&&PANELS[k]){const a=document.activeElement,tb=$(PANEL_K[k].tab);if(a&&a.closest&&a.closest('.pinbtn')&&!tb.hidden)setTimeout(()=>{try{tb.focus({preventScroll:true})}catch(e){}},0)}}
+$('#pinL').onclick=()=>setPanels({l:!PANELS.l});$('#pinA').onclick=()=>setPanels({a:!PANELS.a});
+{let held=false;const modal=()=>{const m=$('#modal');return!!m&&getComputedStyle(m).display!=='none'};   // a dialog over the page (often opened from the sidebar: Edit palette)
+  const busy=k=>{const el=$(PANEL_K[k].el),a=document.activeElement;return held||modal()||el.matches(':hover')||$(PANEL_K[k].tab).matches(':hover')||!!a&&el.contains(a)&&(a.matches(TYPING)||a.matches('input'))};
+  const later=k=>{clearTimeout(PEEK.t);PEEK.t=setTimeout(function again(){if(PEEK.k!==k||PEEK.held)return;if(busy(k)){PEEK.t=setTimeout(again,300);return}peekClose(true)},320)};
+  // a press elsewhere on the page (the canvas, the bars, another sidebar) puts a sidebar shown for a look away; a dialog or menu opened from it does not
+  addEventListener('pointerdown',e=>{held=true;if(!PEEK.k)return;const el=$(PANEL_K[PEEK.k].el),tb=$(PANEL_K[PEEK.k].tab),t=e.target;if(el.contains(t)){PEEK.held=true;return}if(tb.contains(t))return;   /* used: a look becomes one that stays (a dialog or picker it opens takes the pointer) */if(t.closest&&t.closest('#stage,header,footer,#slides,#left,#props,#animbar,.rail'))peekClose(true)},true);
+  addEventListener('pointerup',()=>{held=false},true);addEventListener('pointercancel',()=>{held=false},true);addEventListener('dragend',()=>{held=false},true);
+  for(const k of ['l','r','a']){const tb=$(PANEL_K[k].tab),el=$(PANEL_K[k].el);
+    tb.addEventListener('pointerenter',e=>{if(e.pointerType!=='mouse')return;clearTimeout(PEEK.t);if(PEEK.k===k)return;PEEK.t=setTimeout(()=>peekOpen(k,false),150)});
+    tb.addEventListener('pointerleave',e=>{if(e.pointerType!=='mouse')return;if(PEEK.k===k){if(!PEEK.held)later(k)}else clearTimeout(PEEK.t)});
+    tb.addEventListener('click',e=>{if(PEEK.k===k&&PEEK.held){peekClose(false,true);return}peekOpen(k,true);if(e.detail===0){const f=tabbables(el)[0];if(f)f.focus({preventScroll:true})}});   // (detail 0: Enter or Space: the keyboard goes into the sidebar)
+    el.addEventListener('pointerenter',()=>{if(PEEK.k===k)clearTimeout(PEEK.t)});el.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&PEEK.k===k&&!PEEK.held)later(k)})}
+  // Esc puts the sidebar away only when the keyboard is in it or on its tab, nothing is open over or in it (a dialog, the icon pack list, a field's own Esc),
+  // and then does only that (it deselected the element whose properties were shown)
+  addEventListener('keydown',e=>{if(e.key!=='Escape'||!PEEK.k||e.defaultPrevented||modal())return;const el=$(PANEL_K[PEEK.k].el),tb=$(PANEL_K[PEEK.k].tab),t=e.target;if(!(t&&(el.contains(t)||tb.contains(t))))return;
+    if(t.matches&&t.matches(TYPING)||el.querySelector('#packBtn[aria-expanded="true"],#palLib[aria-expanded="true"],[aria-haspopup][aria-expanded="true"]'))return;   /* an open pop-up list in it (the icon packs, the library switcher) takes its Esc */e.preventDefault();e.stopImmediatePropagation();peekClose(false,true)},true);
+  addEventListener('resize',()=>{try{panelsLayout()}catch(e){}});try{new ResizeObserver(()=>{try{panelsLayout()}catch(e){}}).observe($('#stage'))}catch(e){}}
+panelsApply();requestAnimationFrame(()=>{try{panelsLayout()}catch(e){}});   // (again once the page has its size: the slide strip may come with the figure)
 const PREF_ROWS=[
   ['theme','Theme',[['light','Light'],['dark','Dark'],['system','Match system']]],
   ['style','Interface style',[['classic','Classic'],['soft','Soft'],['flat','Flat'],['contrast','High contrast']]],
@@ -26318,10 +26436,11 @@ const F6_PARTS=['header','#left','#stage','#props','#animbar'],f6Last=new Map();
 document.addEventListener('focusin',e=>{const p=F6_PARTS.find(s=>{const r=$(s);return r&&r.contains(e.target)});if(p)f6Last.set(p,e.target)});
 function f6(back){const a=document.activeElement,tt=$('#toast'),act=tt.classList.contains('show')&&tt.querySelector('.tact');
   if(act&&!tt.contains(a)&&f6.seen!==act){f6.seen=act;f6.jump=true;toast.back=a&&a!==document.body?a:null;act.focus();return}   // its focusin keeps the toast up
-  const jumped=f6.jump&&tt.contains(a);f6.jump=false;const P=act?['header','#toast','#left','#stage','#props','#animbar']:F6_PARTS;
+  const jumped=f6.jump&&tt.contains(a);f6.jump=false;const de=document.documentElement,hid=s=>{if(PHONE()||de.classList.contains('focus'))return s;const k=s==='#left'?'l':s==='#props'?'r':s==='#animbar'?'a':null;return k&&PANELS[k]&&PEEK.k!==k&&!$(PANEL_K[k].tab).hidden?PANEL_K[k].tab:s};
+  const P=(act?['header','#toast','#left','#stage','#props','#animbar']:F6_PARTS).map(hid);   // a hidden side panel: its tab at the window's edge
   const from=jumped?toast.back:a,cur=P.findIndex(s=>{const r=$(s);return r&&from&&r.contains(from)}),n=P.length;   // from the first jump: on from where the focus came
   for(let s=1;s<=n;s++){const p=P[((cur<0?(back?0:n-1):cur)+(back?-s:s)+n*2)%n],r=$(p);if(p==='#toast'){act.focus();return}if(!r||!r.getClientRects().length||getComputedStyle(r).visibility==='hidden')continue;   // a part hidden (focus mode, narrow window) is skipped
-    if(p==='#stage'){r.focus({preventScroll:true});return}
+    if(p==='#stage'||r.matches('button')){r.focus({preventScroll:true});return}
     const last=f6Last.get(p),ts=tabbables(r),t=last&&last.isConnected&&ts.includes(last)?last:ts[0];if(t){t.focus();return}}}
 document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&e.key.toLowerCase()==='s')return;
@@ -26348,7 +26467,7 @@ document.addEventListener('keydown',e=>{
   const k=e.key.toLowerCase(),mod=e.ctrlKey||e.metaKey;
   if(!/^(arrow(up|down)|home|end|tab|escape|enter| |shift|control|alt|altgraph|meta|contextmenu|f10)$/.test(k))$('#ctxMenu').classList.remove('open');   // a shortcut (Delete, Ctrl+Z…) with the right-click menu open left it showing items for elements no longer there
   if(!mod&&sel.size===1&&chemKey(e,get([...sel][0])))return;   // structure editor keys act on the active atom / bond
-  if(!mod&&!e.altKey&&e.shiftKey&&k==='a'){e.preventDefault();if(animPane(!animPane())){const t=$('#abBody').querySelector('.abtabs .on');if(t)t.focus({preventScroll:true})}return}   // Shift+A: the animation sidebar
+  if(!mod&&!e.altKey&&e.shiftKey&&k==='a'){e.preventDefault();if(animToggle()){const t=$('#abBody').querySelector('.abtabs .on');if(t)t.focus({preventScroll:true})}return}   // Shift+A: the animation sidebar
   if(!mod&&!e.altKey&&e.shiftKey&&k==='c'){e.preventDefault();citeDialog();return}   // Shift+C: Add citation…
   if(!mod&&!e.altKey&&e.shiftKey&&k==='x'){e.preventDefault();cropStart();return}   // Shift+X: crop the selected element
   if(e.key==='?'){e.preventDefault();helpDialog();return}
@@ -26370,7 +26489,7 @@ document.addEventListener('keydown',e=>{
   else if(mod&&!e.shiftKey&&!e.altKey&&(k==='b'||k==='i')&&sel.size&&[...sel].some(id=>(o=>o&&!o.locked&&(o.type==='text'||k==='b'&&o.type==='box'&&o.text))(get(id)))){e.preventDefault();   // Ctrl+B / Ctrl+I with texts selected (not typing): the whole text bold / italic, as in slide programs (they did nothing here, or opened the browser's favorites)
     const ts=[...sel].map(get).filter(o=>o&&!o.locked&&(o.type==='text'||k==='b'&&o.type==='box'&&o.text)),on=k==='b'?!ts.every(o=>+(o.weight||400)>=600):!ts.every(o=>o.italic);
     ts.forEach(o=>{if(k==='b')o.weight=on?'700':'400';else o.italic=on});commit();render();buildPanel()}
-  else if(!mod&&e.key==='/'){e.preventDefault();setFocusMode(false,true);showTab('add');if(PHONE())phSheet('#left','full');const s=$('#palSearch');s.focus();s.select()}   // (phones: its sheet opens first; the phone layout also serves a narrow desktop window with a keyboard)
+  else if(!mod&&e.key==='/'){e.preventDefault();setFocusMode(false,true);showTab('add');if(PHONE())phSheet('#left','full');else try{if(PANELS.l)peekOpen('l',true)}catch(e){}const s=$('#palSearch');s.focus();s.select()}   // (phones: its sheet opens first; the phone layout also serves a narrow desktop window with a keyboard)
   else if(mod&&k==='g'){e.preventDefault();e.shiftKey?ungroupSel():groupSel()}
   else if(mod&&(e.key===']'||e.key==='['||e.key==='}'||e.key==='{')){e.preventDefault();const fw=e.key===']'||e.key==='}';if(sel.size)reorder(e.shiftKey?(fw?'forward':'backward'):(fw?'front':'back'))}   // with Shift one step (Shift turns ] into } on US keyboards)
   else if((k==='enter'||k==='f2')&&sel.size===1&&(o=>o.type==='text'||o.type==='box'&&!o.locked)(get([...sel][0]))){e.preventDefault();editText(get([...sel][0]))}   // a locked box is not typed into, as with a double-click
@@ -27533,7 +27652,7 @@ function phArrange(){const n=[...sel].filter(id=>{const o=get(id);return o&&o.ty
     ...(n>=3?['-',{t:'Distribute horizontally',f:a('dh')},{t:'Distribute vertically',f:a('dv')}]:[])],0,0)}
 // ⋯ in the top bar: what the desktop toolbar has besides Undo, Redo and Export
 $('#bMore').onclick=()=>{const ck=(v,t)=>(v?'✓ ':'')+t,b=$('#bMore');showMenu([{t:'Home',f:()=>homeShow(true)},{t:'File ▸',f:()=>openPop($('#fileMenu'),b)},{t:'Archive…',f:()=>showArchive(b)},{t:'Trash…',f:()=>showTrash(b)},'-',
-  {t:isDeck(scene)?'Slides…':'Add a slide',f:()=>slidesDialog()},{t:'Add citation…',f:()=>citeDialog()},{t:ck(animPane(),'Animations'),f:()=>animPane(!animPane())},{t:'Present',f:()=>showStart({})},{t:'Present from this slide',f:()=>showStart({from:'current'}),off:!isDeck(scene)||CUR===0},{t:'Add a comment',f:()=>{setPlacing(true);toast('Tap where it goes')}},{t:ck(showComments,'Comment pins'),f:()=>$('#bNotes').click()},'-',
+  {t:isDeck(scene)?'Slides…':'Add a slide',f:()=>slidesDialog()},{t:'Add citation…',f:()=>citeDialog()},{t:ck(animPane(),'Animations'),f:()=>animToggle()},{t:'Present',f:()=>showStart({})},{t:'Present from this slide',f:()=>showStart({from:'current'}),off:!isDeck(scene)||CUR===0},{t:'Add a comment',f:()=>{setPlacing(true);toast('Tap where it goes')}},{t:ck(showComments,'Comment pins'),f:()=>$('#bNotes').click()},'-',
   {t:'Find and replace…',f:()=>findReplaceDialog()},{t:ck(snap,'Snap to grid'),f:()=>$('#bSnap').click()},{t:ck(guides,'Smart guides'),f:()=>$('#bGuides').click()},
   {t:cvdMode?`Preview colors as… (${CVD_NAME[cvdMode]})`:'Preview colors as…',f:()=>setTimeout(()=>showMenu(CVD_ORDER.map(m=>({t:(m===cvdMode?'✓ ':'')+CVD_NAME[m].replace(/^./,c=>c.toUpperCase()),f:()=>cvdPreview(m)})).concat(['-',{t:'Check colors…',f:colorCheckDialog}]),0,0))},'-',
   {t:'Appearance…',f:appearanceDialog},{t:'Help',f:helpDialog},...(!WEB&&FILE_SYNC?['-',{t:'Quit SiliCoDraw',f:()=>quitApp()}]:[])],0,0)};
@@ -27861,7 +27980,7 @@ const NB_ACTS={
   'help:crop':['Show it in Help',()=>helpRow('crop')],'help:cite':['Show it in Help',()=>helpRow('cite')],'help:colors':['Show it in Help',()=>helpRow('colors')]};
 // a picture: a path inside notices/ or brand/, or an inline drawing that svgScrub leaves unchanged and that refers to nothing (no pictures, links or <use>)
 function nbPicOk(p){if(typeof p!=='string')return'';p=p.trim();
-  if(/^<svg[\s>]/i.test(p))return p.length<=30000&&/<\/svg>\s*$/i.test(p)&&svgScrub(p)===p&&!/<\s*(image|use|a)\b|href|url\(/i.test(p)?p:'';
+  if(/^<svg[\s>]/i.test(p))return p.length<=30000&&/<\/svg>\s*$/i.test(p)&&(svgScrub(p),svgScrub.cut===0)&&!/<\s*(image|use|a)\b|href|url\(/i.test(p)?p:'';   /* nothing for svgScrub to take out (its rebuilt text is never the same characters) */
   return p.length<=120&&/^(notices|brand)\/(?:[\w-]+\/)*[\w-]+(?:\.[\w-]+)*\.(svg|png|jpe?g|webp|gif)$/i.test(p)?p:''}
 // a provider's lists as items: known fields only, plain strings of a sensible length, ids unique per kind
 function nbClean(d,src){const out=[];if(!d||typeof d!=='object')return out;const seen=new Set(),str=(v,n)=>typeof v==='string'?v.replace(/[\x00-\x1f\x7f]|[^\S ]/g,' ').trim().slice(0,n):'';
@@ -28292,7 +28411,8 @@ inkNew(o,Object.keys(p));serNew(o,Object.keys(p));   /* as added from the Add pa
   // replaces the reply; replyTo keeps the comment text it answered, so a later edit of the comment shows as status "edited"
   reply:(id,text,resolve=false)=>{const c=get(id);if(!c||c.type!=='comment'){const k=isDeck(scene)?scene.slides.findIndex(sl=>(sl.objects||[]).some(o=>o.id===id&&o.type==='comment')):-1;   // a comment of another slide: say where it is (fig.comments({slides: true}) lists them all)
       throw new Error(k>=0?`Comment ${id} is on slide ${k+1}: fig.slide(${k+1}) first, then fig.reply`:'No comment with id '+id+' (fig.comments() lists them)')}c.reply=String(text??'');c.replyTo=String(c.text||'');if(resolve)c.resolved=true;commit();render();figPanel()},
-  prefs:patch=>{if(patch)setUI(patch);return{...UI}},   // editor appearance only, e.g. fig.prefs({theme:'dark'}); never touches the figure
+  prefs:patch=>{if(patch)setUI(patch);return{...UI}},
+  panels:p=>{if(p&&typeof p==='object'){const q={};if('left' in p)q.l=!p.left;if('right' in p)q.r=!p.right;if('animations' in p)q.a=!p.animations;setPanels(q,true)}return{left:!PANELS.l,right:!PANELS.r,animations:!PANELS.a}},   // which sidebars are pinned (this browser only): fig.panels({left: false}) unpins the Add and Layers sidebar (it tucks into a tab), {right: true} pins the properties   // editor appearance only, e.g. fig.prefs({theme:'dark'}); never touches the figure
   // Home, the page of all figures over the editor: home() → whether it shows; home(true) / home(false) shows / hides it; home('archive') shows it on that section (figures, archive, trash, templates,
   // or one added to HOME_SECTIONS). The figure stays loaded underneath and every other call here keeps working
   home:show=>show===undefined?HOME.on:homeShow(show,{quiet:true}),

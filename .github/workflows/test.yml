@@ -14,7 +14,7 @@ jobs:
         os: [macos-latest, ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5   # v5 runs on Node.js 24 (v4 targeted Node.js 20, which GitHub deprecated: a warning on every job)
       - name: Smoke test (installer, first start, server, updater)
         run: sh tests/smoke.sh
       - name: Browser tests (every element type, icon and example; exports; undo/redo; save and reload)
@@ -40,7 +40,7 @@ jobs:
   windows:
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5   # v5 runs on Node.js 24 (v4 targeted Node.js 20, which GitHub deprecated: a warning on every job)
       - name: Smoke test (built-in PowerShell server, updater)
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File tests\smoke.ps1

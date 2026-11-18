@@ -84,14 +84,18 @@ code=$(curl -s -o /dev/null -w '%{http_code}' -X PUT --data "$FIG" "http://local
 [ -f "$ROOT/$NM-evil.json" ] && bad "a refused write left a file"
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data x "http://localhost:$PORT/figure-editor.html")
 [ "$code" != 204 ] && ok "cannot overwrite the editor ($code)" || bad "editor file was writable"
-# files of the figures folder are served sandboxed (an SVG with a script that came in with a .zip must not run as the editor's page); the editor itself is not
+# files of the figures folder are served sandboxed (an SVG with a script that came in with a .zip must not run as the editor's page); the editor itself is not: it has a policy of its own (only its own scripts)
 code=$(curl -s -o /dev/null -w '%{http_code}' -X POST --data '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>' "http://localhost:$PORT/assets/$NM.svg")
 HS=$(curl -fsI "http://localhost:$PORT/assets/$NM.svg" | tr -d '\r'); HF=$(curl -fsI "http://localhost:$PORT/$NM.json" | tr -d '\r'); HE=$(curl -fsI "http://localhost:$PORT/" | tr -d '\r')
 if [ "$code" = 204 ] && printf '%s\n' "$HS" | grep -qi '^content-security-policy: sandbox;' && printf '%s\n' "$HS" | grep -qi '^x-content-type-options: nosniff' \
-  && printf '%s\n' "$HF" | grep -qi '^content-security-policy: sandbox;' && [ -n "$HE" ] && ! printf '%s\n' "$HE" | grep -qi '^content-security-policy:'; then
-  ok "files of the figures folder are served sandboxed (nosniff); the editor is not"
+  && printf '%s\n' "$HF" | grep -qi '^content-security-policy: sandbox;' && [ -n "$HE" ] && printf '%s\n' "$HE" | grep -qi "^content-security-policy: default-src 'self'; script-src 'self' 'sha256-"; then
+  ok "files of the figures folder are served sandboxed (nosniff); the editor is not, it has its own policy (its scripts by hash)"
 else bad "sandbox headers (HTTP $code): $HS"; fi
 rm -f "$ROOT/assets/$NM.svg"
+# what a page is never given though it lies in the program folder: names starting with a dot (.git, .silicodraw-folder), dev/ (but dev/web/), updates/
+printf 'withheld' > "$ROOT/.zz-smoke-$NM.txt"
+code=$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$PORT/.zz-smoke-$NM.txt"); rm -f "$ROOT/.zz-smoke-$NM.txt"
+[ "$code" = 404 ] && ok "a file under a name starting with a dot is withheld (404)" || bad "a file under a name starting with a dot was served ($code)"
 # icon packs (icon-expansions/): the index and, for every pack, its names, license and attribution are served
 PACKIDS=$(curl -fs "http://localhost:$PORT/icon-expansions/index.json" | "$PY" -c 'import json, sys; print(" ".join(p["id"] for p in json.load(sys.stdin)["packs"]))' 2>/dev/null)
 if [ -n "$PACKIDS" ]; then

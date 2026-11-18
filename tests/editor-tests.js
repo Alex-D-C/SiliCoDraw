@@ -79,6 +79,8 @@
     const env = { editor: location.pathname, web: typeof WEB !== 'undefined' && WEB, ua: navigator.userAgent, file: typeof FILE !== 'undefined' ? FILE : null };
     const list = [];
     const test = (name, fn, timeout = 120000) => list.push({ name, fn, timeout });
+    // a test that feeds the page attacks on purpose: the policy reports what it blocked (handler attributes read in svgScrub's inert document), which is no failure
+    let cspAllow = false; const allowCsp = () => { cspAllow = true; };
     const res = () => { const failed = tests.filter(t => !t.ok && !t.skip).length, skipped = tests.filter(t => t.skip).length;
       return { ok: failed === 0 && tests.length > 0, passed: tests.filter(t => t.ok).length, failed, skipped, total: tests.length, ms: Math.round(performance.now() - t00), env, tests }; };
     if (typeof fig === 'undefined' || typeof scene === 'undefined') { tests.push({ name: 'editor started', ok: false, msg: 'this is not the SiliCoDraw editor page (no fig / scene)' }); return res(); }
@@ -87,6 +89,8 @@
     const orig = J(scene);
     env.icons = Object.keys(ICONS).filter(k => !ICONS[k].user).length; env.types = Object.keys(DEF).length;
     W.addEventListener('error', onErr); W.addEventListener('unhandledrejection', onRej);
+    // the page's Content-Security-Policy (the servers send it, the website build carries it): a feature it blocked fails the test it ran in
+    const cspV = [], onCsp = e => cspV.push(e.violatedDirective + ' blocked ' + (e.blockedURI || 'inline') + (e.sourceFile ? ' (' + e.sourceFile.split('/').pop() + ':' + e.lineNumber + ')' : '') + (e.sample ? ' "' + e.sample.slice(0, 60) + '"' : '')); D.addEventListener('securitypolicyviolation', onCsp);
 
     // ---------- icons ----------
     test('icons: definitions (every icon draws, flat, listed in a group)', () => {
@@ -294,13 +298,67 @@
         const same = lastSaved, other = J({ version: 4, w: 800, h: 600, bg: '#ffffff', objects: [{ id: 'q', type: 'shape', x: 400, y: 300, w: 300, h: 200, fill: '#e69f00' }] });
         const L = [{ name: '2026-01-02_10-00-00.json', size: same.length, modified: '2025-03-04 14:05' }, { name: '2026-01-01_09-00-00.json', size: other.length, modified: '2025-03-04 09:30' }];
         W.fetch = (u, o) => { const s = String(u); if (s.startsWith('api/history')) return Promise.resolve(new Response(J(L), { status: 200 })); if (s.startsWith('history/')) return Promise.resolve(new Response(s.includes('2026-01-02') ? same : other, { status: 200 })); return F(u, o); };
-        await menuActs.history(); const rows = [...D.querySelectorAll('#modalBox .hrow')]; eq(rows.map(r => r.querySelector('b').textContent), [hvDate('2025-03-04 14:05'), hvDate('2025-03-04 09:30')], 'dates'); ok(/, 14:05$/.test(hvDate('2025-03-04 14:05')) && /^Today \d\d:\d\d$/.test(hvDate(new Date().toISOString().slice(0, 10) + ' 08:15')), 'older days keep their time: ' + hvDate('2025-03-04 14:05'));
+        await menuActs.history(); const rows = [...D.querySelectorAll('#modalBox .hrow')]; eq(rows.map(r => r.querySelector('b').textContent), [hvDate('2025-03-04 14:05'), hvDate('2025-03-04 09:30')], 'dates'); ok(/, 14:05$/.test(hvDate('2025-03-04 14:05')) && /^Today \d\d:\d\d$/.test(hvDate((d => d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'))(new Date()) + ' 08:15')) /* today here, not in UTC (after midnight, before UTC's, it was still yesterday there) */, 'older days keep their time: ' + hvDate('2025-03-04 14:05'));
         ok(await wait(() => rows.every(r => r.querySelector('.hvth').dataset.done === '1')), 'a picture of each version'); ok(rows[1].querySelector('.hvth').shadowRoot.innerHTML.includes('#e69f00'), 'the picture is that version');
         const h2 = hist.length; rows[0].querySelector('[data-n]').click(); ok(await wait(() => /same as the figure now/.test(T())), 'the same version: ' + T()); eq(hist.length, h2, 'no step');
         await menuActs.history(); D.querySelectorAll('#modalBox [data-n]')[1].click(); ok(await wait(() => /^Restored the version of/.test(T())), 'restored: ' + T()); ok(T().includes(MODK + '+Z undoes it'), 'the shortcut of this computer'); eq(hist.length, h2 + 1, 'one step'); eq(scene.objects.map(o => o.id), ['q'], 'that version');
         undo(); await settle(); eq(lastSaved, same, 'undone');
       } finally { W.fetch = F; W.pushFile = PF; if (!D.querySelector('#modal').hidden) closeModal(); if (sk.on) setSketch(false); if (placing) setPlacing(false); showComments = true; D.querySelector('#bNotes').classList.add('on');
         sel = new Set(); for (let g = 0; g < 9 && isDeck(scene) && scene.slides.length > 1; g++) fig.removeSlide(scene.slides.length); blank(); await settle(); while (hist.length > H0) hist.pop(); fut.length = 0; }
+    });
+    // each sidebar pinned or not (GitHub issue #2, the owner's design of 2026-11-17): the pin at its top right tucks it into a labeled tab at the
+    // canvas's edge; hovering the tab shows it for a look, a click keeps it open; only the tabs open it; the tabs of one side stack
+    test('side panels: a pin on each sidebar; unpinned it waits in a labeled tab (tabs of one side stack), shows on hovering or clicking its tab, never from the bare edge; layouts, focus mode, F6', async () => {
+      const h = D.documentElement, st = () => D.querySelector('#stage').getBoundingClientRect(), pe = (el, type) => el.dispatchEvent(new PointerEvent(type, { pointerType: 'mouse' })), mv = (x, y) => W.dispatchEvent(new PointerEvent('pointermove', { pointerType: 'mouse', clientX: x, clientY: y }));
+      const box = s => D.querySelector(s).getBoundingClientRect(), shown = s => D.querySelector(s).offsetWidth > 0;
+      if (PHONE()) throw new Skip('the phone layout has sheets instead');
+      const was = localStorage.getItem('fig.panels'); fig.panels({ left: true, right: true, animations: true }); fig.prefs({ layout: 'std' }); sel = new Set(); buildPanel(); await frame();
+      try {
+        const w0 = st().width; ok(D.querySelector('#pinL') && D.querySelector('#props > .pinbtn') && D.querySelector('#pinA'), 'a pin on each sidebar');
+        eq(D.querySelector('#pinL').getAttribute('aria-pressed'), 'true', 'pinned at first');
+        D.querySelector('#pinL').click(); await frame();
+        ok(h.classList.contains('col-l') && !shown('#left'), 'unpinned: the Add and Layers sidebar is tucked away'); ok(st().width > w0 + 120, 'the canvas gets its room: ' + w0 + ' → ' + st().width);
+        eq(J(fig.panels()), J({ left: false, right: true, animations: true }), 'fig.panels'); eq(JSON.parse(localStorage.getItem('fig.panels')).l, true, 'kept in this browser');
+        const tab = D.querySelector('#expL'); ok(shown('#expL') && /Add/.test(tab.textContent) && Math.abs(box('#expL').left - st().left) < 2, 'its labeled tab at the canvas\'s left edge');
+        // the bare edge opens nothing
+        const y = (st().top + st().bottom) / 2; mv(st().left + 1, box('#expL').bottom + 60); await sleep(400); ok(!D.querySelector('#left').classList.contains('peeking'), 'the bare edge opens nothing');
+        // hover: a look over the canvas, beside the rail; the canvas does not move; leaving puts it away
+        const w1 = st().width; pe(tab, 'pointerenter'); await sleep(260);
+        ok(D.querySelector('#left').classList.contains('peeking') && shown('#left'), 'hovering the tab shows it'); eq(Math.round(st().width), Math.round(w1), 'the canvas does not move');
+        near(box('#left').left, box('#expL').right, 2, 'beside the tab'); near(box('#left').top, st().top, 2, 'right under the header'); eq(tab.getAttribute('aria-expanded'), 'true', 'the tab says it is shown');
+        pe(tab, 'pointerleave'); await sleep(600); ok(!D.querySelector('#left').classList.contains('peeking'), 'leaving puts it away');
+        // a click keeps it open: leaving does not close it, a press on the canvas does; Esc too; a click on the tab again too
+        tab.click(); await sleep(50); pe(tab, 'pointerleave'); await sleep(600); ok(D.querySelector('#left').classList.contains('peeking'), 'clicked: it stays');
+        D.querySelector('footer').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' })); W.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'mouse' })); await sleep(30); ok(!D.querySelector('#left').classList.contains('peeking'), 'a press elsewhere on the page (here the status bar: a fake press on the canvas would start a drag) puts it away');
+        tab.click(); await sleep(30); tab.focus(); tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); ok(!D.querySelector('#left').classList.contains('peeking'), 'Esc on its tab puts it away');
+        // "/" (search the Add panel) shows the tucked sidebar with its search
+        D.querySelector('#stage').focus(); D.querySelector('#stage').dispatchEvent(new KeyboardEvent('keydown', { key: '/', bubbles: true })); await sleep(30); ok(D.querySelector('#left').classList.contains('peeking') && D.activeElement === D.querySelector('#palSearch'), '"/" shows it with its search');
+        D.querySelector('#palSearch').blur(); tab.focus(); tab.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })); ok(!D.querySelector('#left').classList.contains('peeking'), 'put away again');
+        tab.click(); await sleep(30); tab.click(); await sleep(30); ok(!D.querySelector('#left').classList.contains('peeking'), 'the tab again puts it away');
+        // pinned again from the look: its pin
+        tab.click(); await sleep(30); D.querySelector('#pinL').click(); await frame(); ok(!h.classList.contains('col-l') && shown('#left') && !D.querySelector('#left').classList.contains('peeking') && !shown('#expL'), 'the pin in the look pins it again');
+        // the properties and the animation sidebar on one side: their tabs stack, in that order; the look opens beside the rail
+        fig.animPane(true); await frame(); D.querySelector('#props > .pinbtn').click(); await frame(); D.querySelector('#pinA').click(); await frame();
+        ok(shown('#expR') && shown('#expA') && box('#expR').bottom <= box('#expA').top + 1 && Math.abs(box('#expR').right - st().right) < 2, 'the two tabs stack at the right edge');
+        pe(D.querySelector('#expA'), 'pointerenter'); await sleep(260); ok(D.querySelector('#animbar').classList.contains('peeking'), 'the animation sidebar shows for a look'); near(box('#animbar').right, box('#expA').left, 2, 'beside the rail');
+        pe(D.querySelector('#expR'), 'pointerenter'); await sleep(260); ok(D.querySelector('#props').classList.contains('peeking') && !D.querySelector('#animbar').classList.contains('peeking'), 'one look at a time');
+        pe(D.querySelector('#expR'), 'pointerleave'); await sleep(600);
+        // Esc that puts the properties away does only that: the element stays selected
+        { const id = fig.add('box', { x: 300, y: 300 }); fig.select([id]); await frame(); D.querySelector('#expR').click(); await sleep(30); const pb = D.querySelector('#props > .pinbtn'); pb.focus(); pb.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+          ok(!D.querySelector('#props').classList.contains('peeking'), 'Esc in it puts the properties away'); eq(J(fig.selected()), J([id]), 'and the element stays selected'); fig.remove(id); }
+        // the Animations button with the sidebar open but tucked away shows it (it closed it unseen)
+        D.querySelector('#bAnim').click(); await sleep(30); ok(fig.animPane() && D.querySelector('#animbar').classList.contains('peeking'), 'the Animations button shows the tucked sidebar'); D.querySelector('footer').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' })); W.dispatchEvent(new PointerEvent('pointerup', { pointerType: 'mouse' }));
+        fig.animPane(false); await frame(); ok(!shown('#expA'), 'a closed animation sidebar has no tab');
+        // the layouts put the tabs at their sidebars' sides
+        D.querySelector('#pinL').click(); await frame();
+        fig.prefs({ layout: 'swap' }); await frame(); ok(Math.abs(box('#expL').right - st().right) < 2 && Math.abs(box('#expR').left - st().left) < 2, 'swapped: the tabs change sides');
+        fig.prefs({ layout: 'right' }); await frame(); ok(Math.abs(box('#expL').right - st().right) < 2 && Math.abs(box('#expR').right - st().right) < 2 && box('#expL').bottom <= box('#expR').top + 1, 'both on the right: both tabs there, stacked');
+        fig.prefs({ layout: 'std' }); await frame();
+        // focus mode hides the tabs; F6 reaches a tab
+        setFocusMode(true, true); await frame(); ok(!shown('#expL'), 'no tab in focus mode'); setFocusMode(false, true); await frame(); ok(shown('#expL'), 'after focus mode as before');
+        D.querySelector('#toast').classList.remove('show'); f6.seen = null; D.querySelector('#stage').focus(); f6(true); eq(D.activeElement && D.activeElement.id, 'expL', 'F6 back from the canvas: the tab of the unpinned sidebar');   // (a message with a button takes the first F6 by design)
+        ok([...D.querySelectorAll('.pinbtn,.exptab')].every(b => b.getAttribute('aria-label') || b.textContent.trim()), 'every pin and tab has a name');
+      } finally { fig.animPane(false); fig.panels({ left: true, right: true, animations: true }); fig.prefs({ layout: 'std' }); try { if (was == null) localStorage.removeItem('fig.panels'); else localStorage.setItem('fig.panels', was); } catch (e) {} }
     });
     test('appearance round 18: accent swatches show the accent of the theme, Large text with compact spacing keeps its sizes, Large text reaches the animation sidebar, citation cards, notes and messages, the page size fits in Soft with Large text, the animation sidebar is a card in Soft, list chevrons, Layers types whole, the motion-path blue in dark mode', async () => {
       if (PHONE()) throw new Skip('this window has the phone layout');
@@ -338,7 +396,16 @@
         // Layers shows the longest type name whole ("membra…")
         { const mb = fig.add('membrane', { x: 600, y: 300 }); D.querySelector('#tabLayers').click(); await frame(); const ty = [...D.querySelectorAll('#layers .layer .ty')].find(e => e.textContent === 'membrane');
           ok(ty, 'the membrane row'); if (ty.offsetWidth) for (const text of ['normal', 'large']) { fig.prefs({ text }); await frame(); ok(ty.scrollWidth <= ty.clientWidth, text + ': ' + ty.scrollWidth + ' > ' + ty.clientWidth); }
-          D.querySelector('#tabAdd').click(); fig.remove(mb); }
+          // the column is sized to the longest type listed, in the font this browser uses (layerTyWidth: a fixed 50 px cut "membrane" in the Mac and Linux fonts)
+          ok(/em$/.test(D.querySelector('#layers').style.getPropertyValue('--tyw')) && !D.querySelector('#layers .typrobe'), 'the type column is measured and the probe is gone: ' + D.querySelector('#layers').style.getPropertyValue('--tyw'));
+          if (ty.offsetWidth) { const wide = ty.getBoundingClientRect().width; fig.remove(mb); renderLayers(); await frame(); const rest = [...D.querySelectorAll('#layers .layer .ty')], longest = Math.max(0, ...rest.map(e => e.textContent.length));
+            ok(!rest.some(e => e.textContent === 'membrane'), 'the list was rebuilt without the membrane');
+            if (rest.length && longest <= 5) ok(rest[0].getBoundingClientRect().width < wide - 8, 'without the membrane the column narrows, so the names get the room: ' + rest[0].getBoundingClientRect().width + ' vs ' + wide);
+            // a membrane listed while in focus mode (the panels hidden: nothing can be measured; the list is rebuilt when the selection changes) is whole once the panels are back
+            setFocusMode(true, true); const mb2 = fig.add('membrane', { x: 620, y: 320 }); renderLayers(); await frame(); setFocusMode(false, true); await frame();
+            const ty2 = [...D.querySelectorAll('#layers .layer .ty')].find(e => e.textContent === 'membrane'); ok(ty2 && ty2.scrollWidth <= ty2.clientWidth, 'a membrane added in focus mode, after it: ' + (ty2 ? ty2.scrollWidth + ' > ' + ty2.clientWidth : 'no row')); fig.remove(mb2); }
+          else fig.remove(mb);
+          D.querySelector('#tabAdd').click(); }
         // dark mode: the motion-path blue of the animation sidebar (2.8 : 1 on its buttons) is lighter
         fig.prefs({ theme: 'dark', text: 'normal' }); fig.select([t]); fig.animPane(true); await frame();
         { const k = D.querySelector('#abBody .apk.k-path'); ok(k, 'the Motion path tab'); ok(cr(getComputedStyle(k).backgroundColor, rgb(tok('--btn'))) >= 3, 'the motion-path dot: ' + getComputedStyle(k).backgroundColor); }
@@ -599,6 +666,60 @@
     });
 
     // ---------- files ----------
+    // security: a figure file is data, never code. A private report (2026-11-17): <svg/onload=…> and javascript&#58; links went through svgScrub's
+    // quick check, and a formula's \href{javascript:…} became a live link; a figure opened, a Home thumbnail or one click ran someone else's script.
+    // Every way the audits found is tried here, each payload setting window.__sec if it runs: nothing may run, and a clean drawing keeps all it has.
+    test('security: a figure file, its icons, formulas, thumbnails and exports never run code', async () => {
+      W.__sec = 0; const NS = 'http://www.w3.org/2000/svg'; allowCsp();
+      const live = async s => { const g = D.createElementNS(NS, 'g'); g.innerHTML = s; D.querySelector('#svg').appendChild(g); await sleep(80); g.remove(); };   // inserted the way the page inserts drawings
+      // what a cleaned drawing still holds that could run, read as the page reads it (in an inert document: words that only look like markup are no markup)
+      const bad = s => { const I = D.implementation.createHTMLDocument(''), g = I.createElementNS(NS, 'g'); g.innerHTML = s; const e = [...g.querySelectorAll('*')].find(e => e.namespaceURI !== NS || /^(script|foreignobject|iframe|a|set|animate|animatemotion|animatetransform|style|handler)$/i.test(e.localName) || /^(title|desc)$/i.test(e.localName) && e.children.length || [...e.attributes].some(a => /^on/i.test(a.name) || /(javascript|vbscript):/i.test(a.value.replace(/[\s\0-\x1f]/g, '')) || /\\|url\((?!['"]?#)/i.test(a.value) || /href$/i.test(a.name) && !(/^#/.test(a.value) || /^(image|feimage)$/i.test(e.localName) && /^(assets\/|data:image\/)/.test(a.value))));
+        return e ? [e.outerHTML] : null; };
+      const armed = root => [...root.querySelectorAll('*')].filter(e => e.localName === 'a' || [...e.attributes].some(a => /^on/i.test(a.name) || /^\s*(javascript|vbscript):/i.test(a.value)));
+      for (const p of [
+        '<svg/onload="window.__sec=1" width="5" height="5"></svg>',
+        '<image/onerror="window.__sec=2" href="zz-none.png" width="5" height="5"/>',
+        '<svg/ONLOAD="window.__sec=3"></svg>',
+        '<svg/onload=window.__sec=4></svg>',
+        '<svg onload\n="window.__sec=5"></svg>',
+        '<a href="javascript&#58;window.__sec=6"><rect width="9" height="9"/></a>',
+        '<a xlink:href="jav&#x09;ascript:window.__sec=7"><rect width="9" height="9"/></a>',
+        '<foreignObject width="9" height="9"><img src="zz-none.png" onerror="window.__sec=8"></foreignObject>',
+        '<g><p><img src="zz-none.png" onerror="window.__sec=9"></p></g>',
+        '<svg><title><img src="zz-none.png" onerror="window.__sec=10"></title></svg>',
+        '<set attributeName="onmouseover" to="window.__sec=11"/><animate attributeName="href" values="javascript:window.__sec=11"/>',
+        '<script>window.__sec=12<\/script>',
+        '<svg><![CDATA[</svg><img src="zz-none.png" onerror="window.__sec=13">]]></svg>',
+        '<iframe src="javascript:window.__sec=14"></iframe>',
+        '<math><mtext><img src="zz-none.png" onerror="window.__sec=15"></mtext></math>',
+        '<svg><style>@import "//example.org/x.css";</style><rect width="9" height="9" style="fill:url(javascript:1)"/></svg>',
+        '<image href="javascript:window.__sec=17" width="5" height="5"/><use href="//example.org/x.svg#a"/>',
+        '<rect width="9" height="9" style="fill:\\75 rl(http://example.org/x)"/>',   // a CSS escape hid url( (an independent review, 2026-11-17)
+        '<use href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 onload=%22window.__sec=19%22/%3E"/><use href="assets/x.svg#a"/>']) {
+        const s = svgScrub(p); ok(!bad(s), 'svgScrub left something in ' + short(p, 90) + ': ' + short(s)); if (bad(p)) ok(svgScrub.cut > 0, 'svgScrub counted nothing taken out of ' + short(p, 90));   /* (CDATA in SVG read by the page is words, not markup) */ await live(s); eq(W.__sec, 0, 'it ran: ' + short(p, 90));
+      }
+      // what belongs to a drawing stays
+      { const s = svgScrub('<defs><linearGradient id="zg"><stop offset="0" stop-color="#f00"/></linearGradient><clipPath id="zc"><rect width="5" height="5"/></clipPath></defs><rect width="9" height="9" fill="url(#zg)" clip-path="url(#zc)"/><use href="#zg"/><image href="assets/x.png" width="5" height="5"/><image href="data:image/png;base64,AAAA" width="5" height="5"/><text x="1" y="2">a &lt; b</text>');
+        ok(/fill="url\(#zg\)"/.test(s) && /clip-path="url\(#zc\)"/.test(s) && /href="#zg"/.test(s) && /href="assets\/x\.png"/.test(s) && /data:image\/png/.test(s) && /a &lt; b/.test(s) && /linearGradient/.test(s), 'what belongs to a drawing stays: ' + s); eq(svgScrub.cut, 0, 'taken out of a clean drawing'); }
+      // the formula builder's preview, cleaned in place
+      { const s = D.createElementNS(NS, 'svg'); s.innerHTML = '<a href="javascript:void 0"><rect width="9" height="9"/></a>'; s.setAttribute('onload', 'window.__sec=30'); svgScrubNode(s); ok(!s.hasAttribute('onload') && !s.querySelector('a') && s.querySelector('rect'), 'the preview: ' + s.outerHTML); }
+      // a whole figure: a shape, an icon it brings, a formula typeset from its TeX (paths left empty to force it) and one with markup of its own
+      const raw = { version: 4, w: 1600, h: 900, bg: '#ffffff', palette: [], icons: { zzevil: { n: 'Evil', c: ['#6f86c8', '#3f5a9e'], svg: '<svg/onload="window.__sec=21" width="50" height="50"></svg><rect x="-40" y="-40" width="80" height="80" fill="#6f86c8"/>' } },
+        objects: [{ type: 'custom', id: 'c1', x: 300, y: 300, w: 200, h: 200, svg: '<svg/onload="window.__sec=20" width="9" height="9"></svg><image/onerror="window.__sec=20" href="zz-none.png"/><a href="javascript&#58;window.__sec=20"><rect width="99" height="99" fill="#e69f00"/></a>' },
+          { type: 'icon', id: 'i1', kind: 'zzevil', x: 600, y: 300, size: 100 },
+          { type: 'formula', id: 'f1', x: 900, y: 300, size: 40, tex: '\\href{javascript:window.__sec=22}{E=mc^2}\\class{x}{y}\\style{color:red}{z}', paths: '', encoded: '' },
+          { type: 'formula', id: 'f2', x: 1200, y: 300, size: 40, tex: 'x', encoded: 'x|0', vb: '0 -500 600 600', paths: '<a href="javascript&#58;window.__sec=23"><path d="M0 0h500v500z"/></a><svg/onload="window.__sec=23"></svg>' }] };
+      fig.set(JSON.parse(J(raw))); await settle(); await sleep(150);
+      eq(W.__sec, 0, 'opening the figure ran its code'); const C = D.querySelector('#content'), arm = armed(C); eq(arm.length, 0, 'the canvas holds links or handlers: ' + arm.map(e => short(e.outerHTML, 80)).join(' | '));
+      ok(C.querySelector('[data-id="c1"] rect') && C.querySelector('[data-id="i1"] rect'), 'the shape and the icon still draw what they have');
+      const sc = fig.get(); for (const o of sc.objects) for (const k of ['svg', 'paths']) if (typeof o[k] === 'string') ok(!bad(o[k]), o.id + '.' + k + ' keeps ' + short(o[k]));
+      ok(!/<a[\s>]/.test(sc.objects.find(o => o.id === 'f1').paths || ''), 'a formula typeset from \\href makes no link');
+      // a Home thumbnail of the file as it is (Home draws figures nobody opened), in a shadow root as Home does
+      { const th = sceneSvg(healScene(JSON.parse(J(raw))), 320, 180); ok(!bad(th), 'a Home thumbnail: ' + short((bad(th) || [''])[0], 200)); const h = D.createElement('div'), r = h.attachShadow({ mode: 'open' }); r.innerHTML = th; D.body.appendChild(h); await sleep(80); h.remove(); eq(W.__sec, 0, 'a thumbnail ran its code'); }
+      // the exported SVG (the slideshow and the presenter view are drawn from the same markup)
+      { const ex = await svgString({}); ok(!bad(ex), 'the exported SVG: ' + short((bad(ex) || [''])[0], 200)); }
+      eq(W.__sec, 0, 'something ran'); delete W.__sec; blank();
+    });
     test('old and broken files are repaired on load', () => {
       const s = healScene({ w: 'x', h: -5, bg: 7, palette: 'red', objects: [null, 5, { type: 'text', id: 'a', text: 'one' }, { type: 'box', id: 'a' }, { noType: 1 }, { type: 'text' }] });
       eq(s.objects.length, 3, 'objects kept'); eq(new Set(s.objects.map(o => o.id)).size, 3, 'unique ids');
@@ -2975,7 +3096,7 @@
       });
     }, 120000);
     test('notice board: a missing notices.json falls back to the built-in copy, an unsafe one is neutralized, every action works, nothing is asked of another host', async () => {
-      if (typeof nbMount !== 'function') throw new Skip('this editor has no notice board');
+      if (typeof nbMount !== 'function') throw new Skip('this editor has no notice board'); allowCsp();   // (an unsafe notices file: its pictures are parsed by svgScrub, and the policy reports the handlers it blocked there)
       const f0 = W.fetch, asked = [];
       await nbKeep(async () => {
         nbPut({ folded: false }); fig.home('figures'); await HOME.ctx.reload(); ok(await waitFor(() => nbEl()), 'no board'); const t0 = performance.now();
@@ -3474,7 +3595,10 @@
         ok(pv('apa').querySelector('.ctlink') && getComputedStyle(pv('apa').querySelector('.ctlink')).display === 'inline-block', 'an inline block: it goes to the next line whole');
         ok([pv('apa'), pv('vancouver')].every(p => [...p.querySelectorAll('.ctnw')].some(x => x.textContent === '123–130' && getComputedStyle(x).whiteSpace === 'nowrap')), 'the page range is kept together');
         ok(/\*?Nature\*?/.test(citeText(['x'], 'apa', { doi: true, title: true }, new Map([['x', citeSample()]]), new Map())) && /<i>4<\/i>\(2\)/.test(pv('apa').innerHTML) && /2026;4\(2\):/.test(pv('vancouver').textContent), 'APA italic volume and Vancouver 2026;4(2): as before');
-        { const box = $$('#modal .box'), w0 = box.style.width; for (const W of [600, 700, 800, 900]) { box.style.width = W + 'px'; const L = pv('apa').querySelector('.ctlink'), lh = parseFloat(getComputedStyle(pv('apa')).lineHeight); ok(L.offsetHeight < lh * 1.5, 'at ' + W + ' px the DOI is on one line: ' + L.offsetHeight + ' px high') } box.style.width = w0; }
+        // the DOI of both full cards: one line, and in sight (the 3-line limit hid it, and a DOI too wide for the card was clipped, in the wider Mac and Linux fonts; GitHub's Linux and Mac runners caught the first)
+        { const box = $$('#modal .box'), w0 = box.style.width; for (const W of [600, 700, 800, 900]) { box.style.width = W + 'px'; for (const k of ['apa', 'vancouver']) { const p = pv(k), L = p.querySelector('.ctlink'), lh = parseFloat(getComputedStyle(p).lineHeight), lr = L.getBoundingClientRect(), pr = p.getBoundingClientRect();
+          ok(L.offsetHeight < lh * 1.5, 'at ' + W + ' px the ' + k + ' DOI is on one line: ' + L.offsetHeight + ' px high');
+          ok(lr.bottom <= pr.bottom + 1 && lr.right <= pr.right + 1 && L.scrollWidth <= L.clientWidth + 1, 'at ' + W + ' px the ' + k + ' DOI is in sight: link ' + Math.round(lr.right) + ' × ' + Math.round(lr.bottom) + ' (scroll width ' + L.scrollWidth + ' / ' + L.clientWidth + '), card text ' + Math.round(pr.right) + ' × ' + Math.round(pr.bottom)) } } box.style.width = w0; }
         // the boxes: off with a word for the numbered styles and author–year, without it for the full ones
         const pick = k => { $$(`.ctst[data-s="${k}"]`).click(); return [$$('#ctTitle').disabled, $$('#ctOffNote').hidden] };
         eq(J([pick('num'), pick('authoryear'), pick('apa'), pick('short')]), J([[true, false], [true, false], [false, true], [false, true]]), 'Not in this style shows only where the boxes are off');
@@ -4113,7 +4237,7 @@
             for (const k of Object.keys(d)) {
               const v = d[k], w = k + ': '; n++; ok(new RegExp('^' + P.id + ':[a-z0-9][a-z0-9-]*$').test(k), w + 'key not in the pack\'s namespace'); ok(!seen.has(k), w + 'twice'); seen.add(k);
               ok(typeof v.n === 'string' && v.n.trim(), w + 'no name'); ok(typeof v.t === 'string', w + 'no tags'); ok(typeof v.svg === 'string' && v.svg.length > 20 && v.svg.length <= (P.id === 'servier' || P.id === 'nih-bioart' || P.id === 'reactome' || P.id === 'bioicons' ? 300000 : P.id === 'anatomogram' ? 720000 : 150000), w + 'drawing size ' + (v.svg || '').length);   // (NIH BioArt Source, Reactome, Bioicons and Servier: every drawing up to 300 KB; the Expression Atlas anatomograms, whole bodies and plants in fine line work: up to 700 KB)
-              ok(svgScrub(v.svg) === v.svg, w + 'svgScrub changes it');
+              svgScrub(v.svg); ok(svgScrub.cut === 0, w + 'svgScrub takes ' + svgScrub.cut + ' things out of it');
               { const idm = new Map(); for (const m of v.svg.matchAll(/<([a-zA-Z]+)\b[^>]*?\sid="([^"]+)"/g)) { ok(!idm.has(m[2]), w + 'the id ' + m[2] + ' is used twice'); idm.set(m[2], m[1]); }   // (the page clip once had the id of the 31st gradient: that shape lost its fill)
                 for (const m of v.svg.matchAll(/\b(fill|stroke|clip-path|mask|filter)="url\(#([^)]+)\)"/g)) { const tg = idm.get(m[2]); ok(tg && (m[1] === 'clip-path' ? tg === 'clipPath' : m[1] === 'mask' ? tg === 'mask' : m[1] === 'filter' ? tg === 'filter' : /Gradient$|^pattern$/.test(tg)), w + m[1] + ' points to ' + (tg || 'nothing') + ' (' + m[2] + ')'); } } ok(!/<\s*(script|foreignObject|image|text|style|use|a)\b|\son[a-z]+\s*=|javascript:|href="(?!#)|url\((?!#)|data:/i.test(v.svg), w + 'holds something an icon must not');
               ok(Array.isArray(v.k) && v.k.length <= 2 && v.k.every(c => /^#[0-9a-f]{6}$/.test(c)) && Array.isArray(v.c) && v.c.length === 2, w + 'colors k / c'); if (v.k.length) ok(v.svg.includes('"' + v.k[0] + '"'), w + 'its main color is not in the drawing (not recolorable)');
@@ -5236,7 +5360,7 @@
         const b0 = bbox(ic), inB = (b, what) => ok(b.x >= b0.x - 1 && b.y >= b0.y - 1 && b.x + b.w <= b0.x + b0.w + 1 && b.y + b.h <= b0.y + b0.h + 1, what + ' reaches past the crop: ' + J([b, b0]));
         sel = new Set([ic]); explodeSel(); await frame(); const parts = [...sel]; ok(parts.length > 3, 'parts'); ok(parts.some(p => get(p).crop), 'no part is cropped'); parts.forEach(p => inB(bbox(p), 'a part'));
         { const U = selBox(); near(U.x, b0.x, 1.5, 'parts: left'); near(U.y, b0.y, 1.5, 'parts: top'); near(U.x + U.w, b0.x + b0.w, 1.5, 'parts: right'); }
-        await fuseSel(false); await frame(); const fu = [...sel][0]; eq(get(fu).type, 'custom', 'fused'); ok(/<clipPath id="crop/.test(get(fu).svg) && /class="cropframe"/.test(get(fu).svg), 'the fused element keeps the crops'); inB(bbox(fu), 'the fused element'); eq(get(fu).svg, svgScrub(get(fu).svg), 'svgScrub changes it');
+        await fuseSel(false); await frame(); const fu = [...sel][0]; eq(get(fu).type, 'custom', 'fused'); ok(/<clipPath id="crop/.test(get(fu).svg) && /class="cropframe"/.test(get(fu).svg), 'the fused element keeps the crops'); inB(bbox(fu), 'the fused element'); svgScrub(get(fu).svg); eq(svgScrub.cut, 0, 'what svgScrub takes out of it');
         sel = new Set([fu]); explodeSel(); await frame(); [...sel].forEach(p => inB(bbox(p), 'a part of the fused element')); await fuseSel(false); const fu2 = [...sel][0];
         // a fused element is cropped as a whole
         { const f0 = bbox(fu2); fig.crop(fu2, { r: .5 }); near(bbox(fu2).w, f0.w / 2, 1, 'a fused element cropped again'); fig.remove(fu2); }
@@ -5265,7 +5389,7 @@
     // ---------- the app icon (brand/) ----------
     test('brand: the app icon in the top bar, on Home, as the tab icon, and the files of brand/', async () => {
       const paths = el => [...el.querySelectorAll('path,circle')].map(e => e.getAttribute('d') || [e.getAttribute('cx'), e.getAttribute('cy'), e.getAttribute('r')].join(' '));   // the drawing, without ids
-      const clean = (s, what) => { const bad = s.match(/<(text|mask|clipPath|image|use|foreignObject|script|style)\b|xlink:|href=/i); ok(!bad, what + ': text, a mask, a clip path or a reference: ' + (bad && bad[0])); eq(svgScrub(s), s, what + ': svgScrub changes it'); };
+      const clean = (s, what) => { const bad = s.match(/<(text|mask|clipPath|image|use|foreignObject|script|style)\b|xlink:|href=/i); ok(!bad, what + ': text, a mask, a clip path or a reference: ' + (bad && bad[0])); svgScrub(s); eq(svgScrub.cut, 0, what + ': what svgScrub takes out of it'); };
       const colors = (s, what) => { for (const c of ['#1d4ed8', '#6d28d9', '#f4e7c5', '#d55e00', '#e69f00', '#009e73']) ok(s.includes(c), what + ': the color ' + c + ' is missing'); };
       // the top-bar logo: the small icon drawn inline, at 22 px, inside the Home button that keeps its role and name
       const br = D.querySelector('header .brand'), lg = br && br.querySelector('svg.logo');
@@ -5324,7 +5448,7 @@
     if (!run.length) tests.push({ name: 'test selection', ok: false, msg: 'no test name starts with ' + (only || []).map(p => '"' + p + '"').join(', ') + ' (names start with: icons, types, type <name>, examples, undo/redo, connectors, off-page, rich text, old and broken, fig API, save)' });
     let stuck = null;   // a test that timed out and did not stop: the ones after it would share the figure with it
     for (let i = 0; i < run.length; i++) {
-      const T = run[i], t0 = performance.now(), e0 = errs.length;
+      const T = run[i], t0 = performance.now(), e0 = errs.length, c0 = cspV.length; cspAllow = false;
       if (stuck) { tests.push({ name: T.name, ok: false, skip: true, msg: 'not run: "' + stuck + '" timed out and was still running', ms: 0 }); continue; }
       if (opts.onProgress) try { opts.onProgress(T.name, i, run.length); } catch (e) {}
       let r, timedOut = false;
@@ -5333,6 +5457,7 @@
         const v = await Promise.race([p, sleep(T.timeout).then(() => { timedOut = true; throw new Error('timed out after ' + T.timeout / 1000 + ' s'); })]);
         r = { name: T.name, ok: true }; if (v && v.note) r.msg = v.note;
         if (errs.length > e0) r = { name: T.name, ok: false, msg: 'uncaught error: ' + errs.slice(e0).join(' | ') };
+        else if (cspV.length > c0 && !cspAllow) r = { name: T.name, ok: false, msg: 'the security policy blocked: ' + [...new Set(cspV.slice(c0))].join(' | ') };
       } catch (e) { r = e instanceof Skip ? { name: T.name, ok: false, skip: true, msg: e.message } : { name: T.name, ok: false, msg: String(e && e.message || e) + (e && e.stack && !/expected|timed out/.test(e.message || '') ? ' @ ' + String(e.stack).split('\n').slice(1, 3).join(' ').trim().slice(0, 200) : '') }; }
       r.ms = Math.round(performance.now() - t0); tests.push(r);
       if (timedOut) {   // let it finish (up to 60 s more) before the next test touches the figure; if it still runs, stop here
@@ -5340,7 +5465,7 @@
         if (done) r.msg += ' (it finished ' + Math.round((performance.now() - t0 - T.timeout) / 1000) + ' s later)'; else { stuck = T.name; r.msg += ' (still running: the remaining tests are not run)'; }
       }
     }
-    W.removeEventListener('error', onErr); W.removeEventListener('unhandledrejection', onRej);
+    W.removeEventListener('error', onErr); W.removeEventListener('unhandledrejection', onRej); D.removeEventListener('securitypolicyviolation', onCsp);
     try { sel = new Set(); if (!opts.keep) { fig.set(JSON.parse(orig)); await settle(); await flushSave(); } buildPanel(); } catch (e) {}
     return res();
   };

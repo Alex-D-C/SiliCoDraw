@@ -48,6 +48,7 @@ Write-Host "  browser: $exe"
 Write-Host "  page:    $url"
 $fail = 1; $srv = $null; $br = $null; $res = $null
 try {
+  $env:SILICODRAW_NO_CONFIRM = '1'   # a folder change from the test page needs no one to confirm it (serve.ps1, Confirm-Folder)
   $srv = Start-Process powershell -ArgumentList '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', "`"$Root\serve.ps1`"", '-port', $Port, '-data', "`"$Root`"" -PassThru -WindowStyle Hidden
   $up = $false
   for ($i = 0; $i -lt 80 -and -not $up; $i++) { Start-Sleep -Milliseconds 250; try { $up = (Invoke-WebRequest "http://localhost:$Port/api/files" -UseBasicParsing -TimeoutSec 5).StatusCode -eq 200 } catch {} }

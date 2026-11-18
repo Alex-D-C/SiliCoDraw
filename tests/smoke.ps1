@@ -52,13 +52,17 @@ try {
   $c = Code PUT "http://localhost:$Port/$nm.json" $fig; if ($c -eq 405) { Ok 'PUT is refused (405)' } else { Bad "PUT answered $c" }
   if (Test-Path "$root\$nm-evil.json") { Bad 'a refused write left a file' }
   $c = Code POST "http://localhost:$Port/figure-editor.html" 'x'; if ($c -ne 204) { Ok "cannot overwrite the editor ($c)" } else { Bad 'editor file was writable' }
-  # files of the figures folder are served sandboxed (an SVG with a script that came in with a .zip must not run as the editor's page); the editor itself is not
+  # files of the figures folder are served sandboxed (an SVG with a script that came in with a .zip must not run as the editor's page); the editor itself is not: it has a policy of its own (only its own scripts)
   $svgOk = (Code POST "http://localhost:$Port/assets/$nm.svg" '<svg xmlns="http://www.w3.org/2000/svg"><script>1</script></svg>') -eq 204
   $hs = try { (Invoke-WebRequest "http://localhost:$Port/assets/$nm.svg" -UseBasicParsing -TimeoutSec 10).Headers } catch { $null }
   $hf = try { (Invoke-WebRequest "http://localhost:$Port/$nm.json" -UseBasicParsing -TimeoutSec 10).Headers } catch { $null }
   $he = try { (Invoke-WebRequest "http://localhost:$Port/" -UseBasicParsing -TimeoutSec 10).Headers } catch { $null }
-  if ($svgOk -and $hs -and "$($hs['Content-Security-Policy'])" -match '^sandbox;' -and $hs['X-Content-Type-Options'] -eq 'nosniff' -and "$($hf['Content-Security-Policy'])" -match '^sandbox;' -and $he -and -not $he['Content-Security-Policy']) { Ok 'files of the figures folder are served sandboxed (nosniff); the editor is not' } else { Bad "sandbox headers: svg '$($hs['Content-Security-Policy'])' figure '$($hf['Content-Security-Policy'])' editor '$($he['Content-Security-Policy'])'" }
+  if ($svgOk -and $hs -and "$($hs['Content-Security-Policy'])" -match '^sandbox;' -and $hs['X-Content-Type-Options'] -eq 'nosniff' -and "$($hf['Content-Security-Policy'])" -match '^sandbox;' -and $he -and "$($he['Content-Security-Policy'])" -match "^default-src 'self'; script-src 'self' 'sha256-") { Ok 'files of the figures folder are served sandboxed (nosniff); the editor is not, it has its own policy (its scripts by hash)' } else { Bad "sandbox headers: svg '$($hs['Content-Security-Policy'])' figure '$($hf['Content-Security-Policy'])' editor '$($he['Content-Security-Policy'])'" }
   Remove-Item -LiteralPath "$root\assets\$nm.svg" -ErrorAction SilentlyContinue
+  # what a page is never given though it lies in the program folder: names starting with a dot (.git, .silicodraw-folder), dev\ (but dev\web\), updates\
+  $hid = Join-Path $root ".zz-smoke-$nm.txt"; [IO.File]::WriteAllText($hid, 'withheld')
+  $ch = Code GET "http://localhost:$Port/.zz-smoke-$nm.txt"; Remove-Item -LiteralPath $hid -ErrorAction SilentlyContinue
+  if ($ch -eq 404) { Ok 'a file under a name starting with a dot is withheld (404)' } else { Bad "a file under a name starting with a dot was served ($ch)" }
   # icon packs (icon-expansions\): the index and, for every pack, its names, license and attribution are served
   $ix = try { (Invoke-WebRequest "http://localhost:$Port/icon-expansions/index.json" -UseBasicParsing -TimeoutSec 10).Content | ConvertFrom-Json } catch { $null }
   if ($ix -and @($ix.packs).Count -ge 1) {

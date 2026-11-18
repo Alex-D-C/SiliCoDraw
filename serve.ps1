@@ -76,6 +76,50 @@ $dataDirs = @('archive', 'trash', 'history', 'assets', 'exports')
 # pass the write rule). They are served sandboxed (no scripts, a unique origin), never sniffed; a PDF is left out of the sandbox (browsers
 # refuse to show a PDF in one) and runs no page script anyway. <img> / <image> use is unaffected. The same headers as serve.py (USER_CSP).
 $userCsp = "sandbox; default-src 'none'; img-src data: 'self'; style-src 'unsafe-inline'; font-src data:"
+# the editor's own pages (the program's .html files) carry a Content-Security-Policy, the same as serve.py (PAGE_CSP): only the page's own scripts
+# run (its inline scripts by their hash, worked out from the file as it is served, and lib/), so markup that a figure smuggled in can run nothing
+# (no handler attribute, no javascript: link), and nothing is sent anywhere but this server and the reference look-up services (2026-11-17).
+# 'unsafe-eval': MathJax and PptxGenJS build functions from text; injected markup cannot reach that without running first.
+$pageCsp = "default-src 'self'; script-src 'self' __HASHES__ 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; connect-src 'self' https://api.crossref.org https://api.datacite.org https://eutils.ncbi.nlm.nih.gov https://export.arxiv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'"
+$cspMemo = @{}
+function Get-PageCsp($full, $bytes) {
+  $key = "$full|$($bytes.Length)|$([IO.File]::GetLastWriteTimeUtc($full).Ticks)"
+  if (-not $cspMemo.ContainsKey($key)) {
+    $text = [Text.Encoding]::UTF8.GetString($bytes); if ($text.Length -and $text[0] -eq [char]0xFEFF) { $text = $text.Substring(1) }
+    # each inline <script> as the browser reads it (line ends as \n): its SHA-256
+    $hashes = @(foreach ($m in [regex]::Matches($text, '(?is)<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)</script\s*>')) { $body = $m.Groups[1].Value.Replace("`r`n", "`n").Replace("`r", "`n"); "'sha256-" + [Convert]::ToBase64String($sha.ComputeHash([Text.Encoding]::UTF8.GetBytes($body))) + "'" })
+    if ($cspMemo.Count -gt 20) { $cspMemo.Clear() }
+    $cspMemo[$key] = $pageCsp.Replace('__HASHES__', ($hashes -join ' '))
+  }
+  $cspMemo[$key]
+}
+# what a page is never given, even though it lies in the program folder: anything under a name starting with a dot (.git, .silicodraw-folder),
+# the private development material (dev/ except the website build dev/web/, outreach/) and the updater's figure backups (updates/); and nothing
+# reached through a link (a symbolic link or junction could lead out of the folder: serve.py resolves links and refuses what lies outside)
+function Test-Withheld($rel) {
+  $segs = @($rel -split '[\\/]' | Where-Object { $_ })
+  if (@($segs | Where-Object { $_.StartsWith('.') }).Count) { return $true }
+  ($segs.Count -and @('dev', 'outreach', 'updates') -contains $segs[0] -and -not ($segs.Count -gt 2 -and $segs[0] -eq 'dev' -and $segs[1] -eq 'web'))
+}
+# a page that asks to keep the figures in another folder (File > Where figures are kept...) is confirmed by the person at this computer, in a
+# window of this server that no page can answer (as serve.py's confirm_folder): code smuggled into the page could otherwise point the figures
+# folder at any folder and read its files (2026-11-17). A tool (no Origin: curl, a script, an agent) is not asked, as for every write; the test
+# servers of browser.ps1 / browser.sh set SILICODRAW_NO_CONFIRM. No is the default button.
+function Confirm-Folder($dir) {
+  if ($env:SILICODRAW_NO_CONFIRM) { return $true }
+  try {
+    Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+    $f = New-Object Windows.Forms.Form; $f.TopMost = $true; $f.ShowInTaskbar = $false; $f.StartPosition = 'Manual'; $f.Location = New-Object Drawing.Point(-3000, -3000); $f.Size = New-Object Drawing.Size(1, 1); $f.Show(); $f.Activate()
+    $r = [Windows.Forms.MessageBox]::Show($f, "Keep your SiliCoDraw figures in this folder?`n`n$dir`n`nSay Yes only if you chose this folder yourself, just now, in SiliCoDraw (File > Where figures are kept...).", 'SiliCoDraw: where figures are kept', [Windows.Forms.MessageBoxButtons]::YesNo, [Windows.Forms.MessageBoxIcon]::Question, [Windows.Forms.MessageBoxDefaultButton]::Button2)
+    $f.Close(); $f.Dispose()
+    return ($r -eq [Windows.Forms.DialogResult]::Yes)
+  } catch { return $false }
+}
+function Test-Linked($base, $rel) {
+  $p = $base.TrimEnd('\')
+  foreach ($s in @($rel -split '[\\/]' | Where-Object { $_ })) { $p = Join-Path $p $s; try { $it = Get-Item -LiteralPath $p -Force -ErrorAction Stop; if (@('SymbolicLink', 'Junction') -contains "$($it.LinkType)") { return $true } } catch { return $false } }
+  $false
+}
 # where a path of the address lives: a figure and its data in the figures folder, everything else with the program
 # a chosen folder that cannot be reached at the moment (an unplugged drive, a sync app stopped): figures are then refused with 503, and never read from or written to anywhere else
 function Test-DataGone { ($data -ne $root.TrimEnd('\')) -and -not (Test-Path -LiteralPath $data -PathType Container) }
@@ -162,6 +206,7 @@ while ($l.IsListening) {
             if (-not [IO.Path]::IsPathRooted($want)) { $why = 'Give the whole path of the folder.' }
             else { $folder = [IO.Path]::GetFullPath($want).TrimEnd('\'); if ($folder -match '^[A-Za-z]:$' -or $folder -eq '') { $why = 'Choose a folder, not a whole drive.' } }
           }
+          if (-not $why -and $folder -ne $root.TrimEnd('\') -and $folder -ne $data -and ($origin -or $site) -and -not (Confirm-Folder $folder)) { $why = 'Not changed: the folder was not confirmed. SiliCoDraw asks in a window of its own (it may be behind the browser); say Yes there to use this folder.' }   # see Confirm-Folder
           if (-not $why) {
             if ($folder -ne $root.TrimEnd('\')) { New-Item -ItemType Directory -Force $folder -ErrorAction Stop | Out-Null; $probe = Join-Path $folder '.silicodraw-write-test'; [IO.File]::WriteAllText($probe, 'ok'); Remove-Item -LiteralPath $probe -ErrorAction Stop; $folder = (Resolve-Path -LiteralPath $folder).ProviderPath.TrimEnd('\') }
             $res = @{ copied = 0; differ = @(); skipped = @() }
@@ -250,7 +295,7 @@ while ($l.IsListening) {
       $ctx.Response.StatusCode = 204
     } elseif ($req.HttpMethod -eq 'POST') {
       $ctx.Response.StatusCode = 405   # nothing else can be written to
-    } elseif ($full.StartsWith($homeDir.TrimEnd('\') + '\') -and (Test-Path -LiteralPath $full -PathType Leaf)) {   # -LiteralPath: [ ] in a folder name are not wildcards
+    } elseif ($full.StartsWith($homeDir.TrimEnd('\') + '\') -and (Test-Path -LiteralPath $full -PathType Leaf) -and -not (($homeDir -eq $root -and (Test-Withheld $full.Substring($homeDir.TrimEnd('\').Length + 1))) -or (Test-Linked $homeDir $full.Substring($homeDir.TrimEnd('\').Length + 1)))) {   # -LiteralPath: [ ] in a folder name are not wildcards; Test-Withheld on the path as resolved (dev/web/../queue is dev/queue)
       $bytes = [IO.File]::ReadAllBytes($full)
       $ext = [IO.Path]::GetExtension($full).ToLower()
       $ctx.Response.ContentType = if ($types[$ext]) { $types[$ext] } else { 'application/octet-stream' }
@@ -258,7 +303,7 @@ while ($l.IsListening) {
       if ($path -match $nameRe -or $dataDirs -contains ($path -split '/')[0]) {   # a file of the figures folder (see $userCsp)
         $ctx.Response.Headers.Add('X-Content-Type-Options', 'nosniff')
         if ($ext -ne '.pdf') { $ctx.Response.Headers.Add('Content-Security-Policy', $userCsp) }
-      }
+      } elseif ($ext -eq '.html') { $ctx.Response.Headers.Add('Content-Security-Policy', (Get-PageCsp $full $bytes)) }   # one of the program's pages (see $pageCsp)
       $same = $false
       if ($path -match $nameRe) {   # a figure: its version (see Get-ETag)
         $etg = Get-ETag $bytes; $ctx.Response.Headers.Add('ETag', $etg)

@@ -81,6 +81,69 @@ def locate(path):
 # left out of the sandbox (browsers refuse to show a PDF in one) and runs no page script anyway. <img> / <image> use is unaffected.
 # The same headers as serve.ps1 ($userCsp).
 USER_CSP = "sandbox; default-src 'none'; img-src data: 'self'; style-src 'unsafe-inline'; font-src data:"
+# The editor's own pages (the program's .html files) carry a Content-Security-Policy, the same as serve.ps1 ($pageCsp): only the page's own
+# scripts run (its inline scripts by their hash, worked out from the file as it is served, and lib/), so markup that a figure smuggled in can run
+# nothing (no handler attribute, no javascript: link), and nothing is sent anywhere but this server and the reference look-up services (2026-11-17).
+# 'unsafe-eval': MathJax and PptxGenJS build functions from text; injected markup cannot reach that without running first.
+PAGE_CSP = ("default-src 'self'; script-src 'self' __HASHES__ 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; "
+            "connect-src 'self' https://api.crossref.org https://api.datacite.org https://eutils.ncbi.nlm.nih.gov https://export.arxiv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+            "frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
+SCRIPT_RE = re.compile(r'<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)</script\s*>', re.I | re.S)
+_CSP_MEMO = {}
+
+
+def page_csp(full, data):
+    """PAGE_CSP with the SHA-256 of each inline <script> of this page, as the browser reads it (line ends as \\n)."""
+    key = (full, len(data), os.path.getmtime(full))
+    if key not in _CSP_MEMO:
+        import base64
+        text = data.decode('utf-8', 'replace')
+        if text.startswith('﻿'):
+            text = text[1:]
+        hs = ["'sha256-%s'" % base64.b64encode(hashlib.sha256(m.group(1).replace('\r\n', '\n').replace('\r', '\n').encode('utf-8')).digest()).decode('ascii') for m in SCRIPT_RE.finditer(text)]
+        if len(_CSP_MEMO) > 20:
+            _CSP_MEMO.clear()
+        _CSP_MEMO[key] = PAGE_CSP.replace('__HASHES__', ' '.join(hs))
+    return _CSP_MEMO[key]
+
+
+def confirm_folder(folder):
+    """A page that asks to keep the figures in another folder (File > Where figures are kept...) is confirmed by the person at this
+    computer, in a window of this server that no page can answer (as serve.ps1's Confirm-Folder): code smuggled into the page could
+    otherwise point the figures folder at any folder and read its files (2026-11-17). A tool (no Origin: curl, a script, an agent) is not
+    asked, as for every write; the test servers of browser.sh / browser.ps1 set SILICODRAW_NO_CONFIRM. No is the default answer.
+    None = no way to ask here (Linux without zenity or kdialog): the folder is then chosen with --data."""
+    if os.environ.get('SILICODRAW_NO_CONFIRM'):
+        return True
+    text = 'Keep your SiliCoDraw figures in this folder?\n\n%s\n\nSay Yes only if you chose this folder yourself, just now, in SiliCoDraw (File > Where figures are kept...).' % folder
+    title = 'SiliCoDraw: where figures are kept'
+    try:
+        if os.name == 'nt':
+            import ctypes
+            return ctypes.windll.user32.MessageBoxW(None, text, title, 0x4 | 0x20 | 0x100 | 0x1000 | 0x40000) == 6   # Yes/No, question, No first, system modal, topmost; 6 = Yes
+        if sys.platform == 'darwin':   # the folder goes in as an argument, never as script text
+            r = subprocess.run(['osascript', '-e', 'on run argv', '-e', 'display dialog (item 1 of argv) buttons {"No", "Yes"} default button "No" with title "%s" with icon caution' % title, '-e', 'end run', text],
+                               capture_output=True, text=True, timeout=600)
+            return r.returncode == 0 and 'Yes' in r.stdout
+        for cmd in (['zenity', '--question', '--no-markup', '--title', title, '--text', text], ['kdialog', '--title', title, '--yesno', text]):
+            if shutil.which(cmd[0]):
+                return subprocess.run(cmd, timeout=600).returncode == 0
+        return None
+    except Exception:
+        return False
+    return None
+
+
+def withheld(rel):
+    """What a page is never given, though it lies in the program folder (as serve.ps1's Test-Withheld): anything under a name starting
+    with a dot (.git, .silicodraw-folder), the private development material (dev/ except the website build dev/web/, outreach/) and the
+    updater's figure backups (updates/). Links are resolved before this (realpath), and what lies outside the folder is refused."""
+    segs = [s for s in re.split(r'[\\/]', rel) if s]
+    if any(s.startswith('.') for s in segs):
+        return True
+    first = segs[0].lower() if segs else ''
+    return first in ('dev', 'outreach', 'updates') and not (first == 'dev' and len(segs) > 2 and segs[1].lower() == 'web')
 
 
 def host_name_ok(name):
@@ -365,7 +428,7 @@ class Handler(BaseHTTPRequestHandler):
             return self._json([])
         home = locate(path)
         full = os.path.realpath(os.path.join(home, path))
-        if full.startswith(home + os.sep) and os.path.isfile(full):
+        if full.startswith(home + os.sep) and os.path.isfile(full) and not (home == ROOT and withheld(full[len(home) + 1:])):   # withheld: on the path as resolved (dev/web/../queue is dev/queue)
             if NAME_RE.match(path):   # a figure: never read during a save (on Windows an open file made the save's os.replace fail, and its fallback rewrites the file in place: a poll could read half a figure)
                 with SAVE_LOCK:
                     with open(full, 'rb') as f:
@@ -375,6 +438,8 @@ class Handler(BaseHTTPRequestHandler):
                     data = f.read()
             ctype = TYPES.get(os.path.splitext(full)[1].lower(), 'application/octet-stream')
             hdrs = user_file_headers(path, full)
+            if not hdrs and full.lower().endswith('.html'):   # one of the program's pages (see PAGE_CSP)
+                hdrs['Content-Security-Policy'] = page_csp(full, data)
             if NAME_RE.match(path):   # a figure: its version (see etag)
                 tag = etag(data)
                 hdrs['ETag'] = tag
@@ -447,6 +512,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(400, 'Give the whole path of the folder.'.encode('utf-8'))
             if os.path.dirname(folder) == folder:
                 return self._send(400, 'Choose a folder, not a whole drive.'.encode('utf-8'))
+            ok_ = True if os.path.realpath(folder) in (ROOT, DATA) or not (origin or site) else confirm_folder(folder)   # see confirm_folder
+            if ok_ is None:
+                return self._send(400, ('Not changed: SiliCoDraw cannot ask you to confirm a folder on this computer (it needs zenity or kdialog). Start it with --data "%s" instead.' % folder).encode('utf-8'))
+            if not ok_:
+                return self._send(400, 'Not changed: the folder was not confirmed. SiliCoDraw asks in a window of its own (it may be behind the browser); say Yes there to use this folder.'.encode('utf-8'))
             with SAVE_LOCK:
                 try:
                     new = try_folder(folder)

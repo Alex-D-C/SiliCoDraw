@@ -75,7 +75,7 @@ trap cleanup EXIT INT TERM
 echo "SiliCoDraw browser tests, folder: $ROOT"
 echo "  browser: $BR"
 echo "  page:    $URL"
-"$PY" "$ROOT/serve.py" --no-browser --port "$PORT" --data "$ROOT" >"$TMP/server.log" 2>&1 &   # --data: its files stay here, whatever figures folder is chosen
+SILICODRAW_NO_CONFIRM=1 "$PY" "$ROOT/serve.py" --no-browser --port "$PORT" --data "$ROOT" >"$TMP/server.log" 2>&1 &   # --data: its files stay here, whatever figures folder is chosen
 SRV=$!
 i=0; until curl -fs --max-time 5 "http://localhost:$PORT/api/files" >/dev/null 2>&1; do i=$((i+1)); [ $i -gt 80 ] && { echo "  FAIL  the server did not start"; cat "$TMP/server.log"; exit 1; }; sleep 0.25; done
 

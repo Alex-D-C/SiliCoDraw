@@ -533,7 +533,7 @@ same folder layout (`archive/`, `trash/`, `history/`, `assets/`) is used everywh
 
 | Where you work | What you can do | Services |
 |---|---|---|
-| **Run from your computer** (`serve.py` / `serve.ps1`) | Pick a folder that the service's app keeps in sync. Figures, their history and exports live there; the program stays where it is | all of them, or any other folder |
+| **Run from your computer** (`serve.py` / `serve.ps1`) | Pick a folder that the service's app keeps in sync. Figures, their history and exports live there; the program stays where it is. SiliCoDraw asks you to confirm the new folder in a small window of its own, which no web page can answer for | all of them, or any other folder |
 | **Website, Chrome or Edge on a computer** | Link a folder that the service's app keeps in sync: every change is saved there. The browser asks for permission again when it restarts | all of them, or any other folder |
 | **Website, any browser, phones too** | Sign in to the service, and every change is saved in a folder of SiliCoDraw's own there (when the site offers that service) | Dropbox, Google Drive, OneDrive |
 | **Anywhere, by hand** | **Save all figures to a folder…** and **Open a folder of figures…** move every figure at once (see below); **Save a copy (.json)…** and **Load from a .json file…** move one. On a phone they open the share sheet and the Files app | whichever services' apps you have, iCloud Drive and Box too |
