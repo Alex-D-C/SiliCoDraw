@@ -19316,7 +19316,11 @@ function drawShape(o){const w=o.w,h=o.kind==='circle'?o.w:o.h,a=w/2,b=h/2,st=`fi
     case'line':return`<path class="hit" d="M${-a},0H${a}" stroke="transparent" stroke-width="14" vector-effect="non-scaling-stroke" fill="none"/><path d="M${-a},0H${a}" ${st} stroke-linecap="round"/>`}return''}
 // a missing image file (renamed, not copied along with the figure) drew nothing at all: it is checked once and then drawn as a marked placeholder (the link stays, so it comes back when the file does)
 var IMG_BAD=new Set(),IMG_SEEN=new Set();
-function imgCheck(src){if(!src||typeof src!=='string'||src.startsWith('data:')||IMG_SEEN.has(src))return;IMG_SEEN.add(src);const im=new Image();im.onload=()=>{if(IMG_BAD.delete(src))render()};im.onerror=()=>{setTimeout(()=>IMG_SEEN.delete(src),10000);/* checked again on a later render */if(!IMG_BAD.has(src)){IMG_BAD.add(src);render()}};im.src=src}
+// a picture this page may load: embedded (data:, blob:) or, on the desktop, a file of the figures folder (assets/…). Never another host, and on the
+// website nothing at all from the site (2026-11-18): a figure made on the desktop names assets/<file>, and asking the web host for it put the
+// file's name in the host's logs (the picture is never there). Such a picture shows as missing; the PowerPoint and PDF exports do not fetch it either
+const picLocal=s=>{if(typeof s!=='string'||!s)return false;if(/^(data|blob):/i.test(s))return true;if(WEB)return false;try{return new URL(s,location.href).origin===location.origin}catch(e){return false}};   /* resolved as the browser would (spaces, tabs, line breaks, backslashes): only this server */
+function imgCheck(src){if(!src||typeof src!=='string'||src.startsWith('data:')||IMG_SEEN.has(src))return;IMG_SEEN.add(src);if(!picLocal(src)){IMG_BAD.add(src);return}const im=new Image();im.onload=()=>{if(IMG_BAD.delete(src))render()};im.onerror=()=>{setTimeout(()=>IMG_SEEN.delete(src),10000);/* checked again on a later render */if(!IMG_BAD.has(src)){IMG_BAD.add(src);render()}};im.src=src}
 // a picture's own pixel size (decoded once per src): where a cropped picture sits in its frame, "Original proportions", the print ppi in the export check.
 // A data URL is keyed by its length and ends (hashing a several-MB string on every render was slow)
 var IMG_NAT=new Map();const imgKey=s=>s.length>300?s.length+':'+s.slice(0,120)+s.slice(-120):s;
@@ -19324,7 +19328,7 @@ function imgNat(src,cb){if(!src||typeof src!=='string')return null;const k=imgKe
   const im=new Image(),done=v=>{const cs=imgNat.cbs&&imgNat.cbs.get(k)||[];if(imgNat.cbs)imgNat.cbs.delete(k);cs.forEach(c=>{try{c(v)}catch(e){}})};
   const bad=()=>{IMG_NAT.set(k,false);setTimeout(()=>{if(IMG_NAT.get(k)===false)IMG_NAT.delete(k)},10000);done(null)};
   im.onload=()=>{const v=im.naturalWidth>0&&im.naturalHeight>0?[im.naturalWidth,im.naturalHeight]:null;if(!v){bad();return}IMG_NAT.set(k,v);done(v);if(scene.objects.some(o=>o.type==='image'&&o.fit==='crop'&&o.src===src&&((o.fx??.5)!=.5||(o.fy??.5)!=.5)))render()};   // centered crops look the same before (slice) and after
-  im.onerror=bad;im.src=src;return null}
+  im.onerror=bad;if(!picLocal(src)){bad();return null}im.src=src;return null}
 const imgNatP=src=>new Promise(r=>{const n=imgNat(src,r);if(n)r(n);else if(!src||typeof src!=='string'||IMG_NAT.get(imgKey(src))===false)r(null)});   // an unreadable picture answers null at once (the PowerPoint export waited for it)
 // fit 'crop' (new pictures): w × h is a frame the picture fills without distortion, fx / fy (0–1) pick the part shown; 'stretch' (files from before): the picture is drawn at exactly w × h.
 // A cropped picture runs past its frame under a clip; the invisible .imgframe rect drawn first gives its bounds (bboxM), as browsers measure clipped content at full size
@@ -19332,7 +19336,7 @@ function drawImage(o){if(!o.src)return`<rect x="${-o.w/2}" y="${-o.h/2}" width="
   const r=Math.max(0,+o.rounded||0),cid='clip'+String(o.id).replace(/[^\w-]/g,'_')+(o._thumb?'t'+(++cropTn):'');/* a thumbnail drawn in the page (Export several figures lists every figure, each with its own o1) got the clip of another picture with that id *//* a negative radius made the clip rect invalid */imgCheck(o.src);const miss=IMG_BAD.has(o.src)?`<g class="imgmiss"><rect x="${-o.w/2}" y="${-o.h/2}" width="${o.w}" height="${o.h}" rx="${r}" fill="#f3f4f6" stroke="#d64545" stroke-width="1.5" stroke-dasharray="6 4"/><text y="5" font-family="${FONT}" font-size="${f(Math.max(6,Math.min(14,o.w/14)))}" fill="#d64545" text-anchor="middle">${esc('missing: '+String(o.src).split('/').pop().slice(0,40))}</text></g>`:'';/* .imgmiss is an editor hint only: the exports leave it out */
   const w=+o.w,h=+o.h,c=imgCrop(o);let im=`x="${f(-w/2)}" y="${f(-h/2)}" width="${w}" height="${h}" preserveAspectRatio="none"`,clip=r>0,fr='';
   if(c&&c.par)im=`x="${f(-w/2)}" y="${f(-h/2)}" width="${w}" height="${h}" preserveAspectRatio="${c.par}"`;else if(c&&c.over){im=`x="${f(c.x)}" y="${f(c.y)}" width="${f(c.w)}" height="${f(c.h)}" preserveAspectRatio="none"`;clip=true;fr=`<rect class="imgframe" x="${f(-w/2)}" y="${f(-h/2)}" width="${w}" height="${h}" fill="none" stroke="none"/>`}
-  return fr+miss+(clip?`<clipPath id="${cid}"><rect x="${f(-w/2)}" y="${f(-h/2)}" width="${w}" height="${h}"${r?` rx="${r}"`:''}/></clipPath>`:'')+`<image href="${esc(o.src)}" ${im}${clip?` clip-path="url(#${cid})"`:''}/>`+(o.border?`<rect x="${-o.w/2}" y="${-o.h/2}" width="${o.w}" height="${o.h}" rx="${r}" fill="none" stroke="#d1d5db" stroke-width="1.5"/>`:'')}
+  return fr+miss+(clip?`<clipPath id="${cid}"><rect x="${f(-w/2)}" y="${f(-h/2)}" width="${w}" height="${h}"${r?` rx="${r}"`:''}/></clipPath>`:'')+`<image href="${picLocal(o.src)?esc(o.src):''}" ${im}${clip?` clip-path="url(#${cid})"`:''}/>`+(o.border?`<rect x="${-o.w/2}" y="${-o.h/2}" width="${o.w}" height="${o.h}" rx="${r}" fill="none" stroke="#d1d5db" stroke-width="1.5"/>`:'')}
 // where a cropped picture is drawn, in element coordinates: {x, y, w, h} of the whole picture (over = it runs past the frame), or {par} while its pixel size is not known yet (centered or edge crops look right)
 function imgCrop(o){if(o.fit!=='crop'||!o.src)return null;const w=+o.w,h=+o.h,cl=v=>Math.min(1,Math.max(0,isFinite(+v)&&v!==''&&v!=null?+v:.5)),fx=cl(o.fx),fy=cl(o.fy),n=imgNat(o.src);
   if(!n){const a=v=>v<.34?'Min':v>.66?'Max':'Mid';return{par:`x${a(fx)}Y${a(fy)} slice`}}
@@ -20437,7 +20441,7 @@ const SCRUB_NS='http://www.w3.org/2000/svg',SCRUB_OK=new Set(('svg g path rect c
   'feblend fecolormatrix fecomponenttransfer fecomposite feconvolvematrix fediffuselighting fedisplacementmap fedistantlight fedropshadow feflood fefunca fefuncb fefuncg fefuncr fegaussianblur feimage femerge femergenode femorphology feoffset fepointlight fespecularlighting fespotlight fetile feturbulence').split(' '));
 function svgAttrOk(n,a){const ln=a.localName.toLowerCase(),v=a.value.replace(/[\s\0-\x1f]/g,'').toLowerCase();
   if(/^on/.test(ln)||/^on/i.test(a.name)||ln==='base')return false;   // event handlers (however written: the parser has read the name), xml:base
-  if(ln==='href')return v[0]==='#'||/^(image|feimage)$/.test(n)&&(/^data:image\/(png|jpe?g|gif|webp|svg\+xml)[;,]/.test(v)||/^assets\/[^:\\]*$/.test(v)&&!v.includes('..'));
+  if(ln==='href')return v[0]==='#'||/^(image|feimage)$/.test(n)&&(/^data:image\/(png|jpe?g|gif|webp|svg\+xml)[;,]/.test(v)||!WEB&&/^assets\/[^:\\]*$/.test(v)&&!v.includes('..'));   /* (the website: never a file of the site, picLocal) */
   return!/\\/.test(v)&&!/(javascript|vbscript|livescript):/.test(v)&&!/url\((?!['"]?#)/.test(v)&&!(ln==='style'&&/expression\(|@import|behavior:|-moz-binding/.test(v))}
 function svgScrubKids(el){let cut=0;for(const e of [...el.children]){const n=e.localName.toLowerCase();
     if(e.namespaceURI===SCRUB_NS&&(n==='title'||n==='desc')){for(const k of [...e.children]){k.remove();cut++}for(const a of [...e.attributes])if(!svgAttrOk(n,a)){e.removeAttributeNode(a);cut++}continue}   // a name or a description: its words only (HTML can live in a <title>)
@@ -20455,13 +20459,17 @@ function svgScrub(s){svgScrub.cut=0;if(typeof s!=='string')return'';if(s.indexOf
 function svgScrubNode(svg){if(!svg)return;for(const a of [...svg.attributes])if(!svgAttrOk('svg',a))svg.removeAttributeNode(a);svgScrubKids(svg)}
 // fields written into an attribute (colors, kinds, path data, ids…) lose " < > so they cannot break out of the drawing; free text (escaped when drawn) is left alone.
 // Wrong kinds of values are repaired: a list field that is not a list gets its default, a text field holding an object gets its default (a number becomes text), bad x/y/s/r/op are dropped
-function scrubStr(v){return/["<>]/.test(v)?v.replace(/["<>]/g,''):v}   // declarations (not const): the startup copy from this browser is healed before this line runs
+function scrubStr(v){return/["<>]/.test(v)?v.replace(/["<>]/g,''):v}
+// (2026-11-18) a color or setting from a file that would load something when it is painted or used as a CSS background: url() to anything but
+// the drawing itself, image(), image-set(), cross-fade(), element() (a figure on the website made the browser ask the site for a file)
+function paintBad(v){return typeof v==='string'&&/url\(\s*['"]?\s*(?!#)|(image|image-set|cross-fade|element|paint)\(/i.test(v)}   // (a declaration: the startup copy is healed before this line runs)   // declarations (not const): the startup copy from this browser is healed before this line runs
 function scrubDeep(v){if(typeof v==='string')return scrubStr(v);if(Array.isArray(v))return v.map(scrubDeep);if(v&&typeof v==='object'){const r={};for(const k of Object.keys(v))if(!/["<>]/.test(k))r[k]=scrubDeep(v[k]);return r}return v}
 function scrubObj(o,W=1600,H=900){const sc=SCHEMA[o.type]||[],D=DEF[o.type]||{},kind={};sc.forEach(f=>{kind[f[0]]=f[1]});
   for(const k of Object.keys(o)){const v=o[k],kd=kind[k],d=D[k];
     if(k==='svg'||k==='paths'){o[k]=svgScrub(v);continue}
     if(kd==='text'||kd==='area'||k==='name'){if(v!=null&&typeof v==='object'||typeof v==='boolean')o[k]=typeof d==='string'?d:'';else if(kd==='area'&&typeof v==='number')o[k]=String(v);continue}
     if(Array.isArray(d)&&!Array.isArray(v)){o[k]=JSON.parse(JSON.stringify(d));continue}
+    if(typeof v==='string'&&paintBad(v)){o[k]=typeof d==='string'?d:'';continue}   // (a color that would load something: the default)
     o[k]=scrubDeep(v)}
   for(const k of ['x','y','x1','y1','x2','y2'])if(k in o&&typeof o[k]!=='number'){const n=typeof o[k]==='string'&&o[k].trim()!==''?+o[k]:NaN;o[k]=isFinite(n)?n:0}   /* 0 = where an invalid transform drew it before; NaN made every drag and bbox NaN */
   for(const k of ['x','y','x1','y1','x2','y2'])if(typeof o[k]==='number'&&!isFinite(o[k]))o[k]=0;
@@ -20494,7 +20502,7 @@ function pageBg(){const sl=isDeck(scene)&&scene.slides[CUR];return sl&&sl.bg||sc
 function transDefs(){return transDefs.t||(transDefs.t={FX:{none:'None',fade:'Fade',push:'Push'},DIR:[['u','From Bottom'],['r','From Left'],['l','From Right'],['d','From Top']],DUR:{none:0,fade:.7,push:1}})}   // (a function: files are read before this line runs) PowerPoint's names and default durations; dir = the way the slides move (its own XML's u / d / l / r)
 // a slide's own background and transition as the editor keeps them: a color with the rules of the file's (no quotes, <, >, &; with fileBg given, as for a figure brought in as a slide, the file's own color is no color of its own);
 // trans = {fx, dir (push), dur, advance}: texts are kept as typed (fig.check names an effect or direction that does not exist; it plays as a cut), numbers are numbers in their range
-function healSlide(sl,fileBg){if('bg' in sl&&(typeof sl.bg!=='string'||!sl.bg.trim()||/["'<>&]/.test(sl.bg)||fileBg&&sl.bg.trim().toLowerCase()===String(fileBg).toLowerCase()))delete sl.bg;else if(sl.bg)sl.bg=sl.bg.trim();
+function healSlide(sl,fileBg){if('bg' in sl&&(typeof sl.bg!=='string'||!sl.bg.trim()||/["'<>&]/.test(sl.bg)||paintBad(sl.bg)||fileBg&&sl.bg.trim().toLowerCase()===String(fileBg).toLowerCase()))delete sl.bg;else if(sl.bg)sl.bg=sl.bg.trim();
   if(!('trans' in sl))return;const t=sl.trans;if(!t||typeof t!=='object'||Array.isArray(t)||typeof t.fx!=='string'||!t.fx){delete sl.trans;return}
   const r={fx:scrubStr(t.fx).replace(/["<>&]/g,'')},num=(v,lo,hi)=>{const n=typeof v==='number'||typeof v==='string'&&v.trim()!==''?+v:NaN;return isFinite(n)?Math.round(Math.max(lo,Math.min(hi,n))*100)/100:null};
   if(r.fx==='push'||t.dir!=null&&r.fx!=='fade'&&r.fx!=='none'){const d=typeof t.dir==='string'?scrubStr(t.dir).replace(/["<>&]/g,''):'';r.dir=d||'u'}
@@ -20517,7 +20525,7 @@ function healScene(s){if(!(+s.w>0))s.w=1600;if(!(+s.h>0))s.h=900;s.w=+s.w;s.h=+s
   else healObjs(s,s.w,s.h);
   delete s.slideName;   // (what fig.get() adds to a slide it hands out: never a field of the file)
   if('notes' in s&&(typeof s.notes!=='string'||!s.notes||Array.isArray(s.slides)))delete s.notes;   // speaker notes of a plain figure (a file with slides keeps them per slide)
-  if(typeof s.bg!=='string'||!s.bg||/["'<>&]/.test(s.bg))s.bg='#ffffff';if(Array.isArray(s.slides))s.slides.forEach(sl=>healSlide(sl));else delete s.trans;if(!Array.isArray(s.palette))s.palette=[];s.palette=s.palette.filter(c=>typeof c==='string').map(scrubStr);
+  if(typeof s.bg!=='string'||!s.bg||/["'<>&]/.test(s.bg)||paintBad(s.bg))s.bg='#ffffff';if(Array.isArray(s.slides))s.slides.forEach(sl=>healSlide(sl));else delete s.trans;if(!Array.isArray(s.palette))s.palette=[];s.palette=s.palette.filter(c=>typeof c==='string'&&c.length<80&&!paintBad(c)).map(scrubStr);   /* colors only (they become CSS backgrounds of the swatches) */
   if('seriesPal' in s){const sp=Array.isArray(s.seriesPal)?s.seriesPal.filter(c=>typeof c==='string'&&/^#[0-9a-f]{6}$/i.test(c.trim())).map(c=>c.trim().toLowerCase()).slice(0,16):[];if(sp.length)s.seriesPal=sp;else delete s.seriesPal}   // chart series colors (Edit palette…); anything else typed there is dropped
   if(s.icons!=null&&(typeof s.icons!=='object'||Array.isArray(s.icons)))delete s.icons;
   if(s.icons)for(const k of Object.keys(s.icons)){const d=s.icons[k];if(!d||typeof d!=='object'||Array.isArray(d)||typeof d.svg!=='string')delete s.icons[k]}   // an entry that is no icon ("x": 5) went into My icons (its file too) and the load threw
@@ -23909,7 +23917,7 @@ function field(obj,[key,type,opt,label],onApply){
     const done=()=>{if(stepping){stepping=false;commit()}};inp.addEventListener('keyup',ev=>{if(ev.key==='ArrowUp'||ev.key==='ArrowDown')done()});inp.addEventListener('blur',done)}
   let hex=null;if(type==='color'){const w=document.createElement('div');w.className='colorf';hex=document.createElement('code');hex.textContent=diff?'mixed':obj[key]??fieldDefault(obj,key,type);w.appendChild(inp);w.appendChild(hex);
     // the figure's palette as one-click swatches (the <datalist> swatches never show in Firefox); mouse only: the color field itself stays the keyboard way
-    const fs=document.createElement('div');fs.className='fsw';palette().slice(0,16).forEach(c=>{const b=document.createElement('button');b.type='button';b.tabIndex=-1;b.style.background=c;b.title=c;b.setAttribute('aria-hidden','true');b.onclick=e=>{e.preventDefault();inp.value=c;obj[key]=c;hex.textContent=c;onApply();ptRefresh();commit()};fs.appendChild(b)});w.appendChild(fs);row.appendChild(w)}
+    const fs=document.createElement('div');fs.className='fsw';palette().filter(c=>typeof c==='string'&&!paintBad(c)).slice(0,16).forEach(c=>{const b=document.createElement('button');b.type='button';b.tabIndex=-1;b.style.background=c;b.title=c;b.setAttribute('aria-hidden','true');b.onclick=e=>{e.preventDefault();inp.value=c;obj[key]=c;hex.textContent=c;onApply();ptRefresh();commit()};fs.appendChild(b)});w.appendChild(fs);row.appendChild(w)}
   else if(type==='num'&&!many&&fontKeys(obj).includes(key)&&printK()>0){   // a font size field with a print size set: its printed size beside it (× the element's scale), red below what journals ask for
     const w=document.createElement('div'),sm=document.createElement('small');w.style.cssText='display:flex;align-items:center;gap:6px';inp.style.flex='1';inp.style.minWidth='0';sm.style.cssText='flex:none;font-size:var(--fs-tiny);white-space:nowrap';
     const up=()=>{const v=(+(obj[key]??fieldDefault(obj,key,type))||0)*Math.abs(+obj.s||1)*printK();sm.textContent=v>0?'≈ '+ptS(v)+' pt':'';sm.style.color=v>0&&v<printMin()-.05?'var(--danger-ink)':'var(--muted)';sm.title=`Printed size at ${printLabel()} (scale included); set under Page → print size`};
@@ -25067,8 +25075,9 @@ function pdfJpeg(b){if(b[0]!==0xFF||b[1]!==0xD8)return null;let p=2,or=1;
 function pdfExif(b,s){try{const le=b[s]===0x49,u16=o=>le?b[o]|b[o+1]<<8:b[o]<<8|b[o+1],u32=o=>le?(b[o]|b[o+1]<<8|b[o+2]<<16|b[o+3]<<24)>>>0:(b[o]<<24|b[o+1]<<16|b[o+2]<<8|b[o+3])>>>0,f=s+u32(s+4),n=u16(f);for(let i=0;i<n&&f+14+i*12<=b.length;i++){const e=f+2+i*12;if(u16(e)===0x112)return u16(e+8)}}catch(e){}return 1}
 // an inserted picture → its image object: a JPEG as it is, anything else (PNG, GIF, WebP, SVG) through a canvas
 async function pdfLoadImg(P,r){r.done=true;let b=null;const src=r.src;
-  try{if(/^data:image\/jpe?g;base64,/i.test(src)){const s=atob(src.slice(src.indexOf(',')+1));b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i)}else if(!/^data:/i.test(src)&&/\.jpe?g([?#]|$)/i.test(src)){const q=await fetch(src);if(q.ok)b=new Uint8Array(await q.arrayBuffer())}}catch(e){b=null}
+  try{if(/^data:image\/jpe?g;base64,/i.test(src)){const s=atob(src.slice(src.indexOf(',')+1));b=new Uint8Array(s.length);for(let i=0;i<s.length;i++)b[i]=s.charCodeAt(i)}else if(!/^data:/i.test(src)&&picLocal(src)&&/\.jpe?g([?#]|$)/i.test(src)){const q=await fetch(src);if(q.ok)b=new Uint8Array(await q.arrayBuffer())}}catch(e){b=null}
   const j=b&&pdfJpeg(b);if(j){P.objs[r.n]={d:`/Type/XObject/Subtype/Image/Width ${j.w}/Height ${j.h}/ColorSpace/${j.c===1?'DeviceGray':'DeviceRGB'}/BitsPerComponent 8/Interpolate true/Filter/DCTDecode`,b};r.iw=j.w;r.ih=j.h;r.ok=true;P.xo.set('/Im'+r.n,r.n);return}
+  if(!picLocal(src)){P.notes.miss++;return}   // (a picture elsewhere, or on the website any file of the site: never asked for)
   const im=new Image();im.src=src;try{await imgReady(im)}catch(e){P.notes.miss++;return}
   const vec=/^data:image\/svg|\.svgz?([?#]|$)/i.test(src);r.iw=im.naturalWidth;r.ih=im.naturalHeight;let w=vec||!r.iw?Math.ceil(r.hint[0]):r.iw,h=vec||!r.ih?Math.ceil(r.hint[1]):r.ih;   // an SVG picture is drawn at the size it is shown, at the chosen resolution
   const k=Math.min(1,8000/Math.max(w,h,1),Math.sqrt(40e6/Math.max(1,w*h)));w=Math.max(1,Math.round(w*k));h=Math.max(1,Math.round(h*k));
@@ -26805,7 +26814,7 @@ async function pptxAddScene(pptx,K,opt){   // opt: {notes: speaker notes of this
           if(o.dir==='h')x+=gw+8*q+textW(t,sz,400)+(+o.gap)*s;else y+=sz*1.75});
         native++;
       }else if(o.type==='image'&&o.src&&!(+o.rounded)){   // rounded corners go in as a picture (pptxgenjs "rounding" makes the image an ellipse)
-        let data=o.src;if(!data.startsWith('data:')){const rs=await fetch(o.src);if(!rs.ok)throw new Error('image file missing: '+o.src);/* a 404 page went in as a broken picture */const bl=await rs.blob();data=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(bl)})}
+        let data=o.src;if(!data.startsWith('data:')){if(!picLocal(o.src))throw new Error('image file missing: '+o.src);const rs=await fetch(o.src);if(!rs.ok)throw new Error('image file missing: '+o.src);/* a 404 page went in as a broken picture */const bl=await rs.blob();data=await new Promise(r=>{const fr=new FileReader();fr.onload=()=>r(fr.result);fr.readAsDataURL(bl)})}
         const w=o.w*s,h=o.h*s;let cr=o.fit==='crop'?imgCrop(o):null;if(cr&&cr.par){await imgNatP(o.src);cr=imgCrop(o)}   // a cropped picture: the whole picture with PowerPoint's own crop (srcRect), so it can be re-cropped there
         if(CB){const Pp=cr&&cr.over&&!cr.par?cr:{x:-o.w/2,y:-o.h/2,w:+o.w,h:+o.h},c=toGlobal(o,[CB.x+CB.w/2,CB.y+CB.h/2]);   // "crop" on top of the fit: one srcRect for both (the picture's part inside the cropped frame), placed where the frame's middle is on the page
           slide.addImage({data,x:IN(c.x-CB.w*s/2),y:IN(c.y-CB.h*s/2),w:IN(Pp.w*s),h:IN(Pp.h*s),sizing:{type:'crop',x:IN((CB.x-Pp.x)*s),y:IN((CB.y-Pp.y)*s),w:IN(CB.w*s),h:IN(CB.h*s)},transparency:tr,...common(o)})}

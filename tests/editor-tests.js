@@ -700,7 +700,7 @@
       }
       // what belongs to a drawing stays
       { const s = svgScrub('<defs><linearGradient id="zg"><stop offset="0" stop-color="#f00"/></linearGradient><clipPath id="zc"><rect width="5" height="5"/></clipPath></defs><rect width="9" height="9" fill="url(#zg)" clip-path="url(#zc)"/><use href="#zg"/><image href="assets/x.png" width="5" height="5"/><image href="data:image/png;base64,AAAA" width="5" height="5"/><text x="1" y="2">a &lt; b</text>');
-        ok(/fill="url\(#zg\)"/.test(s) && /clip-path="url\(#zc\)"/.test(s) && /href="#zg"/.test(s) && /href="assets\/x\.png"/.test(s) && /data:image\/png/.test(s) && /a &lt; b/.test(s) && /linearGradient/.test(s), 'what belongs to a drawing stays: ' + s); eq(svgScrub.cut, 0, 'taken out of a clean drawing'); }
+        ok(/fill="url\(#zg\)"/.test(s) && /clip-path="url\(#zc\)"/.test(s) && /href="#zg"/.test(s) && (WEB ? !/assets\/x\.png/.test(s) : /href="assets\/x\.png"/.test(s)) && /data:image\/png/.test(s) && /a &lt; b/.test(s) && /linearGradient/.test(s), 'what belongs to a drawing stays (on the website a file of the site is not asked for): ' + s); eq(svgScrub.cut, WEB ? 1 : 0, 'taken out of a clean drawing'); }
       // the formula builder's preview, cleaned in place
       { const s = D.createElementNS(NS, 'svg'); s.innerHTML = '<a href="javascript:void 0"><rect width="9" height="9"/></a>'; s.setAttribute('onload', 'window.__sec=30'); svgScrubNode(s); ok(!s.hasAttribute('onload') && !s.querySelector('a') && s.querySelector('rect'), 'the preview: ' + s.outerHTML); }
       // a whole figure: a shape, an icon it brings, a formula typeset from its TeX (paths left empty to force it) and one with markup of its own
@@ -719,6 +719,46 @@
       // the exported SVG (the slideshow and the presenter view are drawn from the same markup)
       { const ex = await svgString({}); ok(!bad(ex), 'the exported SVG: ' + short((bad(ex) || [''])[0], 200)); }
       eq(W.__sec, 0, 'something ran'); delete W.__sec; blank();
+    });
+    test('security: pictures load only from the figure or its folder (on the website not even from the site), the website store writes only figure names, sign-in comes back to the editor page', async () => {
+      if (typeof picLocal !== 'function') throw new Skip('this editor has no picture address check');
+      // what a picture may name: embedded, or (desktop) a file of the figures folder; never another host, a protocol or a network path
+      for (const s of ['data:image/png;base64,iVBORw0KGgo=', 'blob:' + location.origin + '/x']) ok(picLocal(s), 'an embedded picture refused: ' + s.slice(0, 40));
+      for (const s of ['https://evil.example/beacon.png', 'http://evil.example/x.png', '//evil.example/x.png', '\\\\evil\\share\\x.png', 'javascript:alert(1)', 'file:///C:/x.png', 'C:\\x.png', ' https://evil.example/x.png', '\thttps://evil.example/x.png', 'ht\ntps://evil.example/x.png', '/\\evil.example/x.png', 'HTTPS://evil.example/x.png', '', null]) ok(!picLocal(s), 'a picture address let through: ' + JSON.stringify(s));
+      eq(picLocal('assets/blot.png'), !WEB, WEB ? 'the website asks the site for a picture of the folder (its name goes to the host\'s logs)' : 'a picture of the figures folder refused');
+      // a figure naming a picture elsewhere: shown as missing, nothing fetched, also by the PowerPoint and PDF exports
+      const seen = [], RF = W.fetch; W.fetch = function (u, o) { seen.push(String(u && u.url || u)); return RF.apply(this, arguments); };
+      try {
+        blank(); fig.add('image', { src: 'https://evil.example/beacon.jpg', w: 200, h: 150, x: 300, y: 300 }); if (WEB) fig.add('image', { src: 'assets/patient-blot.jpg', w: 200, h: 150, x: 700, y: 300 }); await settle(); render(); await sleep(50);
+        eq(D.querySelectorAll('#content .imgmiss').length, WEB ? 2 : 1, 'pictures shown as missing');
+        ok(![...D.querySelectorAll('#content image')].some(i => /evil|patient/.test(i.getAttribute('href') || '')), 'the canvas asks for the picture');
+        try { await exportPptx(); } catch (e) {}
+        try { await makePdf({ mm: 100, dpi: 150 }); } catch (e) {}
+        ok(!seen.some(u => /evil|patient/.test(u)), 'an export fetched the picture: ' + seen.filter(u => /evil|patient/.test(u)).join(', '));
+      } finally { W.fetch = RF; blank(); }
+      // colors and the palette that would load a file when painted (url(), image-set()) are dropped when the file is read
+      { const s = healScene({ version: 4, w: 800, h: 500, bg: 'url(assets/bg.png)', palette: ['#123456', 'url(assets/p.png)', "image-set('assets/q.png' 1x)", 'rgb(1, 2, 3)'], objects: [{ id: 'c1', type: 'chip', x: 100, y: 100, text: 'a', fill: 'url(assets/f.svg#p)', color: 'url(#ok)' }] });
+        eq(s.bg, '#ffffff', 'a page background that loads a file'); eq(s.palette, ['#123456', 'rgb(1, 2, 3)'], 'palette entries that load a file');
+        ok(!/assets/.test(s.objects[0].fill), 'a fill that loads a file: ' + s.objects[0].fill); eq(s.objects[0].color, 'url(#ok)', 'a paint inside the drawing was dropped'); }
+      if (!WEB) return;
+      const S = W.SiliCoDrawWeb, st = S.createStore({ get: async () => null, put: async () => {}, del: async () => {}, keys: async () => [] });
+      // the store writes a figure only under a figure's own name, whoever asks (the replay of a closing tab's last change passed names on)
+      for (const n of ['../x.json', 'history/a/b.json', 'trash/x.json', 'assets/my-icons.json', '.hidden.json', 'x.txt']) { let e = null; try { await st.saveFigure(n, '{}'); } catch (x) { e = x; } ok(e, 'saved under a name that is no figure\'s: ' + n); }
+      ok((await st.saveFigure('fine.json', '{"objects":[]}')).etag, 'a figure name refused');
+      // the editor page's own address is the one sign-in comes back to (the tests' stand-in ids count only on a local server)
+      ok(/^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname), 'the tests run on a local server');
+      W.__SILICODRAW_CLOUD_IDS__ = { dropbox: 'db-id', google: '', onedrive: '' };
+      try { const a = await S.storage._authStart('dropbox', false), ru = new URL(a.url).searchParams.get('redirect_uri'); ok(/\/editor\.html$/.test(ru), 'the sign-in comes back elsewhere: ' + ru);
+        eq(S.storage._redirectFor('/silicodraw/'), location.origin + '/silicodraw/editor.html', 'opened at the folder\'s address: the sign-in comes back to another address');
+        eq(S.storage._redirectFor('/silicodraw/editor.html'), location.origin + '/silicodraw/editor.html', 'the editor page\'s own address changed');
+        eq(S.storage._redirectFor('/silicodraw/editor'), location.origin + '/silicodraw/editor.html', 'the page without .html (as Cloudflare Pages serves it): the sign-in comes back to another address'); }
+      finally { delete W.__SILICODRAW_CLOUD_IDS__; try { sessionStorage.removeItem('silicodraw.oauth'); } catch (e) {} }
+      // the website's policy (its <meta>): no forms anywhere, the CDNs only in the libraries' own folders, no cloud host before its service is offered
+      const csp = (D.querySelector('meta[http-equiv="Content-Security-Policy"]') || {}).content || ''; ok(csp, 'the website build has no policy');
+      ok(/form-action 'none'/.test(csp), 'forms may go somewhere: ' + (csp.match(/form-action[^;]*/) || [''])[0]);
+      ok(!/https:\/\/cdn\.jsdelivr\.net[ ;]|https:\/\/cdnjs\.cloudflare\.com[ ;]/.test(csp), 'a whole CDN host is allowed: ' + csp.slice(0, 300));
+      { const on = S.storage.services().map(s => s.kind), host = { dropbox: /dropboxapi/, onedrive: /graph\.microsoft|1drv|sharepoint/, google: /googleapis/ };
+        for (const k of Object.keys(host)) eq(host[k].test(csp), on.includes(k), (on.includes(k) ? 'an offered service is blocked by the policy: ' : 'the policy allows a service that is not offered: ') + k); }
     });
     test('old and broken files are repaired on load', () => {
       const s = healScene({ w: 'x', h: -5, bg: 7, palette: 'red', objects: [null, 5, { type: 'text', id: 'a', text: 'one' }, { type: 'box', id: 'a' }, { noType: 1 }, { type: 'text' }] });
@@ -2928,6 +2968,9 @@
         const libP = 'lib/qrcode-generator/qrcode.min.js', oldShell = 'silicodraw-shell-000000000000';
         await (await caches.open(oldShell)).put(dir + libP, new Response(await (await fetch(libP)).arrayBuffer(), { headers: { 'content-type': 'text/javascript', 'x-silicodraw-hash': files[libP], 'x-test': 'older release' } }));
         await (await caches.open('silicodraw-runtime')).put(dir + 'icon-expansions/zz-gone/icons-x.json', new Response('{}', { headers: { 'content-type': 'application/json' } }));
+        // (security) Cache Storage belongs to the whole site: a copy planted by another page, labeled with the real hash (sw.js is public), is never copied into a release
+        await (await caches.open(oldShell)).put(dir + 'notices/notices.json', new Response('{"version":1,"tips":[{"id":"planted","text":"planted"}]}', { headers: { 'content-type': 'application/json', 'x-silicodraw-hash': files['notices/notices.json'], 'x-test': 'planted' } }));
+        ok(/^[0-9a-f]{32}$/.test(files['editor.html']), 'sw.js names shortened hashes: ' + files['editor.html']);
         // registered (as the website does after load), scope = the editor's folder, the shell kept
         reg = await O.register(true); ok(reg, 'register(true) did not register');
         ok(await waitA(async () => { const r = await O.registration(); return r && r.active && r.active.state === 'activated'; }, 60000), 'the worker did not become active'); reg = await O.registration();
@@ -2941,7 +2984,9 @@
         const sc = await caches.open(shell), pg = await sc.match(dir + 'editor.html');
         eq(pg && pg.headers.get('x-silicodraw-hash'), files['editor.html'], 'the kept editor is not this release\'s (its hash)');
         eq((await sc.match(dir + 'lib/mathjax/tex-svg.js')).headers.get('x-silicodraw-hash'), files['lib/mathjax/tex-svg.js'], 'a kept library\'s hash');
-        eq((await sc.match(dir + libP)).headers.get('x-test'), 'older release', 'a file that did not change was not copied from the older release\'s shell');
+        eq((await sc.match(dir + libP)).headers.get('x-silicodraw-copied'), oldShell, 'a file that did not change was not copied from the older release\'s shell');
+        eq((await sc.match(dir + libP)).headers.get('x-test'), null, 'a header of the older copy came along (only its checked bytes may)');
+        { const nb = await sc.match(dir + 'notices/notices.json'); ok(nb && nb.headers.get('x-test') !== 'planted' && !/planted/.test(await nb.text()), 'a planted copy with the right label went into the new release'); }
         ok(!(await caches.keys()).includes(oldShell), 'the older release\'s shell is still there');
         ok(!(await (await caches.open('silicodraw-runtime')).match(dir + 'icon-expansions/zz-gone/icons-x.json')), 'a kept pack file this release no longer has is still there');
         // a shell file missing (a first visit cut short) is fetched again on "fill"
@@ -2964,6 +3009,17 @@
         eq(w.SiliCoDrawWeb.offline.build, O.build, 'offline: another release answered');
         let blocked = null; try { const r = await w.fetch('icon-expansions/zz-not-kept/pack.json', { cache: 'no-store' }); blocked = r.status; } catch (e) { blocked = 'error'; } eq(blocked, 'error', 'offline: a file never kept still reached the server');
         ok((await w.fetch('lib/qrcode-generator/qrcode.min.js')).ok, 'offline: a kept library does not answer');
+        // (security) the right bytes planted with another status and headers (a redirect to another site) answer only as those bytes
+        { const pf = 'brand/icon-small.svg', real = await (await sc.match(dir + pf)).arrayBuffer();
+          await sc.put(dir + pf, new Response(real, { status: 203, headers: { 'content-type': 'text/html', 'x-planted': '1', 'x-silicodraw-hash': files[pf] } }));
+          const r = await w.fetch(pf, { cache: 'no-store' }); eq([r.status, r.headers.get('content-type'), r.headers.get('x-planted')], [200, 'image/svg+xml', null], 'offline: a planted status or header reached the page');
+          await sc.put(dir + pf, new Response(real, { headers: { 'content-type': 'image/svg+xml', 'x-silicodraw-hash': files[pf] } })); }
+        // (security) a copy planted in this release's shell, labeled with the real hash, never answers (offline it is dropped, and nothing answers)
+        { const pf = 'brand/icon-small.svg', realEx = await (await sc.match(dir + pf)).arrayBuffer();
+          await sc.put(dir + pf, new Response('<svg xmlns="http://www.w3.org/2000/svg"><text>planted</text></svg>', { headers: { 'content-type': 'image/svg+xml', 'x-silicodraw-hash': files[pf] } }));
+          let got; try { got = await (await w.fetch(pf, { cache: 'no-store' })).text(); } catch (e) { got = 'error'; }
+          ok(!/planted/.test(got), 'offline: a planted copy answered'); ok(!(await sc.match(dir + pf)), 'the planted copy is still kept');
+          await sc.put(dir + pf, new Response(realEx, { headers: { 'content-type': 'image/svg+xml', 'x-silicodraw-hash': files[pf] } })); }
         const id = w.fig.add('text', { text: 'Edited offline', x: 300, y: 300, size: 24 }); await w.flushSave();
         ok(await waitFor(() => w.document.querySelector('#status').textContent === 'Saved', 10000), 'offline: not saved: ' + w.document.querySelector('#status').textContent);
         w = await frame('?file=' + encodeURIComponent(name) + '&r=' + Date.now()); ok(w.fig.list().some(o => o.id === id), 'offline: the edit is gone after a reload');
@@ -3003,7 +3059,7 @@
         // the file a presentation starts from: slides, 16 : 9, a title slide and a content slide
         { const s = newTemplate('slides'); ok(isDeck(s) && s.slides.length === 2 && s.w === 1600 && s.h === 900 && !('objects' in s), 'a file with two slides, 1600 × 900'); eq(s.slides.map(x => x.objects.map(o => o.type)), [['text', 'text'], ['text', 'text']], 'a title and a subtitle, a title and its content'); ok(+s.slides[0].objects[0].size > +s.slides[0].objects[1].size, 'the title is the larger text');
           eq(J(healScene(JSON.parse(J(s)))), J(healScene(JSON.parse(J(healScene(JSON.parse(J(s))))))), 'it loads as it is'); ok(sceneSvg(s, 320, 180).includes('<svg'), 'it has a thumbnail'); const i = NEW_TPLS.findIndex(t => t[0] === 'slides'); ok(i > 0 && NEW_TPLS[i][2] === '' && /Presentation/.test(NEW_TPLS[i][1]), 'offered under Basics in New figure');
-          if (hasSlides) { fig.set(s); await settle(); ok(isDeck(scene) && CUR === 0 && D.documentElement.classList.contains('has-slides') && scene.objects.some(o => /title/i.test(o.text)), 'opened: the title slide, with the slide strip'); eq(fig.check({ slides: true }).filter(r => r.level !== 'info'), [], 'nothing wrong on its slides'); unslide(); blank(); fig.add('text', { x: 300, y: 300, text: 'stays' }); await settle(); commit(); before = J(scene); } }
+          if (hasSlides) { fig.set(s); await settle(); const opened = () => ({ deck: isDeck(scene), cur: CUR, strip: D.documentElement.classList.contains('has-slides'), title: scene.objects.some(o => /title/i.test(o.text)) }); await waitFor(() => { const v = opened(); return v.deck && v.cur === 0 && v.strip && v.title; }, 3000); { const v = opened(); ok(v.deck && v.cur === 0 && v.strip && v.title, 'opened: the title slide, with the slide strip: ' + JSON.stringify(v)); } eq(fig.check({ slides: true }).filter(r => r.level !== 'info'), [], 'nothing wrong on its slides'); unslide(); blank(); fig.add('text', { x: 300, y: 300, text: 'stays' }); await settle(); commit(); before = J(scene); } }
         // Home → Figures: three buttons in the bar, two + cards
         fig.home('figures'); await HOME.ctx.reload(); ok(await waitFor(() => hmMain().querySelectorAll('.hmbar .hmnews .hmnewb').length === 3), 'the bar has no three buttons');
         const bs = [...hmMain().querySelectorAll('.hmbar .hmnewb')]; eq(bs.map(b => b.dataset.do), ['new', 'newp', 'import'], 'New figure, New presentation, Import…'); eq(bs.map(b => b.getAttribute('aria-label')), ['New figure', 'New presentation', 'Import figures'], 'each with a name'); ok(bs.every(b => b.title && b.querySelector('svg') && b.querySelector('span').textContent && b.tabIndex >= 0), 'each with a tooltip, a picture and words');
@@ -3969,7 +4025,7 @@
         // a pack's links are http(s) only; a drawing brings neither a style sheet nor anything from another host
         { packDefine({ id: 'zz-evil', name: 'Evil', url: 'javascript:alert(1)', licenseUrl: 'data:text/html,x', askFrom: 'javascript:1', ask: 'x', license: 'L' }, packDir); packDialog('zz-evil'); const as = [...$q('#modalBox').querySelectorAll('a')].map(x => x.getAttribute('href')); ok(as.length && !as.some(h => /^(javascript|data):/i.test(h)), 'links: ' + J(as)); closeModal(); PACKS.by.delete('zz-evil'); PACKS.list.splice(PACKS.list.findIndex(p => p.id === 'zz-evil'), 1); packBar(); }
         { const s = svgScrub('<style>#topbar{outline:5px solid red}</style><image href="http://example.org/x.png" width="10" height="10"/><image href="assets/x.png" width="10" height="10"/><use href="#a"/><rect id="a" fill="url(http://example.org/p.svg#g)" width="4" height="4"/><circle r="3" fill="url(#g)"/>');
-          ok(!/<style/i.test(s) && !/example\.org/.test(s), 'svgScrub: no style sheet, nothing from another host: ' + s); ok(s.includes('href="assets/x.png"') && s.includes('href="#a"') && s.includes('url(#g)'), 'what points into the drawing or this folder stays: ' + s); }
+          ok(!/<style/i.test(s) && !/example\.org/.test(s), 'svgScrub: no style sheet, nothing from another host: ' + s); ok((WEB ? !s.includes('assets/x.png') : s.includes('href="assets/x.png"')) && s.includes('href="#a"') && s.includes('url(#g)'), 'what points into the drawing or this folder stays: ' + s); }
         // the list of packs closes with a press outside it; after Remove from library the keyboard is on the pack's row
         packMenu(true); ok(!$q('#packMenu').hidden && $q('#palette').classList.contains('pk-open'), 'the list is open'); $q('#stage').dispatchEvent(new PointerEvent('pointerdown', { bubbles: true })); ok($q('#packMenu').hidden && !$q('#palette').classList.contains('pk-open'), 'a press on the canvas closes it');
         packMenu(true); { const row = $q('#packMenu .pkrow[data-id="' + TP + '"]'); row.focus(); row.click(); await sleep(50); $q('#pkRm').click(); for (let i = 0; i < 60 && (packImported(TP) || !$q('#modal').hidden); i++) await sleep(50); await sleep(100); const af = D.activeElement; ok(af && af.classList.contains('pkrow') && af.dataset.id === TP, 'the focus after Remove: ' + (af && (af.id || af.className || af.tagName))); packMenu(false); }

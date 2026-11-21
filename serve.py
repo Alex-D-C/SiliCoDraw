@@ -85,10 +85,10 @@ USER_CSP = "sandbox; default-src 'none'; img-src data: 'self'; style-src 'unsafe
 # scripts run (its inline scripts by their hash, worked out from the file as it is served, and lib/), so markup that a figure smuggled in can run
 # nothing (no handler attribute, no javascript: link), and nothing is sent anywhere but this server and the reference look-up services (2026-11-17).
 # 'unsafe-eval': MathJax and PptxGenJS build functions from text; injected markup cannot reach that without running first.
-PAGE_CSP = ("default-src 'self'; script-src 'self' __HASHES__ 'unsafe-eval' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
+PAGE_CSP = ("default-src 'self'; script-src 'self' __HASHES__ 'unsafe-eval' https://cdn.jsdelivr.net/npm/mathjax@3.2.2/ https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/ https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/; "
             "style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; media-src 'self' data: blob:; "
-            "connect-src 'self' https://api.crossref.org https://api.datacite.org https://eutils.ncbi.nlm.nih.gov https://export.arxiv.org https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; "
-            "frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'self'; frame-ancestors 'self'")
+            "connect-src 'self' https://api.crossref.org https://api.datacite.org https://eutils.ncbi.nlm.nih.gov https://export.arxiv.org https://cdn.jsdelivr.net/npm/mathjax@3.2.2/ https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/ https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/; "
+            "frame-src 'self' blob:; worker-src 'self' blob:; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'self'")
 SCRIPT_RE = re.compile(r'<script(?![^>]*\bsrc\s*=)[^>]*>(.*?)</script\s*>', re.I | re.S)
 _CSP_MEMO = {}
 
